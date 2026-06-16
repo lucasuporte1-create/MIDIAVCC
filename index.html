@@ -575,6 +575,18 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   color:#6CB2FF; letter-spacing:.02em; font-size:15px; }
 @media (prefers-reduced-motion:reduce){ .enter-splash-logo,.enter-spinner{ animation:none; } }
 
+/* ---------- Seletor de cor do evento ---------- */
+.color-row{ display:flex; gap:10px; flex-wrap:wrap; }
+.color-dot{ width:30px; height:30px; border-radius:50%; cursor:pointer;
+  border:2px solid transparent; box-shadow:0 2px 6px rgba(0,0,0,.4); transition:transform .12s; }
+.color-dot.on{ border-color:#fff; transform:scale(1.14);
+  box-shadow:0 0 0 3px rgba(255,255,255,.16), 0 2px 8px rgba(0,0,0,.5); }
+
+/* ---------- X vermelho (culto sem escala) ---------- */
+.x-mark{ display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:50%; background:rgba(255,77,94,.14); color:#FF4D5E; }
+.x-mark svg{ width:14px; height:14px; }
+
   </style>
 </head>
 <body>
@@ -761,7 +773,7 @@ const Data = {
     DB.rooms = (rooms.data||[]).map(r=>({id:r.id,name:r.name,age:r.age||"",emoji:r.emoji||"⭐",bg:r.bg||"#EAF4FC",fg:r.fg||"#2E86D6",need:3,sort:r.sort||0}))
       .sort((a,b)=>(a.sort||0)-(b.sort||0));
     DB.services = (services.data||[]).map(s=>({id:s.id,name:s.name,weekday:s.weekday,time:s.time||"",color:s.color||"#4DA3E8"}));
-    DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||"",photo:e.photo||""}));
+    DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||"",photo:e.photo||"",color:e.color||"#FF8A1E"}));
     const byMember={};
     (mrooms.data||[]).forEach(mr=>{ (byMember[mr.member_id]=byMember[mr.member_id]||[]).push(mr.room_id); });
     DB.members = (members.data||[]).map(m=>({id:m.id,name:m.full_name,phone:m.phone||"",role:m.fn||"",roomIds:byMember[m.id]||[],active:m.active!==false,notes:m.notes||"",photo:m.photo||"",training:m.training===true}));
@@ -828,7 +840,7 @@ const Data = {
   },
 
   async saveEvent(e, isNew){
-    if(CLOUD){ const row={id:e.id,date:e.date,title:e.title,time:e.time||null,note:e.note||null,photo:e.photo||null};
+    if(CLOUD){ const row={id:e.id,date:e.date,title:e.title,time:e.time||null,note:e.note||null,photo:e.photo||null,color:e.color||null};
       if(isNew) await sbErr(sb.from("events").insert(row),"criar evento"); else await sbErr(sb.from("events").update(row).eq("id",e.id),"salvar evento"); }
     if(isNew) DB.events.push(e); else Object.assign(DB.events.find(x=>x.id===e.id), e); save();
   },
@@ -961,7 +973,7 @@ function cleanPhone(p){ let d=(p||"").replace(/\D/g,""); if(d && d.length<=11) d
 function occsOnDate(dateStr){
   const d=parseYmd(dateStr), wd=d.getDay(), list=[];
   DB.services.forEach(s=>{ if(s.weekday===wd) list.push({key:`s:${s.id}:${dateStr}`,date:dateStr,title:s.name,time:s.time,color:s.color,type:"culto",refId:s.id}); });
-  DB.events.filter(e=>e.date===dateStr).forEach(e=>{ list.push({key:`e:${e.id}`,date:dateStr,title:e.title,time:e.time||"",color:"#F2994A",type:"evento",refId:e.id,note:e.note,photo:e.photo||""}); });
+  DB.events.filter(e=>e.date===dateStr).forEach(e=>{ list.push({key:`e:${e.id}`,date:dateStr,title:e.title,time:e.time||"",color:e.color||"#FF8A1E",type:"evento",refId:e.id,note:e.note,photo:e.photo||""}); });
   return list.sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));
 }
 /* Próximas ocorrências a partir de hoje (n dias à frente) */
@@ -1099,12 +1111,14 @@ function renderHome(c){
   if(up.length){
     up.forEach(o=>{
       const n = assignedCount(o.key);
-      const status = n>0 ? `<span class="dot"></span>` : `<span class="dot empty"></span>`;
+      const status = n>0
+        ? `<span class="dot"></span>${n}`
+        : `<span class="x-mark" title="Sem escala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>`;
       html += `<div class="room list-tap" data-action="open-occ" data-key="${o.key}">
         <div class="room-ico" style="background:${o.color}22;color:${o.color}">${o.type==="evento"?"🎉":"⛪"}</div>
         <div class="room-info"><div class="room-name">${esc(o.title)}</div>
           <div class="room-age">${fmtShort(o.date)} ${o.time?"• "+o.time:""}</div></div>
-        <div class="room-count">${status}${n}</div>
+        <div class="room-count">${status}</div>
       </div>`;
     });
   } else {
@@ -1246,7 +1260,7 @@ function renderCalendario(c){
     let cls="cal-cell"; if(isToday) cls+=" today"; if(occ.length && !isToday) cls+=" has"; if(isSel) cls+=" sel";
     let pips="";
     if(occ.some(o=>o.type==="culto")) pips+=`<span class="pip"></span>`;
-    if(occ.some(o=>o.type==="evento")) pips+=`<span class="pip ev"></span>`;
+    occ.filter(o=>o.type==="evento").slice(0,3).forEach(o=>{ pips+=`<span class="pip ev" style="background:${o.color}"></span>`; });
     cells+=`<div class="${cls}" data-action="sel-day" data-date="${ds}">${day}${pips?`<span style="position:absolute;bottom:5px;display:flex;gap:2px">${pips}</span>`:""}</div>`;
   }
 
@@ -1624,6 +1638,8 @@ function openMember(mid){
 /* ---------- Modal: Sala ---------- */
 const EMOJIS = ["📡","📽️","🎚️","💡","📸","🎬","🎙️","🎥","🖥️","🔊","🎛️","⭐"];
 const ROOM_COLORS = [["#FF6B6B26","#FF6B6B"],["#5AA9F026","#5AA9F0"],["#4CC38A26","#4CC38A"],["#FFB23D26","#FFB23D"],["#B98BE626","#B98BE6"],["#45C7D626","#45C7D6"]];
+// 7 cores chamativas para os eventos do calendário (o líder escolhe)
+const EVENT_COLORS = ["#FF3B6B","#FF8A1E","#FFD23F","#28D17C","#17C3D6","#3D8BF0","#B26BFF"];
 function editRoom(rid){
   const r = rid ? getRoom(rid) : {name:"",age:"",emoji:"⭐",bg:ROOM_COLORS[0][0],fg:ROOM_COLORS[0][1],need:2};
   const body = `
@@ -1698,8 +1714,9 @@ function editService(sid){
 
 /* ---------- Modal: Evento pontual ---------- */
 function editEvent(eid, presetDate){
-  const ev = eid ? DB.events.find(e=>e.id===eid) : {title:"",date:presetDate||ymd(today()),time:"",note:"",photo:""};
+  const ev = eid ? DB.events.find(e=>e.id===eid) : {title:"",date:presetDate||ymd(today()),time:"",note:"",photo:"",color:EVENT_COLORS[0]};
   let ePhoto = ev.photo || "";
+  let eColor = ev.color || EVENT_COLORS[0];
   const body = `
     <div class="field">
       <label>Foto do evento (opcional)</label>
@@ -1716,6 +1733,9 @@ function editEvent(eid, presetDate){
       <div class="field"><label>Horário</label><input id="eTime" type="time" value="${ev.time||""}"></div>
     </div>
     <div class="field"><label>Detalhes</label><textarea id="eNote" placeholder="Local, instruções...">${esc(ev.note||"")}</textarea></div>
+    <div class="field"><label>Cor no calendário</label>
+      <div class="color-row" id="eColors">${EVENT_COLORS.map(c=>`<span class="color-dot ${eColor===c?"on":""}" data-color="${c}" style="background:${c}"></span>`).join("")}</div>
+    </div>
   `;
   const foot = `<button class="btn btn-primary btn-block" id="eSave">${eid?"Salvar":"Criar evento"}</button>
     ${eid?`<button class="btn btn-danger btn-block" id="eDelete" style="margin-top:8px">Excluir evento</button>`:""}`;
@@ -1751,12 +1771,20 @@ function editEvent(eid, presetDate){
     eDel.style.display="none"; document.getElementById("ePhotoBtn").textContent="Adicionar foto";
   });
 
+  // seletor de cor do evento
+  const colorRow=document.getElementById("eColors");
+  if(colorRow) colorRow.addEventListener("click", e=>{
+    const dot=e.target.closest(".color-dot"); if(!dot) return;
+    eColor=dot.dataset.color;
+    colorRow.querySelectorAll(".color-dot").forEach(d=>d.classList.toggle("on", d===dot));
+  });
+
   document.getElementById("eSave").addEventListener("click", async ()=>{
     const title=document.getElementById("eTitle").value.trim();
     const date=document.getElementById("eDate").value;
     if(!title){ toast("Dê um nome ao evento","warn"); return; }
     if(!date){ toast("Escolha a data","warn"); return; }
-    const data={ title, date, time:document.getElementById("eTime").value, note:document.getElementById("eNote").value.trim(), photo:ePhoto };
+    const data={ title, date, time:document.getElementById("eTime").value, note:document.getElementById("eNote").value.trim(), photo:ePhoto, color:eColor };
     const evt = eid ? {id:eid,...data} : {id:uid(),...data};
     calSelected=date;
     try{ await Data.saveEvent(evt, !eid); closeModal(); go("calendario"); toast(eid?"Evento atualizado":"Evento criado","good"); }
@@ -1804,7 +1832,7 @@ function openSchedule(key){
       const count=(slot.lider?1:0)+slot.monitores.length;
       const avail=availFor(r);
       const liderG = avail.length ? avail.map(m=>{ const on=slot.lider===m.id;
-          return `<span class="pick-item ${on?"on":""}" data-mid="${m.id}" style="${on?`background:${r.fg}`:""}">${on?"👑 ":""}${shortName(m)}</span>`; }).join("")
+          return `<span class="pick-item ${on?"on":""}" data-mid="${m.id}" style="${on?`background:${r.fg}`:""}">${on?"★ ":""}${shortName(m)}</span>`; }).join("")
         : '<span class="muted-txt">Ninguém apto a esta área</span>';
       const monG = avail.length ? avail.map(m=>{ const on=slot.monitores.includes(m.id);
           return `<span class="pick-item ${on?"on":""}" data-mid="${m.id}" style="${on?`background:${r.fg}`:""}">${shortName(m)}</span>`; }).join("")
@@ -1815,7 +1843,7 @@ function openSchedule(key){
           <div style="flex:1"><div class="room-name" style="font-size:14.5px">${esc(r.name)}</div>
             <div class="room-age">${count}/3 ${count===3?"✓":""}</div></div>
         </div>
-        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px">👑 Responsável</div>
+        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">★</span> Responsável</div>
         <div class="pick" data-grp="lider" data-room="${r.id}">${liderG}</div>
         <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:12px 0 6px">Auxiliares <span style="font-weight:500">(até 2)</span></div>
         <div class="pick" data-grp="monitor" data-room="${r.id}">${monG}</div>
@@ -1884,7 +1912,7 @@ function openScheduleReadOnly(key, occ){
     const slot=roomSlot(key,r.id);
     const mineHere = me && roomPeopleIds(key,r.id).includes(me.id);
     const chip=(id,isLeader)=>{ const p=getMember(id); if(!p) return "";
-      return `<span class="chip ${me&&id===me.id?"good":""}" style="margin:2px 4px 2px 0">${ava(p.name,p.id,"width:22px;height:22px;font-size:10px;margin-right:4px")}${isLeader?"👑 ":""}${esc(p.name)}</span>`; };
+      return `<span class="chip ${me&&id===me.id?"good":""}" style="margin:2px 4px 2px 0">${ava(p.name,p.id,"width:22px;height:22px;font-size:10px;margin-right:4px")}${isLeader?"★ ":""}${esc(p.name)}</span>`; };
     body += `<div class="card" style="padding:13px;margin-bottom:11px${mineHere?";border-color:#BFE9D7;background:var(--good-soft)":""}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         <div class="room-ico" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:${r.bg};color:${r.fg}">${r.emoji}</div>
@@ -1903,7 +1931,7 @@ function openScheduleReadOnly(key, occ){
 
 function resolveOcc(key){
   if(key.startsWith("e:")){ const ev=DB.events.find(e=>e.id===key.slice(2)); if(!ev) return null;
-    return {key,date:ev.date,title:ev.title,time:ev.time,color:"#F2994A",type:"evento",photo:ev.photo||""}; }
+    return {key,date:ev.date,title:ev.title,time:ev.time,color:ev.color||"#FF8A1E",type:"evento",photo:ev.photo||""}; }
   if(key.startsWith("s:")){ const [,sid,date]=key.split(":"); const s=getService(sid); if(!s) return null;
     return {key,date,title:s.name,time:s.time,color:s.color,type:"culto"}; }
   return null;
