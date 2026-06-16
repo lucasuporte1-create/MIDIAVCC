@@ -544,6 +544,15 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   .login-logo{ animation:none; } .login-card::before{ animation:none; opacity:.4; }
 }
 
+/* ---------- Foto do evento ---------- */
+.event-photo-prev{ width:100%; height:140px; border-radius:14px; background:#141419;
+  border:1px solid var(--line); background-size:cover; background-position:center;
+  display:flex; align-items:center; justify-content:center; }
+.event-thumb{ width:44px; height:44px; border-radius:10px; background-size:cover;
+  background-position:center; flex-shrink:0; border:1px solid var(--line); }
+.occ-banner{ width:100%; height:130px; border-radius:14px; background-size:cover;
+  background-position:center; margin-bottom:14px; border:1px solid var(--line); }
+
   </style>
 </head>
 <body>
@@ -735,10 +744,10 @@ const Data = {
     DB.rooms = (rooms.data||[]).map(r=>({id:r.id,name:r.name,age:r.age||"",emoji:r.emoji||"⭐",bg:r.bg||"#EAF4FC",fg:r.fg||"#2E86D6",need:3,sort:r.sort||0}))
       .sort((a,b)=>(a.sort||0)-(b.sort||0));
     DB.services = (services.data||[]).map(s=>({id:s.id,name:s.name,weekday:s.weekday,time:s.time||"",color:s.color||"#4DA3E8"}));
-    DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||""}));
+    DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||"",photo:e.photo||""}));
     const byMember={};
     (mrooms.data||[]).forEach(mr=>{ (byMember[mr.member_id]=byMember[mr.member_id]||[]).push(mr.room_id); });
-    DB.members = (members.data||[]).map(m=>({id:m.id,name:m.full_name,phone:m.phone||"",role:m.fn||"",roomIds:byMember[m.id]||[],active:m.active!==false,notes:m.notes||"",photo:m.photo||""}));
+    DB.members = (members.data||[]).map(m=>({id:m.id,name:m.full_name,phone:m.phone||"",role:m.fn||"",roomIds:byMember[m.id]||[],active:m.active!==false,notes:m.notes||"",photo:m.photo||"",training:m.training===true}));
     const sched={};
     (assigns.data||[]).forEach(a=>{
       const key = a.source_type==="event" ? `e:${a.source_id}` : `s:${a.source_id}:${a.occ_date}`;
@@ -761,7 +770,7 @@ const Data = {
 
   async saveMember(m, isNew){
     if(CLOUD){
-      const row={ id:m.id, full_name:m.name, phone:m.phone||null, fn:m.role||null, active:m.active, notes:m.notes||null, photo:m.photo||null };
+      const row={ id:m.id, full_name:m.name, phone:m.phone||null, fn:m.role||null, active:m.active, notes:m.notes||null, photo:m.photo||null, training:m.training||false };
       if(isNew) await sbErr(sb.from("members").insert(row), "criar pessoa");
       else      await sbErr(sb.from("members").update(row).eq("id",m.id), "salvar pessoa");
       await sbErr(sb.from("member_rooms").delete().eq("member_id",m.id), "atualizar salas");
@@ -802,7 +811,7 @@ const Data = {
   },
 
   async saveEvent(e, isNew){
-    if(CLOUD){ const row={id:e.id,date:e.date,title:e.title,time:e.time||null,note:e.note||null};
+    if(CLOUD){ const row={id:e.id,date:e.date,title:e.title,time:e.time||null,note:e.note||null,photo:e.photo||null};
       if(isNew) await sbErr(sb.from("events").insert(row),"criar evento"); else await sbErr(sb.from("events").update(row).eq("id",e.id),"salvar evento"); }
     if(isNew) DB.events.push(e); else Object.assign(DB.events.find(x=>x.id===e.id), e); save();
   },
@@ -935,7 +944,7 @@ function cleanPhone(p){ let d=(p||"").replace(/\D/g,""); if(d && d.length<=11) d
 function occsOnDate(dateStr){
   const d=parseYmd(dateStr), wd=d.getDay(), list=[];
   DB.services.forEach(s=>{ if(s.weekday===wd) list.push({key:`s:${s.id}:${dateStr}`,date:dateStr,title:s.name,time:s.time,color:s.color,type:"culto",refId:s.id}); });
-  DB.events.filter(e=>e.date===dateStr).forEach(e=>{ list.push({key:`e:${e.id}`,date:dateStr,title:e.title,time:e.time||"",color:"#F2994A",type:"evento",refId:e.id,note:e.note}); });
+  DB.events.filter(e=>e.date===dateStr).forEach(e=>{ list.push({key:`e:${e.id}`,date:dateStr,title:e.title,time:e.time||"",color:"#F2994A",type:"evento",refId:e.id,note:e.note,photo:e.photo||""}); });
   return list.sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));
 }
 /* Próximas ocorrências a partir de hoje (n dias à frente) */
@@ -1249,7 +1258,7 @@ function renderCalendario(c){
     occs.forEach(o=>{
       const n=assignedCount(o.key);
       html += `<div class="event-line list-tap" data-action="open-occ" data-key="${o.key}">
-        <div class="event-tag" style="background:${o.color}"></div>
+        ${o.photo?`<div class="event-thumb" style="background-image:url('${o.photo}')"></div>`:`<div class="event-tag" style="background:${o.color}"></div>`}
         <div class="event-info"><div class="event-title">${esc(o.title)}</div>
           <div class="event-time">${o.type==="evento"?"Evento":"Culto"} ${o.time?"• "+o.time:""} • ${n} escalado(s)</div>
           ${o.note?`<div class="event-time" style="margin-top:2px">${esc(o.note)}</div>`:""}</div>
@@ -1295,7 +1304,7 @@ function renderMembros(c){
     html += `<div class="person list-tap" data-action="open-member" data-id="${m.id}">
       ${ava(m.name,m.id,m.active?"":"opacity:.45")}
       <div class="person-info">
-        <div class="person-name">${esc(m.name)} ${!m.active?`<span class="chip muted">inativo</span>`:""}</div>
+        <div class="person-name">${esc(m.name)} ${!m.active?`<span class="chip muted">inativo</span>`:""}${m.training?`<span class="chip sun">🎓 treinamento</span>`:""}</div>
         <div class="person-meta">${esc(m.role||"Voluntário")} ${roomNames?"• "+roomNames:""}</div>
       </div>
       ${m.phone?`<button class="icon-btn sm" data-action="wa-member" data-id="${m.id}" aria-label="WhatsApp" style="color:var(--good)">
@@ -1471,7 +1480,7 @@ document.getElementById("modalBackdrop").addEventListener("click", e=>{ if(e.tar
 
 /* ---------- Modal: Membro (cadastro/edição) ---------- */
 function editMember(mid){
-  const m = mid ? getMember(mid) : {name:"",phone:"",role:"",roomIds:[],active:true,notes:"",photo:""};
+  const m = mid ? getMember(mid) : {name:"",phone:"",role:"",roomIds:[],active:true,notes:"",photo:"",training:false};
   let photo = m.photo || "";
   const avaInner = photo ? `style="background-image:url('${photo}');background-size:cover;background-position:center"` : `style="background:${avaColor(m.id||'x')}"`;
   const body = `
@@ -1496,6 +1505,7 @@ function editMember(mid){
     </div>
     <div class="field"><label>Observações</label><textarea id="mNotes" placeholder="Restrições de horário, preferências...">${esc(m.notes)}</textarea></div>
     <div class="toggle"><span class="toggle-label">Ativo na equipe</span><div class="sw ${m.active?"on":""}" id="mActive"></div></div>
+    <div class="toggle"><span class="toggle-label">🎓 Em treinamento</span><div class="sw ${m.training?"on":""}" id="mTraining"></div></div>
   `;
   const foot = `<button class="btn btn-primary btn-block" id="mSave">${mid?"Salvar alterações":"Cadastrar"}</button>
     ${mid?`<button class="btn btn-danger btn-block" id="mDelete" style="margin-top:8px">Excluir da equipe</button>`:""}`;
@@ -1546,13 +1556,15 @@ function editMember(mid){
   });
   let active = m.active;
   document.getElementById("mActive").addEventListener("click", e=>{ active=!active; e.target.classList.toggle("on",active); });
+  let training = !!m.training;
+  document.getElementById("mTraining").addEventListener("click", e=>{ training=!training; e.target.classList.toggle("on",training); });
 
   document.getElementById("mSave").addEventListener("click", async ()=>{
     const name=document.getElementById("mName").value.trim();
     if(!name){ toast("Coloque o nome da pessoa","warn"); return; }
     const data={ name, phone:document.getElementById("mPhone").value.trim(),
       role:document.getElementById("mRole").value.trim(), roomIds:[...selRooms],
-      notes:document.getElementById("mNotes").value.trim(), active, photo };
+      notes:document.getElementById("mNotes").value.trim(), active, photo, training };
     const member = mid ? {id:mid,...data} : {id:uid(),...data};
     const btn=document.getElementById("mSave"); btn.disabled=true; const o=btn.textContent; btn.textContent="Salvando...";
     try{ await Data.saveMember(member, !mid); closeModal(); go("membros"); toast(mid?"Pessoa atualizada":"Pessoa cadastrada","good"); }
@@ -1573,7 +1585,7 @@ function openMember(mid){
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
       <div class="ava" style="width:60px;height:60px;font-size:22px;${m.photo?`background-image:url('${m.photo}');background-size:cover;background-position:center`:`background:${avaColor(m.id)}`}">${m.photo?"":esc(initials(m.name))}</div>
       <div><div style="font-family:var(--font-display);font-weight:700;font-size:20px">${esc(m.name)}</div>
-      <div class="muted-txt">${esc(m.role||"Voluntário")} ${m.active?"":"• inativo"}</div></div>
+      <div class="muted-txt">${esc(m.role||"Voluntário")} ${m.active?"":"• inativo"}${m.training?` • <span style="color:var(--sun)">🎓 em treinamento</span>`:""}</div></div>
     </div>
     <div class="divider"></div>
     ${m.phone?`<div class="field" style="margin-bottom:10px"><label>WhatsApp</label><div style="font-size:15px">${esc(m.phone)}</div></div>`:""}
@@ -1667,9 +1679,19 @@ function editService(sid){
 
 /* ---------- Modal: Evento pontual ---------- */
 function editEvent(eid, presetDate){
-  const ev = eid ? DB.events.find(e=>e.id===eid) : {title:"",date:presetDate||ymd(today()),time:"",note:""};
+  const ev = eid ? DB.events.find(e=>e.id===eid) : {title:"",date:presetDate||ymd(today()),time:"",note:"",photo:""};
+  let ePhoto = ev.photo || "";
   const body = `
-    <div class="field"><label>Nome do evento</label><input id="eTitle" value="${esc(ev.title)}" placeholder="Ex.: Ensaio do teatro, Festa das crianças"></div>
+    <div class="field">
+      <label>Foto do evento (opcional)</label>
+      <div id="ePhotoPrev" class="event-photo-prev" style="${ePhoto?`background-image:url('${ePhoto}')`:""}">${ePhoto?"":'<span class="muted-txt">Sem foto</span>'}</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button type="button" class="btn btn-ghost" id="ePhotoBtn" style="padding:9px 13px;font-size:13px">${ePhoto?"Trocar":"Adicionar"} foto</button>
+        <button type="button" class="btn btn-soft" id="ePhotoDel" style="padding:9px 13px;font-size:13px;${ePhoto?"":"display:none"}">Remover</button>
+      </div>
+      <input type="file" id="ePhotoInput" accept="image/*" hidden>
+    </div>
+    <div class="field"><label>Nome do evento</label><input id="eTitle" value="${esc(ev.title)}" placeholder="Ex.: Ensaio, Conferência, Gravação"></div>
     <div class="row2">
       <div class="field"><label>Data</label><input id="eDate" type="date" value="${ev.date}"></div>
       <div class="field"><label>Horário</label><input id="eTime" type="time" value="${ev.time||""}"></div>
@@ -1680,12 +1702,42 @@ function editEvent(eid, presetDate){
     ${eid?`<button class="btn btn-danger btn-block" id="eDelete" style="margin-top:8px">Excluir evento</button>`:""}`;
   openModal(eid?"Editar evento":"Novo evento", body, foot);
 
+  // foto do evento: seleciona, redimensiona (16:9) e pré-visualiza
+  const ePrev=document.getElementById("ePhotoPrev");
+  const eFile=document.getElementById("ePhotoInput");
+  const eDel=document.getElementById("ePhotoDel");
+  document.getElementById("ePhotoBtn").addEventListener("click",()=>eFile.click());
+  eFile.addEventListener("change", ev2=>{
+    const file=ev2.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const im=new Image();
+      im.onload=()=>{
+        const W=480,H=270, cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+        const ctx=cv.getContext("2d");
+        const s=Math.min(im.width/W, im.height/H);
+        const sw=W*s, sh=H*s, sx=(im.width-sw)/2, sy=(im.height-sh)/2;
+        ctx.drawImage(im, sx,sy,sw,sh, 0,0,W,H);
+        ePhoto=cv.toDataURL("image/jpeg",0.82);
+        ePrev.style.backgroundImage=`url('${ePhoto}')`; ePrev.innerHTML="";
+        eDel.style.display=""; document.getElementById("ePhotoBtn").textContent="Trocar foto";
+      };
+      im.onerror=()=>toast("Não consegui ler essa imagem","warn");
+      im.src=reader.result;
+    };
+    reader.readAsDataURL(file); ev2.target.value="";
+  });
+  eDel.addEventListener("click",()=>{
+    ePhoto=""; ePrev.style.backgroundImage="none"; ePrev.innerHTML='<span class="muted-txt">Sem foto</span>';
+    eDel.style.display="none"; document.getElementById("ePhotoBtn").textContent="Adicionar foto";
+  });
+
   document.getElementById("eSave").addEventListener("click", async ()=>{
     const title=document.getElementById("eTitle").value.trim();
     const date=document.getElementById("eDate").value;
     if(!title){ toast("Dê um nome ao evento","warn"); return; }
     if(!date){ toast("Escolha a data","warn"); return; }
-    const data={ title, date, time:document.getElementById("eTime").value, note:document.getElementById("eNote").value.trim() };
+    const data={ title, date, time:document.getElementById("eTime").value, note:document.getElementById("eNote").value.trim(), photo:ePhoto };
     const evt = eid ? {id:eid,...data} : {id:uid(),...data};
     calSelected=date;
     try{ await Data.saveEvent(evt, !eid); closeModal(); go("calendario"); toast(eid?"Evento atualizado":"Evento criado","good"); }
@@ -1752,7 +1804,7 @@ function openSchedule(key){
     }).join("");
   }
 
-  const head = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+  const head = `${occ.photo?`<div class="occ-banner" style="background-image:url('${occ.photo}')"></div>`:""}<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
     <div class="room-ico" style="width:42px;height:42px;border-radius:12px;background:${occ.color}22;color:${occ.color}">${occ.type==="evento"?"🎉":"⛪"}</div>
     <div><div style="font-family:var(--font-display);font-weight:700;font-size:16px">${esc(occ.title)}</div>
     <div class="muted-txt">${fmtLong(occ.date)} ${occ.time?"• "+occ.time:""}</div></div></div>`;
@@ -1801,7 +1853,7 @@ function openSchedule(key){
 function openScheduleReadOnly(key, occ){
   const sched = schedFor(key);
   const me = DB.settings.meId ? getMember(DB.settings.meId) : null;
-  const head = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+  const head = `${occ.photo?`<div class="occ-banner" style="background-image:url('${occ.photo}')"></div>`:""}<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
     <div class="room-ico" style="width:42px;height:42px;border-radius:12px;background:${occ.color}22;color:${occ.color}">${occ.type==="evento"?"🎉":"⛪"}</div>
     <div><div style="font-family:var(--font-display);font-weight:700;font-size:16px">${esc(occ.title)}</div>
     <div class="muted-txt">${fmtLong(occ.date)} ${occ.time?"• "+occ.time:""}</div></div></div>`;
@@ -1832,7 +1884,7 @@ function openScheduleReadOnly(key, occ){
 
 function resolveOcc(key){
   if(key.startsWith("e:")){ const ev=DB.events.find(e=>e.id===key.slice(2)); if(!ev) return null;
-    return {key,date:ev.date,title:ev.title,time:ev.time,color:"#F2994A",type:"evento"}; }
+    return {key,date:ev.date,title:ev.title,time:ev.time,color:"#F2994A",type:"evento",photo:ev.photo||""}; }
   if(key.startsWith("s:")){ const [,sid,date]=key.split(":"); const s=getService(sid); if(!s) return null;
     return {key,date,title:s.name,time:s.time,color:s.color,type:"culto"}; }
   return null;
