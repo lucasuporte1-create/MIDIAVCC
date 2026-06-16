@@ -587,6 +587,10 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   width:22px; height:22px; border-radius:50%; background:rgba(255,77,94,.14); color:#FF4D5E; }
 .x-mark svg{ width:14px; height:14px; }
 
+/* ---------- Dias já passados (esmaecidos) ---------- */
+.cal-cell.past{ opacity:.34; }
+.cal-cell.past.sel{ opacity:.6; }
+
   </style>
 </head>
 <body>
@@ -1257,11 +1261,22 @@ function renderCalendario(c){
     const occ = occsOnDate(ds);
     const isToday = ds===ymd(t);
     const isSel = ds===calSelected;
-    let cls="cal-cell"; if(isToday) cls+=" today"; if(occ.length && !isToday) cls+=" has"; if(isSel) cls+=" sel";
+    const isPast = ds < ymd(t);
+    let cls="cal-cell"; if(isToday) cls+=" today"; if(occ.length && !isToday) cls+=" has"; if(isSel) cls+=" sel"; if(isPast && !isToday) cls+=" past";
+    const evOccs = occ.filter(o=>o.type==="evento");
     let pips="";
     if(occ.some(o=>o.type==="culto")) pips+=`<span class="pip"></span>`;
-    occ.filter(o=>o.type==="evento").slice(0,3).forEach(o=>{ pips+=`<span class="pip ev" style="background:${o.color}"></span>`; });
-    cells+=`<div class="${cls}" data-action="sel-day" data-date="${ds}">${day}${pips?`<span style="position:absolute;bottom:5px;display:flex;gap:2px">${pips}</span>`:""}</div>`;
+    let cellStyle="", dayHTML=`${day}`;
+    if(evOccs.length){
+      const c=evOccs[0].color;
+      if(isToday){
+        cellStyle=`box-shadow:0 0 0 2px ${c}, 0 0 12px ${c}aa;`;
+      }else{
+        cellStyle=`background:${c}26;box-shadow:inset 0 0 0 2px ${c}, 0 0 12px ${c}66;`;
+        dayHTML=`<span style="color:${c};font-weight:800">${day}</span>`;
+      }
+    }
+    cells+=`<div class="${cls}" style="${cellStyle}" data-action="sel-day" data-date="${ds}">${dayHTML}${pips?`<span style="position:absolute;bottom:5px;display:flex;gap:2px">${pips}</span>`:""}</div>`;
   }
 
   let html = `<div class="cal">
@@ -1279,7 +1294,7 @@ function renderCalendario(c){
   // legenda
   html += `<div style="display:flex;gap:16px;justify-content:center;margin:12px 0 4px;font-size:12px;color:var(--ink-soft)">
     <span style="display:flex;align-items:center;gap:6px"><span class="pip" style="position:static;width:6px;height:6px;background:var(--sky-500)"></span> Culto</span>
-    <span style="display:flex;align-items:center;gap:6px"><span class="pip" style="position:static;width:6px;height:6px;background:var(--sun)"></span> Evento</span>
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:15px;height:15px;border-radius:5px;background:#FF8A1E26;box-shadow:inset 0 0 0 2px #FF8A1E;display:inline-block"></span> Evento</span>
   </div>`;
 
   // detalhe do dia selecionado
