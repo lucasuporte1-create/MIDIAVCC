@@ -719,13 +719,18 @@ const Auth = {
   },
 
   async loadProfile(user){
-    // === SUPABASE: lê o papel e o vínculo (qual voluntário é esta conta) ===
-    let role = "volunteer", memberId = "";
+    // === SUPABASE: papel, vínculo, áreas que lidera e troca de senha ===
+    let role="volunteer", memberId="", roomIds=[], mustChange=false;
     try{
-      const { data } = await sb.from("profiles").select("role, member_id").eq("id", user.id).single();
-      if(data){ if(data.role) role = data.role; if(data.member_id) memberId = data.member_id; }
+      const { data } = await sb.from("profiles").select("role, member_id, room_ids, must_change_password").eq("id", user.id).single();
+      if(data){
+        if(data.role) role=data.role;
+        if(data.member_id) memberId=data.member_id;
+        if(Array.isArray(data.room_ids)) roomIds=data.room_ids;
+        mustChange = data.must_change_password===true;
+      }
     }catch(e){}
-    this.user = user; this.role = role; this.memberId = memberId;
+    this.user=user; this.role=role; this.memberId=memberId; this.roomIds=roomIds; this.mustChange=mustChange;
     return role;
   },
 
@@ -803,7 +808,7 @@ const Data = {
     });
     DB.schedules = sched;
     save();
-    if(!DB.rooms.length && Auth.isLeader()) await this.seedDefaults();
+    if(!DB.rooms.length && isAdmin()) await this.seedDefaults();
   },
 
   async seedDefaults(){
@@ -865,19 +870,41 @@ const Data = {
     DB.events=DB.events.filter(x=>x.id!==id); delete DB.schedules[`e:${id}`]; save();
   },
 
-  async saveSchedule(key, occ, sched){
-    DB.schedules[key]=sched; save();
+  async saveSchedule(key, occ, sched, roomScope){
+    // roomScope: lista de áreas a gravar (líder de área). Sem escopo = tudo (admin).
+    if(roomScope){
+      const cur = DB.schedules[key] || {};
+      roomScope.forEach(rid=>{ const s=sched[rid];
+        if(s && (s.lider || (s.monitores||[]).length)) cur[rid]=s; else delete cur[rid]; });
+      DB.schedules[key]=cur;
+    } else {
+      DB.schedules[key]=sched;
+    }
+    save();
     if(!CLOUD) return;
     const st  = occ.type==="evento" ? "event" : "service";
     const sid = key.startsWith("e:") ? key.slice(2) : key.split(":")[1];
     const date= occ.date;
-    await sbErr(sb.from("assignments").delete().eq("source_type",st).eq("source_id",sid).eq("occ_date",date), "atualizar escala");
-    const rows=[];
-    Object.keys(sched).forEach(rid=>{ const slot=sched[rid];
-      if(slot.lider) rows.push({occ_date:date,source_type:st,source_id:sid,room_id:rid,member_id:slot.lider,role_in_room:"leader"});
-      (slot.monitores||[]).forEach(mid=>rows.push({occ_date:date,source_type:st,source_id:sid,room_id:rid,member_id:mid,role_in_room:"monitor"}));
-    });
-    if(rows.length) await sbErr(sb.from("assignments").insert(rows), "salvar escala");
+    const buildRows = ids => {
+      const rows=[];
+      ids.forEach(rid=>{ const slot=sched[rid]; if(!slot) return;
+        if(slot.lider) rows.push({occ_date:date,source_type:st,source_id:sid,room_id:rid,member_id:slot.lider,role_in_room:"leader"});
+        (slot.monitores||[]).forEach(mid=>rows.push({occ_date:date,source_type:st,source_id:sid,room_id:rid,member_id:mid,role_in_room:"monitor"}));
+      });
+      return rows;
+    };
+    if(roomScope){
+      // apaga e regrava SÓ as áreas do escopo (preserva as demais)
+      if(roomScope.length){
+        await sbErr(sb.from("assignments").delete().eq("source_type",st).eq("source_id",sid).eq("occ_date",date).in("room_id", roomScope), "atualizar escala");
+      }
+      const rows=buildRows(roomScope);
+      if(rows.length) await sbErr(sb.from("assignments").insert(rows), "salvar escala");
+    } else {
+      await sbErr(sb.from("assignments").delete().eq("source_type",st).eq("source_id",sid).eq("occ_date",date), "atualizar escala");
+      const rows=buildRows(Object.keys(sched));
+      if(rows.length) await sbErr(sb.from("assignments").insert(rows), "salvar escala");
+    }
   }
 };
 
@@ -1019,9 +1046,12 @@ function memberRoleInRoom(key, roomId, mid){
 
 /* Papel vem do Supabase (tabela profiles). O login já só deixa líder entrar,
    então quem está no app é líder. Em modo de teste local, também é líder. */
-function isLeader(){
-  return Auth.role ? Auth.isLeader() : true;
-}
+function isAdmin(){ if(!USE_SUPABASE) return true; return Auth.role==="admin"; }
+function isLeader(){ if(!USE_SUPABASE) return true; return Auth.role==="leader" || Auth.role==="admin"; }
+function leaderRoomIds(){ return Array.isArray(Auth.roomIds)?Auth.roomIds:[]; }
+function canEditRoom(rid){ return isAdmin() || (Auth.role==="leader" && leaderRoomIds().includes(rid)); }
+function canEditAnyRoom(){ return isAdmin() || (Auth.role==="leader" && leaderRoomIds().length>0); }
+function canCreateEvent(){ return isLeader(); }
 
 /* Todas as ocorrências dentro de um mês do calendário */
 function occsInMonth(y,m){
@@ -1162,7 +1192,7 @@ let escYear, escMonth;
 function renderEscala(c){
   const t=today();
   if(escYear==null){ escYear=t.getFullYear(); escMonth=t.getMonth(); }
-  const leader = isLeader();
+  const leader = canEditAnyRoom();
   const me = DB.settings.meId ? getMember(DB.settings.meId) : null;
 
   if(leader){
@@ -1338,7 +1368,7 @@ function renderCalendario(c){
    ===================================================================== */
 let memberFilter = "all";
 function renderMembros(c){
-  if(isLeader()) document.getElementById("topActions").innerHTML =
+  if(isAdmin()) document.getElementById("topActions").innerHTML =
     `<button class="icon-btn" data-action="new-member" aria-label="Novo membro">
       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`;
 
@@ -1352,8 +1382,8 @@ function renderMembros(c){
 
   if(!list.length){
     html += emptyState("👥","Nenhuma pessoa aqui",
-      isLeader()?"Cadastre os voluntários do ministério para começar a montar as escalas.":"A equipe ainda não foi cadastrada.",
-      isLeader()?`<button class="btn btn-primary" data-action="new-member">Cadastrar pessoa</button>`:"");
+      isAdmin()?"Cadastre os voluntários do ministério para começar a montar as escalas.":"A equipe ainda não foi cadastrada.",
+      isAdmin()?`<button class="btn btn-primary" data-action="new-member">Cadastrar pessoa</button>`:"");
     c.innerHTML = html; return;
   }
 
@@ -1378,7 +1408,7 @@ function renderMembros(c){
    ===================================================================== */
 function renderConfig(c){
   const me = DB.settings.meId ? getMember(DB.settings.meId) : null;
-  const leader = isLeader();
+  const leader = isAdmin();
   let html = "";
 
   // Identidade
@@ -1484,9 +1514,10 @@ document.addEventListener("click", e=>{
   const id = el.dataset.id;
   const key = el.dataset.key;
 
-  const LEADER_ONLY = ["new-schedule","new-member","edit-member","new-room","edit-room",
-    "new-service","edit-service","new-event","new-event-on","edit-event","export","import","reset"];
-  if(LEADER_ONLY.includes(a) && !isLeader()){ toast("Apenas líderes podem editar a escala","warn"); return; }
+  const ADMIN_ONLY = ["new-member","edit-member","new-room","edit-room","new-service","edit-service","export","import","reset"];
+  const LEADER_ANY  = ["new-schedule","new-event","new-event-on","edit-event"];
+  if(ADMIN_ONLY.includes(a) && !isAdmin()){ toast("Apenas o administrador pode fazer isso","warn"); return; }
+  if(LEADER_ANY.includes(a) && !isLeader()){ toast("Apenas líderes podem fazer isso","warn"); return; }
 
   switch(a){
     case "goto": go(el.dataset.view); break;
@@ -1658,7 +1689,7 @@ function openMember(mid){
       <svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.2-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg> Chamar no WhatsApp</button>`:""}
     <button class="btn btn-soft btn-block" data-action="ics-member" data-id="${m.id}" style="margin-bottom:8px">
       <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M8 2.5v4M16 2.5v4M3.5 9.5h17"/></svg> Lembrete no calendário do celular</button>
-    ${isLeader()?`<button class="btn btn-ghost btn-block" data-action="edit-member" data-id="${m.id}">Editar</button>`:""}`;
+    ${isAdmin()?`<button class="btn btn-ghost btn-block" data-action="edit-member" data-id="${m.id}">Editar</button>`:""}`;
   openModal("Perfil", body, foot);
 }
 
@@ -1844,7 +1875,7 @@ function pickOccForSchedule(){
 function openSchedule(key){
   const occ = resolveOcc(key);
   if(!occ){ toast("Não encontrei este culto","warn"); return; }
-  if(!isLeader()){ return openScheduleReadOnly(key, occ); }
+  if(!canEditAnyRoom()){ return openScheduleReadOnly(key, occ); }
 
   // cópia editável já no formato {lider, monitores[]}
   const sched={};
@@ -1857,6 +1888,24 @@ function openSchedule(key){
     return DB.rooms.map(r=>{
       const slot=sched[r.id];
       const count=(slot.lider?1:0)+slot.monitores.length;
+      const editable=canEditRoom(r.id);
+      const header=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div class="room-ico" style="width:38px;height:38px;border-radius:11px;font-size:18px;background:${r.bg};color:${r.fg}">${r.emoji}</div>
+          <div style="flex:1"><div class="room-name" style="font-size:14.5px">${esc(r.name)}</div>
+            <div class="room-age">${count}/3 ${count===3?"✓":""}${editable?"":' • <span style="color:var(--ink-faint)">🔒 outra área</span>'}</div></div>
+        </div>`;
+      if(!editable){
+        const nm=id=>{ const m=getMember(id); return m?shortName(m):""; };
+        const liderRO = slot.lider?`<span class="pick-item on" style="background:${r.fg}">★ ${nm(slot.lider)}</span>`:'<span class="muted-txt">—</span>';
+        const monRO = slot.monitores.length?slot.monitores.map(id=>`<span class="pick-item on" style="background:${r.fg}">${nm(id)}</span>`).join(""):'<span class="muted-txt">—</span>';
+        return `<div class="card" style="padding:13px;margin-bottom:11px;opacity:.7">
+          ${header}
+          <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">★</span> Responsável</div>
+          <div class="pick">${liderRO}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:12px 0 6px">Auxiliares</div>
+          <div class="pick">${monRO}</div>
+        </div>`;
+      }
       const avail=availFor(r);
       const liderG = avail.length ? avail.map(m=>{ const on=slot.lider===m.id;
           return `<span class="pick-item ${on?"on":""}" data-mid="${m.id}" style="${on?`background:${r.fg}`:""}">${on?"★ ":""}${shortName(m)}</span>`; }).join("")
@@ -1865,11 +1914,7 @@ function openSchedule(key){
           return `<span class="pick-item ${on?"on":""}" data-mid="${m.id}" style="${on?`background:${r.fg}`:""}">${shortName(m)}</span>`; }).join("")
         : '<span class="muted-txt">Ninguém apto a esta área</span>';
       return `<div class="card" style="padding:13px;margin-bottom:11px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-          <div class="room-ico" style="width:38px;height:38px;border-radius:11px;font-size:18px;background:${r.bg};color:${r.fg}">${r.emoji}</div>
-          <div style="flex:1"><div class="room-name" style="font-size:14.5px">${esc(r.name)}</div>
-            <div class="room-age">${count}/3 ${count===3?"✓":""}</div></div>
-        </div>
+        ${header}
         <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">★</span> Responsável</div>
         <div class="pick" data-grp="lider" data-room="${r.id}">${liderG}</div>
         <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:12px 0 6px">Auxiliares <span style="font-weight:500">(até 2)</span></div>
@@ -1910,8 +1955,9 @@ function openSchedule(key){
   });
 
   async function commit(){
-    Object.keys(sched).forEach(rid=>{ const s=sched[rid]; if(!s.lider && !s.monitores.length) delete sched[rid]; });
-    await Data.saveSchedule(key, occ, sched);
+    const scope = isAdmin() ? null : DB.rooms.filter(r=>canEditRoom(r.id)).map(r=>r.id);
+    if(!scope){ Object.keys(sched).forEach(rid=>{ const s=sched[rid]; if(!s.lider && !s.monitores.length) delete sched[rid]; }); }
+    await Data.saveSchedule(key, occ, sched, scope);
   }
   document.getElementById("schedSave").addEventListener("click", async ()=>{
     const btn=document.getElementById("schedSave"); btn.disabled=true; const o=btn.textContent; btn.textContent="Salvando...";
@@ -2179,6 +2225,43 @@ async function enterAppAnimated(){
   await minWait;
   hideEnterSplash();
 }
+async function gateEnter(){
+  if(USE_SUPABASE && Auth.mustChange){ showChangePassword(); return; }
+  await enterAppAnimated();
+}
+async function applyPasswordChange(newPass){
+  const { error } = await sb.auth.updateUser({ password: newPass });
+  if(error) throw new Error(traduzErroAuth(error.message));
+  try{ await sb.from("profiles").update({ must_change_password:false }).eq("id", Auth.user.id); }catch(_){}
+  Auth.mustChange=false;
+}
+function showChangePassword(){
+  const lg=document.getElementById("login"); if(lg) lg.hidden=true;
+  const ap=document.getElementById("app"); if(ap) ap.hidden=true;
+  let ov=document.getElementById("changePass");
+  if(!ov){ ov=document.createElement("div"); ov.id="changePass"; ov.className="login"; document.body.appendChild(ov); }
+  ov.style.display="flex";
+  ov.innerHTML=`<div class="login-card">
+    <h1>Crie sua senha</h1>
+    <p class="login-sub">Primeiro acesso — defina uma senha só sua</p>
+    <div class="field"><label>Nova senha</label><input id="cpNew" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres"></div>
+    <div class="field"><label>Repita a senha</label><input id="cpNew2" type="password" autocomplete="new-password" placeholder="••••••••"></div>
+    <div class="login-btn-wrap"><button id="cpBtn" class="btn btn-primary btn-block">Salvar e entrar</button></div>
+    <div id="cpErr" class="login-err"></div>
+  </div>`;
+  const btn=ov.querySelector("#cpBtn"), err=ov.querySelector("#cpErr");
+  async function done(){
+    const a=ov.querySelector("#cpNew").value, b=ov.querySelector("#cpNew2").value;
+    err.textContent="";
+    if(a.length<6){ err.textContent="Use ao menos 6 caracteres."; return; }
+    if(a!==b){ err.textContent="As senhas não conferem."; return; }
+    btn.disabled=true; const o=btn.textContent; btn.textContent="Salvando...";
+    try{ await applyPasswordChange(a); ov.style.display="none"; await enterAppAnimated(); }
+    catch(e){ btn.disabled=false; btn.textContent=o; err.textContent=e.message||"Não consegui salvar."; }
+  }
+  btn.addEventListener("click", done);
+  ov.querySelector("#cpNew2").addEventListener("keydown",e=>{ if(e.key==="Enter") done(); });
+}
 function showEnterSplash(){
   let s=document.getElementById("enterSplash");
   if(!s){
@@ -2210,7 +2293,7 @@ function wireLogin(){
     btn.disabled=true; const orig=btn.textContent; btn.textContent="Entrando...";
     try{
       await Auth.signIn(email.value.trim(), pass.value);
-      await enterAppAnimated();                 // logo girando ao acertar a senha
+      await gateEnter();                        // 1º acesso: troca senha; senão entra com a logo girando
     }catch(e){ err.textContent = e.message || "Não foi possível entrar."; }
     finally{ btn.disabled=false; btn.textContent=orig; }
   }
@@ -2225,7 +2308,7 @@ function wireLogin(){
 (async function init(){
   wireLogin();
   await Auth.init();
-  if(Auth.user){ await enterAppAnimated(); }
+  if(Auth.user){ await gateEnter(); }
   else showLogin();
 })();
 
