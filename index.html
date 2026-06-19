@@ -720,17 +720,20 @@ const Auth = {
 
   async loadProfile(user){
     // === SUPABASE: papel, vínculo, áreas que lidera e troca de senha ===
-    let role="volunteer", memberId="", roomIds=[], mustChange=false;
+    let role="volunteer", memberId="", roomIds=[], mustChangeRaw=false;
     try{
       const { data } = await sb.from("profiles").select("role, member_id, room_ids, must_change_password").eq("id", user.id).single();
       if(data){
         if(data.role) role=data.role;
         if(data.member_id) memberId=data.member_id;
         if(Array.isArray(data.room_ids)) roomIds=data.room_ids;
-        mustChange = data.must_change_password===true;
+        mustChangeRaw = data.must_change_password===true;
       }
     }catch(e){}
-    this.user=user; this.role=role; this.memberId=memberId; this.roomIds=roomIds; this.mustChange=mustChange;
+    // marca confiável: se o usuário já trocou a senha (gravado nos metadados dele), não pede de novo
+    const pwSet = !!(user && user.user_metadata && user.user_metadata.pw_set===true);
+    this.user=user; this.role=role; this.memberId=memberId; this.roomIds=roomIds;
+    this.mustChange = mustChangeRaw && !pwSet;
     return role;
   },
 
@@ -2230,8 +2233,11 @@ async function gateEnter(){
   await enterAppAnimated();
 }
 async function applyPasswordChange(newPass){
-  const { error } = await sb.auth.updateUser({ password: newPass });
+  // troca a senha E grava a marca pw_set nos metadados do usuário (na mesma chamada).
+  // Isso sempre é permitido para o próprio usuário, então não depende da tabela/RLS.
+  const { error } = await sb.auth.updateUser({ password: newPass, data: { pw_set: true } });
   if(error) throw new Error(traduzErroAuth(error.message));
+  // também tenta limpar na tabela (pra ficar bonito no relatório), sem depender disso
   try{ await sb.from("profiles").update({ must_change_password:false }).eq("id", Auth.user.id); }catch(_){}
   Auth.mustChange=false;
 }
