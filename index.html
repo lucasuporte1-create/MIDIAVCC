@@ -603,6 +603,21 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 @keyframes spinLogo{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce){ .enter-splash-logo{ animation:none !important; } }
 
+/* ---------- Aviso central (escala) ---------- */
+.center-alert{ position:fixed; inset:0; z-index:10000; display:none;
+  align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,.5); }
+.center-alert-card{ background:var(--card); border:1px solid var(--line); border-radius:18px;
+  padding:24px 22px; max-width:340px; width:100%; text-align:center; box-shadow:var(--shadow-lg);
+  animation:caPop .22s ease; }
+.center-alert-ico{ width:56px; height:56px; border-radius:50%; margin:0 auto 14px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,178,61,.16); font-size:28px; }
+.center-alert-title{ font-family:var(--font-display); font-weight:700; font-size:17px; margin-bottom:7px; color:var(--ink); }
+.center-alert-msg{ color:var(--ink-soft); font-size:14px; line-height:1.55; }
+.center-alert-msg b{ color:var(--ink); }
+.center-alert-card .btn{ margin-top:18px; }
+@keyframes caPop{ from{opacity:0; transform:scale(.92)} to{opacity:1; transform:scale(1)} }
+
   </style>
 </head>
 <body>
@@ -1068,6 +1083,34 @@ function roomSlot(key, roomId){
 }
 function roomPeopleIds(key, roomId){ const s=roomSlot(key,roomId); return [s.lider, ...s.monitores].filter(Boolean); }
 function assignedCount(key){ const s=schedFor(key); return Object.keys(s).reduce((a,rid)=>a+roomPeopleIds(key,rid).length,0); }
+// quantas vezes o voluntário aparece no mês (todas as áreas/datas)
+function monthCountForMember(mid, refDate, curKey, curSched){
+  const ym=(refDate||"").slice(0,7); let count=0;
+  Object.keys(DB.schedules).forEach(k=>{
+    if(k===curKey) return;
+    const o=resolveOcc(k); if(!o || (o.date||"").slice(0,7)!==ym) return;
+    const s=DB.schedules[k]||{};
+    Object.keys(s).forEach(rid=>{ const slot=s[rid]; if(slot.lider===mid||(slot.monitores||[]).includes(mid)) count++; });
+  });
+  Object.keys(curSched||{}).forEach(rid=>{ const slot=curSched[rid]; if(slot.lider===mid||(slot.monitores||[]).includes(mid)) count++; });
+  return count;
+}
+// se o voluntário já está escalado em OUTRA área na mesma data (devolve o nome dessa área)
+function sameDateOtherArea(mid, dateStr, curKey, curRid, curSched){
+  const occs=occsOnDate(dateStr);
+  for(const o of occs){
+    const s = (o.key===curKey) ? curSched : (DB.schedules[o.key]||{});
+    for(const rid of Object.keys(s)){
+      if(o.key===curKey && rid===curRid) continue;
+      const slot=s[rid];
+      if(slot && (slot.lider===mid || (slot.monitores||[]).includes(mid))){
+        const r=getRoom(rid);
+        return (r?r.name:"outra área") + (o.title?` (${o.title})`:"");
+      }
+    }
+  }
+  return null;
+}
 function occHasMember(key, mid){ const s=schedFor(key); return Object.keys(s).some(rid=>roomPeopleIds(key,rid).includes(mid)); }
 function memberRoleInRoom(key, roomId, mid){
   const s=roomSlot(key,roomId);
@@ -1972,19 +2015,33 @@ function openSchedule(key){
     const grpEl=it.closest("[data-grp]"); if(!grpEl) return;
     const grp=grpEl.dataset.grp, rid=grpEl.dataset.room, mid=it.dataset.mid;
     const slot=sched[rid];
+    let added=false;
     if(grp==="lider"){
       if(slot.lider===mid) slot.lider=null;
-      else { slot.lider=mid; slot.monitores=slot.monitores.filter(x=>x!==mid); }
+      else { slot.lider=mid; slot.monitores=slot.monitores.filter(x=>x!==mid); added=true; }
     } else {
       if(slot.monitores.includes(mid)) slot.monitores=slot.monitores.filter(x=>x!==mid);
       else {
         if(slot.lider===mid) slot.lider=null;
         if(slot.monitores.length>=2){ toast("Máximo de 2 auxiliares por área","warn"); return; }
-        slot.monitores.push(mid);
+        slot.monitores.push(mid); added=true;
       }
     }
     paint();
+    if(added) checkAssignWarnings(mid, rid);
   });
+  function checkAssignWarnings(mid, rid){
+    const m=getMember(mid); const name=m?shortName(m):"Esta pessoa";
+    const cnt=monthCountForMember(mid, occ.date, key, sched);
+    if(cnt>4){
+      centerAlert("Muitas escalas no mês", `<b>${esc(name)}</b> já está escalado(a) <b>${cnt}×</b> neste mês. Vale distribuir com outra pessoa.`);
+      return; // um aviso por vez
+    }
+    const conflito=sameDateOtherArea(mid, occ.date, key, rid, sched);
+    if(conflito){
+      centerAlert("Já escalado nesta data", `<b>${esc(name)}</b> já está em <b>${esc(conflito)}</b> nesta mesma data. Pode dar conflito.`);
+    }
+  }
 
   async function commit(){
     const scope = isAdmin() ? null : DB.rooms.filter(r=>canEditRoom(r.id)).map(r=>r.id);
@@ -2216,6 +2273,19 @@ function toast(msg,type){
   requestAnimationFrame(()=>el.classList.add("show"));
   clearTimeout(toastT);
   toastT=setTimeout(()=>{ el.classList.remove("show"); setTimeout(()=>el.hidden=true,260); },2600);
+}
+function centerAlert(title, msg){
+  let ov=document.getElementById("centerAlert");
+  if(!ov){ ov=document.createElement("div"); ov.id="centerAlert"; ov.className="center-alert"; document.body.appendChild(ov); }
+  ov.innerHTML=`<div class="center-alert-card">
+    <div class="center-alert-ico">⚠️</div>
+    <div class="center-alert-title">${title}</div>
+    <div class="center-alert-msg">${msg}</div>
+    <button class="btn btn-primary btn-block" id="caOk">Entendi</button>
+  </div>`;
+  ov.style.display="flex";
+  ov.querySelector("#caOk").addEventListener("click",()=>{ ov.style.display="none"; });
+  ov.addEventListener("click",e=>{ if(e.target===ov) ov.style.display="none"; });
 }
 
 /* =====================================================================
