@@ -1647,6 +1647,7 @@ document.getElementById("modalBackdrop").addEventListener("click", e=>{ if(e.tar
 /* ---------- Modal: Membro (cadastro/edição) ---------- */
 function editMember(mid){
   const m = mid ? getMember(mid) : {name:"",phone:"",role:"",roomIds:[],active:true,notes:"",photo:"",training:false};
+  const canPickContacts = ("contacts" in navigator) && ("ContactsManager" in window);
   let photo = m.photo || "";
   const avaInner = photo ? `style="background-image:url('${photo}');background-size:cover;background-position:center"` : `style="background:${avaColor(m.id||'x')}"`;
   const body = `
@@ -1666,6 +1667,7 @@ function editMember(mid){
       <div class="field"><label>WhatsApp</label><input id="mPhone" value="${esc(m.phone)}" placeholder="81 99999-0000" inputmode="tel"></div>
       <div class="field"><label>Função</label><input id="mRole" value="${esc(m.role)}" placeholder="Operador, Editor..."></div>
     </div>
+    ${canPickContacts?`<button type="button" class="btn btn-ghost btn-block" id="mFromContacts" style="margin:-4px 0 4px;font-size:13.5px">📇 Buscar número na agenda do celular</button>`:""}
     <div class="field"><label>Áreas que pode atender</label>
       <div class="pick" id="mRooms">${DB.rooms.map(r=>`<span class="pick-item ${m.roomIds.includes(r.id)?"on":""}" data-room="${r.id}" style="${m.roomIds.includes(r.id)?`background:${r.fg}`:""}"><span class="pk-dot" style="background:${r.fg}"></span>${esc(r.name)}</span>`).join("")}</div>
     </div>
@@ -1681,6 +1683,19 @@ function editMember(mid){
   const prev=document.getElementById("mPhotoPrev");
   const fileInput=document.getElementById("mPhotoInput");
   const delBtn=document.getElementById("mPhotoDel");
+  const contactsBtn=document.getElementById("mFromContacts");
+  if(contactsBtn) contactsBtn.addEventListener("click", async ()=>{
+    try{
+      const sel = await navigator.contacts.select(["name","tel"], {multiple:false});
+      if(!sel || !sel.length) return;
+      const c = sel[0];
+      const tel = (c.tel && c.tel.length) ? c.tel[0] : "";
+      const nm  = (c.name && c.name.length) ? c.name[0] : "";
+      if(tel) document.getElementById("mPhone").value = tel.replace(/[^\d+()\-\s]/g,"").trim();
+      const nameEl = document.getElementById("mName");
+      if(nm && !nameEl.value.trim()) nameEl.value = nm;
+    }catch(e){ /* cancelado ou sem permissão — segue digitando normalmente */ }
+  });
   document.getElementById("mPhotoBtn").addEventListener("click",()=>fileInput.click());
   fileInput.addEventListener("change", e=>{
     const file=e.target.files[0]; if(!file) return;
