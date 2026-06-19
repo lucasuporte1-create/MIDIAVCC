@@ -1443,7 +1443,7 @@ function renderCalendario(c){
    ===================================================================== */
 let memberFilter = "all";
 function renderMembros(c){
-  if(isAdmin()) document.getElementById("topActions").innerHTML =
+  if(isLeader()) document.getElementById("topActions").innerHTML =
     `<button class="icon-btn" data-action="new-member" aria-label="Novo membro">
       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`;
 
@@ -1457,8 +1457,8 @@ function renderMembros(c){
 
   if(!list.length){
     html += emptyState("👥","Nenhuma pessoa aqui",
-      isAdmin()?"Cadastre os voluntários do ministério para começar a montar as escalas.":"A equipe ainda não foi cadastrada.",
-      isAdmin()?`<button class="btn btn-primary" data-action="new-member">Cadastrar pessoa</button>`:"");
+      isLeader()?"Cadastre os voluntários do ministério para começar a montar as escalas.":"A equipe ainda não foi cadastrada.",
+      isLeader()?`<button class="btn btn-primary" data-action="new-member">Cadastrar pessoa</button>`:"");
     c.innerHTML = html; return;
   }
 
@@ -1589,8 +1589,8 @@ document.addEventListener("click", e=>{
   const id = el.dataset.id;
   const key = el.dataset.key;
 
-  const ADMIN_ONLY = ["new-member","edit-member","new-room","edit-room","new-service","edit-service","export","import","reset"];
-  const LEADER_ANY  = ["new-schedule","new-event","new-event-on","edit-event"];
+  const ADMIN_ONLY = ["new-room","edit-room","new-service","edit-service","export","import","reset"];
+  const LEADER_ANY  = ["new-member","edit-member","new-schedule","new-event","new-event-on","edit-event"];
   if(ADMIN_ONLY.includes(a) && !isAdmin()){ toast("Apenas o administrador pode fazer isso","warn"); return; }
   if(LEADER_ANY.includes(a) && !isLeader()){ toast("Apenas líderes podem fazer isso","warn"); return; }
 
@@ -1674,7 +1674,7 @@ function editMember(mid){
     <div class="toggle"><span class="toggle-label">🎓 Em treinamento</span><div class="sw ${m.training?"on":""}" id="mTraining"></div></div>
   `;
   const foot = `<button class="btn btn-primary btn-block" id="mSave">${mid?"Salvar alterações":"Cadastrar"}</button>
-    ${mid?`<button class="btn btn-danger btn-block" id="mDelete" style="margin-top:8px">Excluir da equipe</button>`:""}`;
+    ${(mid && isAdmin())?`<button class="btn btn-danger btn-block" id="mDelete" style="margin-top:8px">Excluir da equipe</button>`:""}`;
   openModal(mid?"Editar pessoa":"Nova pessoa", body, foot);
 
   // foto: abrir seletor, redimensionar para miniatura e pré-visualizar
@@ -1736,7 +1736,8 @@ function editMember(mid){
     try{ await Data.saveMember(member, !mid); closeModal(); go("membros"); toast(mid?"Pessoa atualizada":"Pessoa cadastrada","good"); }
     catch(e){ btn.disabled=false; btn.textContent=o; toast("Não salvou — "+e.message,"warn"); }
   });
-  if(mid) document.getElementById("mDelete").addEventListener("click", async ()=>{
+  const mDelBtn = document.getElementById("mDelete");
+  if(mid && mDelBtn) mDelBtn.addEventListener("click", async ()=>{
     if(!confirm("Excluir esta pessoa? Ela sairá das escalas futuras.")) return;
     try{ await Data.deleteMember(mid); closeModal(); go("membros"); toast("Pessoa removida","good"); }
     catch(e){ toast("Não removeu — "+e.message,"warn"); }
@@ -1764,7 +1765,7 @@ function openMember(mid){
       <svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.2-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg> Chamar no WhatsApp</button>`:""}
     <button class="btn btn-soft btn-block" data-action="ics-member" data-id="${m.id}" style="margin-bottom:8px">
       <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M8 2.5v4M16 2.5v4M3.5 9.5h17"/></svg> Lembrete no calendário do celular</button>
-    ${isAdmin()?`<button class="btn btn-ghost btn-block" data-action="edit-member" data-id="${m.id}">Editar</button>`:""}`;
+    ${isLeader()?`<button class="btn btn-ghost btn-block" data-action="edit-member" data-id="${m.id}">Editar</button>`:""}`;
   openModal("Perfil", body, foot);
 }
 
