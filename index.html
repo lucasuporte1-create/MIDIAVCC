@@ -787,8 +787,8 @@ const Data = {
     const [rooms, services, events, members, mrooms, assigns] = await Promise.all([
       sb.from("rooms").select("*"),
       sb.from("services").select("*"),
-      sb.from("events").select("*"),
-      sb.from("members").select("*"),
+      sb.from("events").select("id,date,title,time,note,color"),
+      sb.from("members").select("id,full_name,phone,fn,active,notes,training"),
       sb.from("member_rooms").select("*"),
       sb.from("assignments").select("*"),
     ]);
@@ -797,10 +797,10 @@ const Data = {
     DB.rooms = (rooms.data||[]).map(r=>({id:r.id,name:r.name,age:r.age||"",emoji:r.emoji||"⭐",bg:r.bg||"#EAF4FC",fg:r.fg||"#2E86D6",need:3,sort:r.sort||0}))
       .sort((a,b)=>(a.sort||0)-(b.sort||0));
     DB.services = (services.data||[]).map(s=>({id:s.id,name:s.name,weekday:s.weekday,time:s.time||"",color:s.color||"#4DA3E8"}));
-    DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||"",photo:e.photo||"",color:e.color||"#FF8A1E"}));
+    DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||"",photo:"",color:e.color||"#FF8A1E"}));
     const byMember={};
     (mrooms.data||[]).forEach(mr=>{ (byMember[mr.member_id]=byMember[mr.member_id]||[]).push(mr.room_id); });
-    DB.members = (members.data||[]).map(m=>({id:m.id,name:m.full_name,phone:m.phone||"",role:m.fn||"",roomIds:byMember[m.id]||[],active:m.active!==false,notes:m.notes||"",photo:m.photo||"",training:m.training===true}));
+    DB.members = (members.data||[]).map(m=>({id:m.id,name:m.full_name,phone:m.phone||"",role:m.fn||"",roomIds:byMember[m.id]||[],active:m.active!==false,notes:m.notes||"",photo:"",training:m.training===true}));
     const sched={};
     (assigns.data||[]).forEach(a=>{
       const key = a.source_type==="event" ? `e:${a.source_id}` : `s:${a.source_id}:${a.occ_date}`;
@@ -812,6 +812,24 @@ const Data = {
     DB.schedules = sched;
     save();
     if(!DB.rooms.length && isAdmin()) await this.seedDefaults();
+    this.loadPhotos();   // fotos carregam em segundo plano (não trava a entrada)
+  },
+  async loadPhotos(){
+    if(!CLOUD) return;
+    try{
+      const [mp, ep] = await Promise.all([
+        sb.from("members").select("id,photo").not("photo","is",null),
+        sb.from("events").select("id,photo").not("photo","is",null),
+      ]);
+      let changed=false;
+      (mp.data||[]).forEach(r=>{ if(!r.photo) return; const m=getMember(r.id); if(m){ m.photo=r.photo; changed=true; } });
+      (ep.data||[]).forEach(r=>{ if(!r.photo) return; const e=DB.events.find(x=>x.id===r.id); if(e){ e.photo=r.photo; changed=true; } });
+      if(changed){
+        const ap=document.getElementById("app");
+        const modalOpen = !document.getElementById("modalBackdrop").hidden;
+        if(ap && !ap.hidden && !modalOpen) go(currentView);   // mostra as fotos quando chegarem
+      }
+    }catch(_){}
   },
 
   async seedDefaults(){
@@ -944,7 +962,18 @@ function migrate(db){
   return db;
 }
 function save(){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }catch(e){
+  try{
+    let payload = DB;
+    if(CLOUD){
+      // não guarda as fotos (base64) no cache local: deixa o salvar instantâneo
+      // e evita estourar o limite do navegador. As fotos vêm do Supabase ao abrir.
+      payload = Object.assign({}, DB, {
+        members: DB.members.map(m=> m.photo ? Object.assign({}, m, {photo:""}) : m),
+        events:  DB.events.map(e=> e.photo ? Object.assign({}, e, {photo:""}) : e)
+      });
+    }
+    localStorage.setItem(STORE_KEY, JSON.stringify(payload));
+  }catch(e){
     toast("Não consegui salvar. Espaço do navegador cheio?", "warn");
   }
 }
@@ -2223,7 +2252,7 @@ async function doLogout(){
 
 async function enterAppAnimated(){
   showEnterSplash();
-  const minWait = new Promise(r=>setTimeout(r, 1100)); // garante a logo girando por ~1,1s
+  const minWait = new Promise(r=>setTimeout(r, 850)); // logo girando, mais rápido
   try{ await enterApp(); }catch(e){}
   await minWait;
   hideEnterSplash();
