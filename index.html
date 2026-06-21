@@ -637,6 +637,27 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   overflow:hidden; border:1px solid var(--line); background:#000; margin-bottom:6px; }
 .yt-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
 
+/* ---------- Troca de escalas ---------- */
+.swap-card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 14px; margin-bottom:11px; }
+.swap-in{ border-left:3px solid #3D8BF0; }
+.swap-top{ margin-bottom:7px; }
+.swap-badge{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  color:#6CB2FF; background:rgba(61,139,240,.14); padding:3px 9px; border-radius:999px; }
+.swap-badge.wait{ color:#FFB23D; background:rgba(255,178,61,.15); }
+.swap-badge.done{ color:#3FCB7E; background:rgba(63,203,126,.15); }
+.swap-body{ font-size:13.5px; color:var(--ink); line-height:1.5; }
+.swap-line{ font-size:12.5px; color:var(--ink-soft); margin-top:4px; }
+.swap-note{ font-size:12.5px; color:var(--ink-soft); font-style:italic; margin-top:5px; }
+.swap-actions{ display:flex; gap:7px; flex-wrap:wrap; margin-top:11px; }
+.swap-actions .btn{ flex:1; min-width:90px; padding:9px; font-size:13px; }
+.swap-mini{ margin-top:8px; font-size:12.5px; color:var(--ink-soft); }
+.swap-summary{ background:var(--bg-soft,rgba(255,255,255,.03)); border:1px solid var(--line); border-radius:11px; padding:11px 12px; font-size:13.5px; font-weight:600; color:var(--ink); }
+.swap-cands{ display:flex; flex-direction:column; gap:4px; max-height:230px; overflow:auto; }
+.swap-pick{ display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
+.swap-pick input{ accent-color:#3D8BF0; }
+.swap-pick span{ display:flex; align-items:center; font-size:13.5px; color:var(--ink); }
+.btn.sm{ padding:6px 10px; font-size:12px; width:auto; }
+
   </style>
 </head>
 <body>
@@ -820,13 +841,14 @@ async function sbErr(promise, ctx){
 
 const Data = {
   async loadAll(){
-    const [rooms, services, events, members, mrooms, assigns] = await Promise.all([
+    const [rooms, services, events, members, mrooms, assigns, swaps] = await Promise.all([
       sb.from("rooms").select("*"),
       sb.from("services").select("*"),
       sb.from("events").select("id,date,title,time,note,color"),
       sb.from("members").select("id,full_name,phone,fn,active,notes,training"),
       sb.from("member_rooms").select("*"),
       sb.from("assignments").select("*"),
+      sb.from("swap_requests").select("*").in("status",["open","accepted"]),
     ]);
     for(const r of [rooms,services,events,members,mrooms,assigns]) if(r.error) throw new Error(r.error.message);
 
@@ -846,6 +868,7 @@ const Data = {
       else sched[key][a.room_id].monitores.push(a.member_id);
     });
     DB.schedules = sched;
+    DB.swaps = (swaps && swaps.data ? swaps.data : []).map(mapSwapRow);
     save();
     if(!DB.rooms.length && isAdmin()) await this.seedDefaults();
     this.loadPhotos();   // fotos carregam em segundo plano (não trava a entrada)
@@ -962,8 +985,44 @@ const Data = {
       const rows=buildRows(Object.keys(sched));
       if(rows.length) await sbErr(sb.from("assignments").insert(rows), "salvar escala");
     }
+  },
+  // ---- Trocas ----
+  async createSwap(sw){
+    if(CLOUD){
+      const row={ occ_date:sw.occDate, source_type:sw.sourceType, source_id:sw.sourceId,
+        room_id:sw.roomId, role_in_room:sw.role, requested_by:sw.requestedBy,
+        target_id:sw.targetId||null, note:sw.note||null };
+      const { data, error } = await sb.from("swap_requests").insert(row).select().single();
+      if(error) throw new Error(error.message);
+      const s=mapSwapRow(data); DB.swaps.push(s); save(); return s;
+    }
+    const s=Object.assign({id:uid(),status:"open",createdAt:new Date().toISOString()}, sw);
+    DB.swaps.push(s); save(); return s;
+  },
+  async acceptSwap(id){
+    const s=DB.swaps.find(x=>x.id===id); if(!s) return;
+    if(CLOUD){
+      const { error } = await sb.rpc("accept_swap",{ req_id:id });
+      if(error) throw new Error(error.message);
+    }
+    // aplica na escala local
+    const slot=roomSlot(s.occKey, s.roomId);
+    if(s.role==="leader"){ if(slot.lider===s.requestedBy) slot.lider=s.targetId; }
+    else { const i=slot.monitores.indexOf(s.requestedBy); if(i>=0) slot.monitores[i]=s.targetId; }
+    DB.schedules[s.occKey]=DB.schedules[s.occKey]||{}; DB.schedules[s.occKey][s.roomId]=slot;
+    s.status="accepted"; s.acceptedBy=s.targetId; save();
+  },
+  async setSwapStatus(id, status){
+    if(CLOUD) await sbErr(sb.from("swap_requests").update({status, resolved_at:new Date().toISOString()}).eq("id",id), "atualizar pedido");
+    const s=DB.swaps.find(x=>x.id===id); if(s){ s.status=status; } save();
   }
 };
+function mapSwapRow(d){
+  return { id:d.id, occDate:d.occ_date, sourceType:d.source_type, sourceId:d.source_id,
+    occKey: d.source_type==="event" ? ("e:"+d.source_id) : ("s:"+d.source_id+":"+d.occ_date),
+    roomId:d.room_id, role:d.role_in_room, requestedBy:d.requested_by, targetId:d.target_id,
+    acceptedBy:d.accepted_by, status:d.status, note:d.note, createdAt:d.created_at };
+}
 
 /* ---------------- Persistência ---------------- */
 const STORE_KEY = "escala-midia-v1";
@@ -981,6 +1040,7 @@ function load(){
 
 /* Normaliza a escala para o formato { lider, monitores[] } (máx 1+2 por sala) */
 function migrate(db){
+  if(db && !Array.isArray(db.swaps)) db.swaps = [];
   if(db && db.schedules){
     for(const k in db.schedules){
       const rooms = db.schedules[k];
@@ -1047,7 +1107,8 @@ function seed(){
                notify:false, reminderTime:"08:00", meId:"", role:"lider" },
     rooms, services, members,
     events:[],          // eventos pontuais {id,date,title,time,note}
-    schedules:{}        // { occKey: { roomId: [memberId,...] } }
+    schedules:{},       // { occKey: { roomId: [memberId,...] } }
+    swaps:[]            // pedidos de troca
   };
 }
 
@@ -1200,6 +1261,9 @@ function renderHome(c){
   // Versículo do dia (todos veem)
   html += verseCardHtml();
 
+  // Trocas (pedidos pra você / seus pedidos / avisos ao líder)
+  html += swapsHomeHtml();
+
   // Banner de notificação
   if(!DB.settings.notify && "Notification" in window){
     html += `<div class="banner">
@@ -1306,6 +1370,115 @@ function videosSectionHtml(){
     </div>`;
 }
 
+/* ---------------- Troca de escalas ---------------- */
+function myMemberId(){ return DB.settings.meId || ""; }
+function hasMyOpenSwap(occKey, roomId, role){
+  const me=myMemberId();
+  return DB.swaps.some(s=>s.status==="open" && s.occKey===occKey && s.roomId===roomId && s.role===role && s.requestedBy===me);
+}
+function swapDesc(s){
+  const occ=resolveOcc(s.occKey); const room=getRoom(s.roomId);
+  const papel = s.role==="leader"?"Responsável":"Auxiliar";
+  return `${occ?esc(occ.title):"Culto"} • ${room?esc(room.name):"—"} • ${papel}${occ?" • "+fmtShort(occ.date):""}`;
+}
+function swapsHomeHtml(){
+  const me=myMemberId(); if(!me && !isLeader()) return "";
+  let h="";
+  // 1) Pedidos de troca PRA VOCÊ (você foi indicado)
+  const paraMim = me ? DB.swaps.filter(s=>s.status==="open" && s.targetId===me) : [];
+  paraMim.forEach(s=>{
+    const quem=getMember(s.requestedBy);
+    h += `<div class="swap-card swap-in">
+      <div class="swap-top"><span class="swap-badge">Pedido de troca</span></div>
+      <div class="swap-body"><b>${esc(quem?quem.name.split(" ")[0]:"Alguém")}</b> quer que você cubra:
+        <div class="swap-line">${swapDesc(s)}</div>
+        ${s.note?`<div class="swap-note">"${esc(s.note)}"</div>`:""}</div>
+      <div class="swap-actions">
+        <button class="btn btn-primary" data-action="swap-accept" data-id="${s.id}">Aceitar</button>
+        <button class="btn btn-ghost" data-action="swap-decline" data-id="${s.id}">Recusar</button>
+        ${quem&&quem.phone?`<button class="btn btn-wa" data-action="swap-wa" data-id="${s.id}">WhatsApp</button>`:""}
+      </div></div>`;
+  });
+  // 2) SEUS pedidos (aguardando o colega)
+  const meus = me ? DB.swaps.filter(s=>s.status==="open" && s.requestedBy===me) : [];
+  meus.forEach(s=>{
+    const alvo=getMember(s.targetId);
+    h += `<div class="swap-card">
+      <div class="swap-top"><span class="swap-badge wait">Aguardando troca</span></div>
+      <div class="swap-body">Você pediu troca: <div class="swap-line">${swapDesc(s)}</div>
+        ${alvo?`Aguardando <b>${esc(alvo.name.split(" ")[0])}</b> confirmar.`:""}</div>
+      <div class="swap-actions">
+        ${alvo&&alvo.phone?`<button class="btn btn-wa" data-action="swap-wa" data-id="${s.id}">Lembrar no WhatsApp</button>`:""}
+        <button class="btn btn-ghost" data-action="swap-cancel" data-id="${s.id}">Cancelar</button>
+      </div></div>`;
+  });
+  // 3) LÍDER: trocas nas suas áreas (só aviso)
+  if(isLeader()){
+    const daArea = DB.swaps.filter(s=>canEditRoom(s.roomId) && s.requestedBy!==me && s.targetId!==me && (s.status==="open"||s.status==="accepted"));
+    daArea.forEach(s=>{
+      const a=getMember(s.requestedBy), b=getMember(s.targetId);
+      const done = s.status==="accepted";
+      h += `<div class="swap-card">
+        <div class="swap-top"><span class="swap-badge ${done?"done":"wait"}">${done?"Troca feita":"Troca pendente"}</span></div>
+        <div class="swap-body">${done
+          ? `<b>${esc(b?b.name.split(" ")[0]:"—")}</b> entrou no lugar de <b>${esc(a?a.name.split(" ")[0]:"—")}</b>:`
+          : `<b>${esc(a?a.name.split(" ")[0]:"—")}</b> pediu troca${b?` com <b>${esc(b.name.split(" ")[0])}</b>`:""}:`}
+          <div class="swap-line">${swapDesc(s)}</div></div></div>`;
+    });
+  }
+  if(!h) return "";
+  return `<div class="section-label" style="margin-top:4px">Trocas</div>`+h;
+}
+function openSwapRequest(occKey, roomId, role){
+  const me=getMember(DB.settings.meId);
+  if(!me){ toast("Defina quem é você em Mais → Quem é você","warn"); return; }
+  if(hasMyOpenSwap(occKey, roomId, role)){ toast("Você já pediu troca nesta escala","warn"); return; }
+  const occ=resolveOcc(occKey); const room=getRoom(roomId);
+  const already=new Set(); DB.rooms.forEach(r=>roomPeopleIds(occKey,r.id).forEach(id=>already.add(id)));
+  const cands=DB.members.filter(m=>m.active && m.id!==me.id && m.roomIds.includes(roomId) && !already.has(m.id));
+  const papel=role==="leader"?"Responsável":"Auxiliar";
+  const opts = cands.length
+    ? cands.map(m=>`<label class="swap-pick"><input type="radio" name="swapCand" value="${m.id}"><span>${ava(m.name,m.id,"width:26px;height:26px;font-size:11px;margin-right:8px")}${esc(m.name)}</span></label>`).join("")
+    : `<p class="muted-txt" style="padding:8px 0">Ninguém livre e apto nesta área para esta data.</p>`;
+  const body=`<div class="swap-summary">${occ?esc(occ.title):""} • ${room?esc(room.name):""} • ${papel}<br><span class="muted-txt">${occ?fmtLong(occ.date):""} ${occ&&occ.time?"• "+occ.time:""}</span></div>
+    <div style="font-size:12.5px;font-weight:700;color:var(--ink-soft);margin:12px 0 6px">Quem pode te substituir?</div>
+    <div class="swap-cands">${opts}</div>
+    <div class="field" style="margin-top:12px"><label>Recado (opcional)</label><input id="swapNote" placeholder="Ex.: tenho um compromisso nesse dia"></div>`;
+  openModal("Pedir troca", body, cands.length?`<button class="btn btn-primary btn-block" id="swapSend">Enviar pedido</button>`:"");
+  const sendBtn=document.getElementById("swapSend");
+  if(sendBtn) sendBtn.addEventListener("click", async ()=>{
+    const sel=document.querySelector('input[name="swapCand"]:checked');
+    if(!sel){ toast("Escolha um colega","warn"); return; }
+    sendBtn.disabled=true;
+    const sid = occKey.startsWith("e:") ? occKey.slice(2) : occKey.split(":")[1];
+    try{
+      const s=await Data.createSwap({ occKey, occDate:occ.date,
+        sourceType: occKey.startsWith("e:")?"event":"service", sourceId:sid,
+        roomId, role, requestedBy:me.id, targetId:sel.value,
+        note:(document.getElementById("swapNote").value||"").trim() });
+      closeModal(); toast("Pedido enviado!","good");
+      swapWhatsApp(s.id);   // já abre o WhatsApp pro colega
+      go(currentView);
+    }catch(e){ sendBtn.disabled=false; toast("Não enviou — "+e.message,"warn"); }
+  });
+}
+function swapWhatsApp(id){
+  const s=DB.swaps.find(x=>x.id===id); if(!s) return;
+  const me=getMember(DB.settings.meId);
+  // se sou o alvo, falo com quem pediu; senão, falo com o alvo
+  const other = (s.targetId===myMemberId()) ? getMember(s.requestedBy) : getMember(s.targetId);
+  if(!other || !other.phone){ toast("Sem WhatsApp cadastrado","warn"); return; }
+  const occ=resolveOcc(s.occKey); const room=getRoom(s.roomId);
+  const quando = occ?fmtLong(occ.date):""; const papel=s.role==="leader"?"Responsável":"Auxiliar";
+  let msg;
+  if(s.targetId===myMemberId()){
+    msg=`Oi ${other.name.split(" ")[0]}! Sobre a troca de ${occ?occ.title:"escala"} (${room?room.name:""} • ${papel}) em ${quando} — recebi seu pedido no app. 💙`;
+  } else {
+    msg=`Oi ${other.name.split(" ")[0]}! Pedi uma troca da escala: ${occ?occ.title:""} • ${room?room.name:""} • ${papel} em ${quando}. Você consegue cobrir? Se puder, é só abrir o app e aceitar 🙏 — ${DB.settings.dept}`;
+  }
+  window.open(`https://wa.me/${cleanPhone(other.phone)}?text=${encodeURIComponent(msg)}`,"_blank");
+}
+
 /* ---------------- Home do voluntário (pessoal, sem panorama de áreas) ---------------- */
 function renderVolunteerHome(me, t, todayStr, occs){
   let h = "";
@@ -1334,6 +1507,9 @@ function renderVolunteerHome(me, t, todayStr, occs){
       </div>
       <div class="today-event">${esc(nx.occ.title)} • ${esc(nx.room?nx.room.name:"—")}${nx.role?" • "+nx.role:""}
         <span class="today-sub" style="display:block;font-weight:500">${fmtShort(nx.date)} ${nx.occ.time?"• "+nx.occ.time:""}</span></div>
+      ${hasMyOpenSwap(nx.occ.key,nx.room?nx.room.id:"",nx.roleKey)
+        ? `<div class="swap-mini">⏳ Troca solicitada</div>`
+        : `<button class="btn btn-ghost btn-block swap-ask" data-action="swap-request" data-key="${nx.occ.key}" data-room="${nx.room?nx.room.id:""}" data-role="${nx.roleKey}">Pedir troca</button>`}
     </div>`;
     if(mine.length>1){
       h += `<div class="section-label">Suas próximas escalas</div>`;
@@ -1342,7 +1518,7 @@ function renderVolunteerHome(me, t, todayStr, occs){
           <div class="room-ico" style="background:${x.room?x.room.bg:'#22262e'};color:${x.room?x.room.fg:'#8A9098'}">${x.room?x.room.emoji:"📅"}</div>
           <div class="room-info"><div class="room-name">${esc(x.occ.title)}</div>
             <div class="room-age">${fmtShort(x.date)} • ${esc(x.room?x.room.name:"—")}${x.role?" • "+x.role:""}</div></div>
-          <div class="room-count"><span class="chip muted">${countdownLabel(x.date)}</span></div>
+          <div class="room-count">${hasMyOpenSwap(x.occ.key,x.room?x.room.id:"",x.roleKey)?`<span class="chip muted">troca ⏳</span>`:`<button class="btn btn-ghost sm" data-action="swap-request" data-key="${x.occ.key}" data-room="${x.room?x.room.id:""}" data-role="${x.roleKey}" onclick="event.stopPropagation()">Trocar</button>`}</div>
         </div>`;
       });
     }
@@ -1360,7 +1536,8 @@ function myUpcoming(days){
   upcomingOccs(days).forEach(o=>{
     const s=schedFor(o.key);
     Object.keys(s).forEach(rid=>{ if(roomPeopleIds(o.key,rid).includes(me.id)){
-      out.push({occ:o, room:getRoom(rid), role:memberRoleInRoom(o.key,rid,me.id), date:o.date});
+      out.push({occ:o, room:getRoom(rid), role:memberRoleInRoom(o.key,rid,me.id),
+        roleKey:(roomSlot(o.key,rid).lider===me.id?"leader":"monitor"), date:o.date});
     }});
   });
   out.sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0));
@@ -1788,6 +1965,11 @@ document.addEventListener("click", e=>{
     case "new-member": editMember(null); break;
     case "edit-member": editMember(id); break;
     case "wa-member": waMember(id); break;
+    case "swap-request": openSwapRequest(el.dataset.key, el.dataset.room, el.dataset.role); break;
+    case "swap-accept": (async()=>{ try{ await Data.acceptSwap(id); toast("Troca confirmada! Você assumiu a escala.","good"); go(currentView); }catch(e){ toast("Não deu — "+e.message,"warn"); } })(); break;
+    case "swap-decline": (async()=>{ try{ await Data.setSwapStatus(id,"declined"); toast("Pedido recusado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
+    case "swap-cancel": (async()=>{ try{ await Data.setSwapStatus(id,"cancelled"); toast("Pedido cancelado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
+    case "swap-wa": swapWhatsApp(id); break;
     case "ics-member": downloadIcs(id); break;
     case "ics-me": {
       if(!DB.settings.meId){ toast("Selecione 'Quem é você?' primeiro","warn"); break; }
@@ -2286,6 +2468,10 @@ function openScheduleReadOnly(key, occ){
       <div>${slot.lider?chip(slot.lider,true):'<span class="muted-txt" style="font-size:12.5px">—</span>'}</div>
       <div style="font-size:11.5px;font-weight:700;color:var(--ink-faint);margin:8px 0 3px">AUXILIARES</div>
       <div>${slot.monitores.length?slot.monitores.map(id=>chip(id,false)).join(""):'<span class="muted-txt" style="font-size:12.5px">—</span>'}</div>
+      ${mineHere?(()=>{ const rk=slot.lider===me.id?"leader":"monitor";
+        return hasMyOpenSwap(key,r.id,rk)
+          ? `<div class="swap-mini" style="margin-top:10px">⏳ Você pediu troca nesta escala</div>`
+          : `<button class="btn btn-ghost btn-block" style="margin-top:10px" data-action="swap-request" data-key="${key}" data-room="${r.id}" data-role="${rk}">Pedir troca</button>`; })():""}
     </div>`;
   });
 
