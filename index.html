@@ -675,6 +675,19 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 }
 @media (prefers-reduced-motion:reduce){ .swap-in{ animation:none; } .swap-in::after{ display:none; } }
 
+/* ---------- Card de TROCA REALIZADA: borda preta + amarela (atenção do líder) ---------- */
+.swap-done{ border:2px solid #111 !important;
+  background:linear-gradient(135deg, rgba(255,210,63,.10), rgba(255,210,63,.02)) !important;
+  animation:doneAttn 2.2s ease-in-out infinite; }
+.swap-done .swap-badge.done{ color:#241600 !important; background:#FFD23F !important; }
+.swap-done .swap-body{ color:#FBE9B0; }
+.swap-done .swap-line{ color:#E7CE84; }
+@keyframes doneAttn{
+  0%,100%{ box-shadow:0 0 0 3px #FFD23F, 0 6px 18px rgba(0,0,0,.4); }
+  50%{ box-shadow:0 0 0 3px #FFD23F, 0 0 16px 2px rgba(255,210,63,.55), 0 6px 18px rgba(0,0,0,.4); }
+}
+@media (prefers-reduced-motion:reduce){ .swap-done{ animation:none; } }
+
   </style>
 </head>
 <body>
@@ -1427,19 +1440,17 @@ function swapsHomeHtml(){
         </div></div>`;
     });
   }
-  // admin: trocas de TODAS as áreas | líder: só as áreas dele (realizadas e pendentes, futuras)
+  // admin: trocas de TODAS as áreas | líder: só as áreas dele (realizadas e pendentes)
   let area="";
   if(isLeader()){
-    const todayS=ymd(today());
     const scope=DB.swaps.filter(s=> s.requestedBy!==me && s.targetId!==me
         && (isAdmin() || canEditRoom(s.roomId))
-        && (s.status==="open"||s.status==="accepted")
-        && (s.occDate||"")>=todayS)
+        && (s.status==="open"||s.status==="accepted"))
       .sort((a,b)=>(a.occDate||"")<(b.occDate||"")?-1:1);
     scope.forEach(s=>{
       const a=getMember(s.requestedBy), b=getMember(s.targetId);
       const done=s.status==="accepted";
-      area += `<div class="swap-card">
+      area += `<div class="swap-card ${done?"swap-done":""}">
         <div class="swap-top"><span class="swap-badge ${done?"done":"wait"}">${done?"Troca realizada":"Troca pendente"}</span></div>
         <div class="swap-body">${done
           ? `<b>${esc(b?b.name.split(" ")[0]:"—")}</b> entrou no lugar de <b>${esc(a?a.name.split(" ")[0]:"—")}</b>:`
