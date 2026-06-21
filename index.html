@@ -1121,9 +1121,9 @@ function seed(){
     {id:uid(), name:"Vídeos",      age:"Captação / edição",    emoji:"🎬", bg:"#45C7D626", fg:"#45C7D6", need:3},
   ];
   const services = [
-    {id:uid(), name:"Culto da Família", weekday:0, time:"09:00", color:"#4DA3E8"},
-    {id:uid(), name:"Culto da Noite",   weekday:0, time:"18:00", color:"#7A5BCC"},
-    {id:uid(), name:"Culto de Quarta",  weekday:3, time:"19:30", color:"#239B6E"},
+    {id:uid(), name:"Culto da Família", weekday:0, time:"09:00", color:cultoColor(0,"09:00")},
+    {id:uid(), name:"Culto da Noite",   weekday:0, time:"18:00", color:cultoColor(0,"18:00")},
+    {id:uid(), name:"Culto de Quinta",  weekday:4, time:"19:30", color:cultoColor(4,"19:30")},
   ];
   const m = (name,phone,role,roomIdx)=>({id:uid(),name,phone,role,roomIds:roomIdx.map(i=>rooms[i].id),active:true,notes:""});
   const members = [
@@ -1172,9 +1172,17 @@ function getService(id){ return DB.services.find(s=>s.id===id); }
 function cleanPhone(p){ let d=(p||"").replace(/\D/g,""); if(d && d.length<=11) d="55"+d; return d; }
 
 /* Ocorrências de culto/evento numa data (string ymd) */
+/* Cor padrão do culto (degradê de azul): quinta=ciano, domingo manhã=claro, domingo noite=escuro */
+function cultoColor(weekday, time){
+  const t=(time||"").slice(0,5);
+  if(weekday===4) return "#15C2D6";                          // quinta — azul ciano
+  if(weekday===0) return (t && t<"13:00") ? "#4FA3F0"        // domingo manhã — azul claro
+                                          : "#1A4E8F";       // domingo noite — azul escuro
+  return "#3D8BF0";                                          // demais cultos — azul padrão
+}
 function occsOnDate(dateStr){
   const d=parseYmd(dateStr), wd=d.getDay(), list=[];
-  DB.services.forEach(s=>{ if(s.weekday===wd) list.push({key:`s:${s.id}:${dateStr}`,date:dateStr,title:s.name,time:s.time,color:s.color,type:"culto",refId:s.id}); });
+  DB.services.forEach(s=>{ if(s.weekday===wd) list.push({key:`s:${s.id}:${dateStr}`,date:dateStr,title:s.name,time:s.time,color:cultoColor(s.weekday,s.time),type:"culto",refId:s.id}); });
   DB.events.filter(e=>e.date===dateStr).forEach(e=>{ list.push({key:`e:${e.id}`,date:dateStr,title:e.title,time:e.time||"",color:e.color||"#FF8A1E",type:"evento",refId:e.id,note:e.note,photo:e.photo||""}); });
   return list.sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));
 }
@@ -1514,10 +1522,11 @@ function swapWhatsApp(id){
 }
 
 /* ---------------- Compartilhar escala do mês (imagem + texto) ---------------- */
-function buildScheduleBlocks(occs){
+function shareScopeRooms(){ return isAdmin()? DB.rooms.slice() : DB.rooms.filter(r=>canEditRoom(r.id)); }
+function buildScheduleBlocks(occs, rooms){
   return occs.map(o=>({
     o,
-    rooms: DB.rooms.filter(r=>roomPeopleIds(o.key,r.id).length).map(r=>{
+    rooms: rooms.filter(r=>roomPeopleIds(o.key,r.id).length).map(r=>{
       const slot=roomSlot(o.key,r.id);
       return { r, lider: slot.lider?getMember(slot.lider):null,
                aux: slot.monitores.map(id=>getMember(id)).filter(Boolean) };
@@ -1536,7 +1545,7 @@ function wrapText(ctx,text,maxW){ const words=String(text).split(" "); const lin
   words.forEach(w=>{ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW && line){ lines.push(line); line=w; } else line=t; });
   if(line) lines.push(line); return lines; }
 const SFONT='"Helvetica Neue", Arial, sans-serif';
-function paintSchedule(ctx, blocks, draw){
+function paintSchedule(ctx, blocks, draw, subtitle){
   const W=720, M=34, innerW=W-2*M;
   let y=44;
   if(draw){ ctx.textBaseline="alphabetic"; ctx.fillStyle="#6B7785"; ctx.font='600 13px '+SFONT;
@@ -1545,6 +1554,10 @@ function paintSchedule(ctx, blocks, draw){
   if(draw){ ctx.fillStyle="#15324f"; ctx.font='800 30px '+SFONT;
     ctx.fillText("Escala — "+MONTHS[escMonth]+" "+escYear, M, y); }
   y+=24;
+  if(subtitle){
+    if(draw){ ctx.fillStyle="#3D8BF0"; ctx.font='700 15px '+SFONT; ctx.fillText(subtitle, M, y+4); }
+    y+=26;
+  }
   blocks.forEach(b=>{
     const barH=38;
     if(draw){ roundRectPath(ctx,M,y,innerW,barH,9); ctx.fillStyle=b.o.color||"#3D8BF0"; ctx.fill();
@@ -1570,23 +1583,26 @@ function paintSchedule(ctx, blocks, draw){
   y+=20;
   return Math.ceil(y);
 }
-function renderScheduleImage(blocks){
+function renderScheduleImage(blocks, subtitle){
   const probe=document.createElement("canvas").getContext("2d");
   if(!probe) return null;                       // navegador sem canvas
   const W=720, scale=2;
-  const H=paintSchedule(probe, blocks, false);
+  const H=paintSchedule(probe, blocks, false, subtitle);
   const cv=document.createElement("canvas"); cv.width=W*scale; cv.height=H*scale;
   const ctx=cv.getContext("2d"); ctx.scale(scale,scale);
   ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,W,H);
   ctx.fillStyle="#3D8BF0"; ctx.fillRect(0,0,W,5);
-  paintSchedule(ctx, blocks, true);
+  paintSchedule(ctx, blocks, true, subtitle);
   return cv;
 }
-function scheduleText(occs){
+function scheduleText(occs, rooms, subtitle){
   let t="*ESCALA — "+MONTHS[escMonth]+" "+escYear+"*\n"+DB.settings.dept+" • "+DB.settings.church+"\n";
+  if(subtitle) t+="_"+subtitle+"_\n";
   occs.forEach(o=>{
+    const rs=rooms.filter(r=>roomPeopleIds(o.key,r.id).length);
+    if(!rs.length) return;
     t+="\n*"+fmtShort(o.date)+(o.time?" "+o.time:"")+" — "+o.title+"*\n";
-    DB.rooms.filter(r=>roomPeopleIds(o.key,r.id).length).forEach(r=>{
+    rs.forEach(r=>{
       const slot=roomSlot(o.key,r.id);
       const resp=slot.lider?getMember(slot.lider):null;
       const aux=slot.monitores.map(id=>getMember(id)).filter(Boolean).map(m=>m.name);
@@ -1596,21 +1612,57 @@ function scheduleText(occs){
   return t;
 }
 function shareMonthSchedule(){
-  const occs = occsInMonth(escYear, escMonth).filter(o=>assignedCount(o.key)>0);
-  if(!occs.length){ toast("Não há escala montada neste mês para compartilhar","warn"); return; }
-  const blocks = buildScheduleBlocks(occs);
-  let cv=null; try{ cv=renderScheduleImage(blocks); }catch(e){ cv=null; }
+  const rooms = shareScopeRooms();
+  if(!rooms.length){ toast("Você não tem área para compartilhar","warn"); return; }
+  const occs = occsInMonth(escYear, escMonth).filter(o=>rooms.some(r=>roomPeopleIds(o.key,r.id).length));
+  if(!occs.length){ toast("Não há escala montada (na sua área) neste mês","warn"); return; }
+  const subtitle = isAdmin() ? "" : rooms.map(r=>r.name).join(" • ");
+  const blocks = buildScheduleBlocks(occs, rooms);
+  let cv=null; try{ cv=renderScheduleImage(blocks, subtitle); }catch(e){ cv=null; }
   const dataUrl = cv ? cv.toDataURL("image/png") : "";
-  const body = (cv?`<img src="${dataUrl}" style="width:100%;border-radius:12px;border:1px solid var(--line);display:block" alt="Escala do mês"/>`
+  const base = `escala-${MONTHS[escMonth].toLowerCase()}-${escYear}${subtitle?"-"+subtitle.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""):""}`;
+  const body = (cv?`<img src="${dataUrl}" style="width:100%;border-radius:12px;border:1px solid var(--line);display:block" alt="Escala"/>`
                   :`<p class="muted-txt">Pré-visualização de imagem indisponível neste navegador — você ainda pode enviar como texto.</p>`);
   const foot = `${cv?`<button class="btn btn-primary btn-block" id="shImg">Compartilhar imagem</button>
+      <button class="btn btn-ghost btn-block" id="shPdf" style="margin-top:8px">Compartilhar PDF</button>
       <button class="btn btn-ghost btn-block" id="shDl" style="margin-top:8px">Baixar imagem</button>`:""}
     <button class="btn btn-wa btn-block" id="shTxt" style="margin-top:8px">Enviar como texto no WhatsApp</button>`;
-  openModal("Escala — "+MONTHS[escMonth]+" "+escYear, body, foot);
-  const fn=`escala-${MONTHS[escMonth].toLowerCase()}-${escYear}.png`;
-  const dl=document.getElementById("shDl"); if(dl) dl.addEventListener("click",()=>{ const a=document.createElement("a"); a.href=dataUrl; a.download=fn; a.click(); });
-  const im=document.getElementById("shImg"); if(im) im.addEventListener("click",()=>shareImage(cv, fn));
-  document.getElementById("shTxt").addEventListener("click",()=>window.open("https://wa.me/?text="+encodeURIComponent(scheduleText(occs)),"_blank"));
+  openModal("Compartilhar escala"+(subtitle?" — "+subtitle:""), body, foot);
+  const dl=document.getElementById("shDl"); if(dl) dl.addEventListener("click",()=>{ const a=document.createElement("a"); a.href=dataUrl; a.download=base+".png"; a.click(); });
+  const im=document.getElementById("shImg"); if(im) im.addEventListener("click",()=>shareImage(cv, base+".png"));
+  const pf=document.getElementById("shPdf"); if(pf) pf.addEventListener("click",()=>shareSchedulePDF(cv, base+".pdf", pf));
+  document.getElementById("shTxt").addEventListener("click",()=>window.open("https://wa.me/?text="+encodeURIComponent(scheduleText(occs, rooms, subtitle)),"_blank"));
+}
+function loadJsPDF(){
+  return new Promise((res,rej)=>{
+    if(window.jspdf && window.jspdf.jsPDF) return res(window.jspdf);
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js";
+    s.onload=()=>res(window.jspdf); s.onerror=()=>rej(new Error("offline"));
+    document.head.appendChild(s);
+  });
+}
+async function shareSchedulePDF(cv, fn, btn){
+  if(!cv){ toast("Imagem indisponível para gerar PDF","warn"); return; }
+  const old = btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Gerando PDF..."; }
+  try{
+    const lib = await loadJsPDF();
+    const jsPDF = lib.jsPDF;
+    const W=cv.width/2, H=cv.height/2;          // px lógicos
+    const pw=W*0.75, ph=H*0.75;                 // pt (96→72)
+    const pdf = new jsPDF({ unit:"pt", format:[pw, ph], orientation: ph>=pw?"p":"l" });
+    pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, pw, ph);
+    const blob = pdf.output("blob");
+    const file = new File([blob], fn, {type:"application/pdf"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({ files:[file], title:"Escala" }); }catch(e){}
+    } else {
+      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fn; a.click();
+      toast("PDF baixado — anexe no WhatsApp.","good");
+    }
+  }catch(e){
+    toast("Preciso de internet para gerar o PDF. Tente a imagem.","warn");
+  }finally{ if(btn){ btn.disabled=false; btn.textContent=old; } }
 }
 function shareImage(cv, fn){
   if(!cv || !cv.toBlob){ toast("Não consegui gerar a imagem","warn"); return; }
@@ -1818,7 +1870,8 @@ function renderEscala(c){
   if(leader){
     html += `<button class="btn btn-primary btn-block" data-action="new-schedule" style="margin-bottom:10px">
       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Montar nova escala</button>`;
-    if(occs.some(o=>assignedCount(o.key)>0))
+    const _sr=shareScopeRooms();
+    if(occs.some(o=>_sr.some(r=>roomPeopleIds(o.key,r.id).length)))
       html += `<button class="btn btn-ghost btn-block" data-action="share-month" style="margin-bottom:14px">
         <svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg> Compartilhar escala de ${MONTHS[escMonth]}</button>`;
   }
@@ -2038,8 +2091,9 @@ function renderConfig(c){
   // Cultos recorrentes
   html += `<div class="section-label">Cultos da semana <span class="link" data-action="new-service">+ Novo culto</span></div>`;
   DB.services.forEach(s=>{
+    const sc=cultoColor(s.weekday,s.time);
     html += `<div class="room list-tap" data-action="edit-service" data-id="${s.id}">
-      <div class="room-ico" style="background:${s.color}22;color:${s.color}">⛪</div>
+      <div class="room-ico" style="background:${sc}22;color:${sc}">⛪</div>
       <div class="room-info"><div class="room-name">${esc(s.name)}</div><div class="room-age">Todo ${WD[s.weekday].toLowerCase()} • ${s.time}</div></div>
       <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--ink-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 18l6-6-6-6"/></svg>
     </div>`;
