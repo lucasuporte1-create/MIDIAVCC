@@ -1513,6 +1513,120 @@ function swapWhatsApp(id){
   window.open(`https://wa.me/${cleanPhone(other.phone)}?text=${encodeURIComponent(msg)}`,"_blank");
 }
 
+/* ---------------- Compartilhar escala do mês (imagem + texto) ---------------- */
+function buildScheduleBlocks(occs){
+  return occs.map(o=>({
+    o,
+    rooms: DB.rooms.filter(r=>roomPeopleIds(o.key,r.id).length).map(r=>{
+      const slot=roomSlot(o.key,r.id);
+      return { r, lider: slot.lider?getMember(slot.lider):null,
+               aux: slot.monitores.map(id=>getMember(id)).filter(Boolean) };
+    })
+  })).filter(b=>b.rooms.length);
+}
+function peopleLine(rm){
+  const resp = "★ " + (rm.lider?rm.lider.name:"—");
+  const aux  = rm.aux.length ? ("Aux: "+rm.aux.map(m=>m.name).join(", ")) : "";
+  return aux ? (resp+"    "+aux) : resp;
+}
+function roundRectPath(ctx,x,y,w,h,r){ ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function wrapText(ctx,text,maxW){ const words=String(text).split(" "); const lines=[]; let line="";
+  words.forEach(w=>{ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW && line){ lines.push(line); line=w; } else line=t; });
+  if(line) lines.push(line); return lines; }
+const SFONT='"Helvetica Neue", Arial, sans-serif';
+function paintSchedule(ctx, blocks, draw){
+  const W=720, M=34, innerW=W-2*M;
+  let y=44;
+  if(draw){ ctx.textBaseline="alphabetic"; ctx.fillStyle="#6B7785"; ctx.font='600 13px '+SFONT;
+    ctx.fillText((DB.settings.church+" • "+DB.settings.dept).toUpperCase(), M, y); }
+  y+=34;
+  if(draw){ ctx.fillStyle="#15324f"; ctx.font='800 30px '+SFONT;
+    ctx.fillText("Escala — "+MONTHS[escMonth]+" "+escYear, M, y); }
+  y+=24;
+  blocks.forEach(b=>{
+    const barH=38;
+    if(draw){ roundRectPath(ctx,M,y,innerW,barH,9); ctx.fillStyle=b.o.color||"#3D8BF0"; ctx.fill();
+      ctx.fillStyle="#ffffff"; ctx.font='700 15px '+SFONT;
+      ctx.fillText(fmtShort(b.o.date)+(b.o.time?"  "+b.o.time:"")+"  •  "+b.o.title, M+13, y+24); }
+    y+=barH+12;
+    b.rooms.forEach(rm=>{
+      if(draw){ ctx.beginPath(); ctx.arc(M+7, y-3, 5, 0, Math.PI*2); ctx.fillStyle=rm.r.fg; ctx.fill();
+        ctx.fillStyle="#15324f"; ctx.font='700 14.5px '+SFONT; ctx.fillText(rm.r.name, M+22, y+1); }
+      y+=22;
+      ctx.font='14px '+SFONT;
+      wrapText(ctx, peopleLine(rm), innerW-24).forEach(ln=>{
+        if(draw){ ctx.fillStyle="#3a4654"; ctx.font='14px '+SFONT; ctx.fillText(ln, M+22, y); }
+        y+=20;
+      });
+      y+=8;
+    });
+    y+=12;
+  });
+  y+=8;
+  if(draw){ ctx.fillStyle="#9AA6B2"; ctx.font='12px '+SFONT;
+    ctx.fillText("Gerado pelo app de escalas • "+DB.settings.church, M, y); }
+  y+=20;
+  return Math.ceil(y);
+}
+function renderScheduleImage(blocks){
+  const probe=document.createElement("canvas").getContext("2d");
+  if(!probe) return null;                       // navegador sem canvas
+  const W=720, scale=2;
+  const H=paintSchedule(probe, blocks, false);
+  const cv=document.createElement("canvas"); cv.width=W*scale; cv.height=H*scale;
+  const ctx=cv.getContext("2d"); ctx.scale(scale,scale);
+  ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#3D8BF0"; ctx.fillRect(0,0,W,5);
+  paintSchedule(ctx, blocks, true);
+  return cv;
+}
+function scheduleText(occs){
+  let t="*ESCALA — "+MONTHS[escMonth]+" "+escYear+"*\n"+DB.settings.dept+" • "+DB.settings.church+"\n";
+  occs.forEach(o=>{
+    t+="\n*"+fmtShort(o.date)+(o.time?" "+o.time:"")+" — "+o.title+"*\n";
+    DB.rooms.filter(r=>roomPeopleIds(o.key,r.id).length).forEach(r=>{
+      const slot=roomSlot(o.key,r.id);
+      const resp=slot.lider?getMember(slot.lider):null;
+      const aux=slot.monitores.map(id=>getMember(id)).filter(Boolean).map(m=>m.name);
+      t+=r.emoji+" "+r.name+": ★ "+(resp?resp.name:"—")+(aux.length?" | "+aux.join(", "):"")+"\n";
+    });
+  });
+  return t;
+}
+function shareMonthSchedule(){
+  const occs = occsInMonth(escYear, escMonth).filter(o=>assignedCount(o.key)>0);
+  if(!occs.length){ toast("Não há escala montada neste mês para compartilhar","warn"); return; }
+  const blocks = buildScheduleBlocks(occs);
+  let cv=null; try{ cv=renderScheduleImage(blocks); }catch(e){ cv=null; }
+  const dataUrl = cv ? cv.toDataURL("image/png") : "";
+  const body = (cv?`<img src="${dataUrl}" style="width:100%;border-radius:12px;border:1px solid var(--line);display:block" alt="Escala do mês"/>`
+                  :`<p class="muted-txt">Pré-visualização de imagem indisponível neste navegador — você ainda pode enviar como texto.</p>`);
+  const foot = `${cv?`<button class="btn btn-primary btn-block" id="shImg">Compartilhar imagem</button>
+      <button class="btn btn-ghost btn-block" id="shDl" style="margin-top:8px">Baixar imagem</button>`:""}
+    <button class="btn btn-wa btn-block" id="shTxt" style="margin-top:8px">Enviar como texto no WhatsApp</button>`;
+  openModal("Escala — "+MONTHS[escMonth]+" "+escYear, body, foot);
+  const fn=`escala-${MONTHS[escMonth].toLowerCase()}-${escYear}.png`;
+  const dl=document.getElementById("shDl"); if(dl) dl.addEventListener("click",()=>{ const a=document.createElement("a"); a.href=dataUrl; a.download=fn; a.click(); });
+  const im=document.getElementById("shImg"); if(im) im.addEventListener("click",()=>shareImage(cv, fn));
+  document.getElementById("shTxt").addEventListener("click",()=>window.open("https://wa.me/?text="+encodeURIComponent(scheduleText(occs)),"_blank"));
+}
+function shareImage(cv, fn){
+  if(!cv || !cv.toBlob){ toast("Não consegui gerar a imagem","warn"); return; }
+  cv.toBlob(async (blob)=>{
+    if(!blob){ toast("Não consegui gerar a imagem","warn"); return; }
+    const file=new File([blob], fn, {type:"image/png"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({ files:[file], title:"Escala", text:"Escala — "+MONTHS[escMonth]+" "+escYear }); }
+      catch(e){}
+    } else {
+      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fn; a.click();
+      toast("Imagem baixada — é só anexar no WhatsApp.","good");
+    }
+  },"image/png");
+}
+
 /* ---------------- Home do voluntário (pessoal, sem panorama de áreas) ---------------- */
 function renderVolunteerHome(me, t, todayStr, occs){
   let h = "";
@@ -1702,8 +1816,11 @@ function renderEscala(c){
   </div>`;
 
   if(leader){
-    html += `<button class="btn btn-primary btn-block" data-action="new-schedule" style="margin-bottom:14px">
+    html += `<button class="btn btn-primary btn-block" data-action="new-schedule" style="margin-bottom:10px">
       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Montar nova escala</button>`;
+    if(occs.some(o=>assignedCount(o.key)>0))
+      html += `<button class="btn btn-ghost btn-block" data-action="share-month" style="margin-bottom:14px">
+        <svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg> Compartilhar escala de ${MONTHS[escMonth]}</button>`;
   }
 
   // agrupa por semana do mês
@@ -2004,6 +2121,7 @@ document.addEventListener("click", e=>{
     case "swap-decline": (async()=>{ try{ await Data.setSwapStatus(id,"declined"); toast("Pedido recusado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
     case "swap-cancel": (async()=>{ try{ await Data.setSwapStatus(id,"cancelled"); toast("Pedido cancelado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
     case "swap-wa": swapWhatsApp(id); break;
+    case "share-month": shareMonthSchedule(); break;
     case "ics-member": downloadIcs(id); break;
     case "ics-me": {
       if(!DB.settings.meId){ toast("Selecione 'Quem é você?' primeiro","warn"); break; }
