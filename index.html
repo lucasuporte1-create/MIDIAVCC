@@ -900,6 +900,11 @@ const Data = {
     DB.schedules = sched;
     DB.swaps = (swaps && swaps.data ? swaps.data : []).map(mapSwapRow);
     save();
+    // fotos por ocorrência (carrega em segundo plano; não bloqueia)
+    sb.from("occ_photos").select("occ_key,photo").then(({data})=>{
+      if(data){ const map={}; data.forEach(r=>{ if(r.photo) map[r.occ_key]=r.photo; }); DB.occPhotos=map;
+        if(typeof currentView!=="undefined" && currentView) try{ go(currentView); }catch(e){} }
+    }).catch(()=>{});
     if(!DB.rooms.length && isAdmin()) await this.seedDefaults();
     this.loadPhotos();   // fotos carregam em segundo plano (não trava a entrada)
   },
@@ -1045,6 +1050,14 @@ const Data = {
   async setSwapStatus(id, status){
     if(CLOUD) await sbErr(sb.from("swap_requests").update({status, resolved_at:new Date().toISOString()}).eq("id",id), "atualizar pedido");
     const s=DB.swaps.find(x=>x.id===id); if(s){ s.status=status; } save();
+  },
+  async saveOccPhoto(key, photo){
+    if(photo) DB.occPhotos[key]=photo; else delete DB.occPhotos[key];
+    if(CLOUD){
+      if(photo) await sbErr(sb.from("occ_photos").upsert({occ_key:key, photo, updated_at:new Date().toISOString()}), "salvar foto do culto");
+      else await sbErr(sb.from("occ_photos").delete().eq("occ_key",key), "remover foto");
+    }
+    save();
   }
 };
 function mapSwapRow(d){
@@ -1071,6 +1084,7 @@ function load(){
 /* Normaliza a escala para o formato { lider, monitores[] } (máx 1+2 por sala) */
 function migrate(db){
   if(db && !Array.isArray(db.swaps)) db.swaps = [];
+  if(db && (!db.occPhotos || typeof db.occPhotos!=="object")) db.occPhotos = {};
   if(db && db.schedules){
     for(const k in db.schedules){
       const rooms = db.schedules[k];
@@ -1095,7 +1109,8 @@ function save(){
       // e evita estourar o limite do navegador. As fotos vêm do Supabase ao abrir.
       payload = Object.assign({}, DB, {
         members: DB.members.map(m=> m.photo ? Object.assign({}, m, {photo:""}) : m),
-        events:  DB.events.map(e=> e.photo ? Object.assign({}, e, {photo:""}) : e)
+        events:  DB.events.map(e=> e.photo ? Object.assign({}, e, {photo:""}) : e),
+        occPhotos: {}
       });
     }
     localStorage.setItem(STORE_KEY, JSON.stringify(payload));
@@ -1138,7 +1153,8 @@ function seed(){
     rooms, services, members,
     events:[],          // eventos pontuais {id,date,title,time,note}
     schedules:{},       // { occKey: { roomId: [memberId,...] } }
-    swaps:[]            // pedidos de troca
+    swaps:[],           // pedidos de troca
+    occPhotos:{}        // { occKey: base64 } fotos por culto/ocorrência
   };
 }
 
@@ -1182,7 +1198,7 @@ function cultoColor(weekday, time){
 }
 function occsOnDate(dateStr){
   const d=parseYmd(dateStr), wd=d.getDay(), list=[];
-  DB.services.forEach(s=>{ if(s.weekday===wd) list.push({key:`s:${s.id}:${dateStr}`,date:dateStr,title:s.name,time:s.time,color:cultoColor(s.weekday,s.time),type:"culto",refId:s.id}); });
+  DB.services.forEach(s=>{ if(s.weekday===wd) list.push({key:`s:${s.id}:${dateStr}`,date:dateStr,title:s.name,time:s.time,color:cultoColor(s.weekday,s.time),type:"culto",refId:s.id,photo:(DB.occPhotos&&DB.occPhotos[`s:${s.id}:${dateStr}`])||""}); });
   DB.events.filter(e=>e.date===dateStr).forEach(e=>{ list.push({key:`e:${e.id}`,date:dateStr,title:e.title,time:e.time||"",color:e.color||"#FF8A1E",type:"evento",refId:e.id,note:e.note,photo:e.photo||""}); });
   return list.sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));
 }
@@ -1628,55 +1644,76 @@ function shareMonthSchedule(){
       <button class="btn btn-ghost btn-block" id="shDl" style="margin-top:8px">Baixar imagem</button>`:""}
     <button class="btn btn-wa btn-block" id="shTxt" style="margin-top:8px">Enviar como texto no WhatsApp</button>`;
   openModal("Compartilhar escala"+(subtitle?" — "+subtitle:""), body, foot);
-  const dl=document.getElementById("shDl"); if(dl) dl.addEventListener("click",()=>{ const a=document.createElement("a"); a.href=dataUrl; a.download=base+".png"; a.click(); });
-  const im=document.getElementById("shImg"); if(im) im.addEventListener("click",()=>shareImage(cv, base+".png"));
-  const pf=document.getElementById("shPdf"); if(pf) pf.addEventListener("click",()=>shareSchedulePDF(cv, base+".pdf", pf));
+  const txtMsg = "Escala — "+MONTHS[escMonth]+" "+escYear+(subtitle?" ("+subtitle+")":"");
+
+  // pré-gera os arquivos AGORA, pra o compartilhar funcionar no toque (iOS exige isso)
+  let imgFile=null, pdfFile=null;
+  if(cv){
+    try{ cv.toBlob(b=>{ if(b) imgFile=new File([b], base+".png", {type:"image/png"}); }, "image/png"); }catch(e){}
+    buildSchedulePDFFile(cv, base+".pdf").then(f=>{ pdfFile=f; }).catch(()=>{});
+  }
+  const dl=document.getElementById("shDl");
+  if(dl) dl.addEventListener("click",()=>{ if(imgFile) downloadFile(imgFile); else { const a=document.createElement("a"); a.href=dataUrl; a.download=base+".png"; a.click(); } });
+  const im=document.getElementById("shImg");
+  if(im) im.addEventListener("click",()=>{
+    if(imgFile) shareOrDownload(imgFile, txtMsg);
+    else if(cv) cv.toBlob(b=>{ if(b){ imgFile=new File([b], base+".png", {type:"image/png"}); shareOrDownload(imgFile, txtMsg);} }, "image/png");
+  });
+  const pf=document.getElementById("shPdf");
+  if(pf) pf.addEventListener("click",()=>{
+    if(pdfFile){ shareOrDownload(pdfFile); return; }
+    const old=pf.textContent; pf.disabled=true; pf.textContent="Gerando PDF...";
+    buildSchedulePDFFile(cv, base+".pdf")
+      .then(f=>{ pdfFile=f; shareOrDownload(pdfFile); })
+      .catch(()=>toast("Não consegui gerar o PDF agora. Verifique a internet e tente de novo, ou use a imagem.","warn"))
+      .finally(()=>{ pf.disabled=false; pf.textContent=old; });
+  });
   document.getElementById("shTxt").addEventListener("click",()=>window.open("https://wa.me/?text="+encodeURIComponent(scheduleText(occs, rooms, subtitle)),"_blank"));
 }
 function loadJsPDF(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf);
+  const urls=[
+    "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
+    "https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+  ];
   return new Promise((res,rej)=>{
-    if(window.jspdf && window.jspdf.jsPDF) return res(window.jspdf);
-    const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js";
-    s.onload=()=>res(window.jspdf); s.onerror=()=>rej(new Error("offline"));
-    document.head.appendChild(s);
+    let i=0;
+    const tryNext=()=>{
+      if(window.jspdf && window.jspdf.jsPDF) return res(window.jspdf);
+      if(i>=urls.length) return rej(new Error("sem-cdn"));
+      const s=document.createElement("script"); s.src=urls[i++];
+      s.onload=()=>{ (window.jspdf && window.jspdf.jsPDF) ? res(window.jspdf) : tryNext(); };
+      s.onerror=tryNext;
+      document.head.appendChild(s);
+    };
+    tryNext();
   });
 }
-async function shareSchedulePDF(cv, fn, btn){
-  if(!cv){ toast("Imagem indisponível para gerar PDF","warn"); return; }
-  const old = btn?btn.textContent:""; if(btn){ btn.disabled=true; btn.textContent="Gerando PDF..."; }
-  try{
-    const lib = await loadJsPDF();
-    const jsPDF = lib.jsPDF;
-    const W=cv.width/2, H=cv.height/2;          // px lógicos
-    const pw=W*0.75, ph=H*0.75;                 // pt (96→72)
-    const pdf = new jsPDF({ unit:"pt", format:[pw, ph], orientation: ph>=pw?"p":"l" });
-    pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, pw, ph);
-    const blob = pdf.output("blob");
-    const file = new File([blob], fn, {type:"application/pdf"});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      try{ await navigator.share({ files:[file], title:"Escala" }); }catch(e){}
-    } else {
-      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fn; a.click();
-      toast("PDF baixado — anexe no WhatsApp.","good");
-    }
-  }catch(e){
-    toast("Preciso de internet para gerar o PDF. Tente a imagem.","warn");
-  }finally{ if(btn){ btn.disabled=false; btn.textContent=old; } }
+async function buildSchedulePDFFile(cv, fn){
+  const lib=await loadJsPDF(); const jsPDF=lib.jsPDF;
+  const W=cv.width/2, H=cv.height/2, pw=W*0.75, ph=H*0.75;   // px lógicos -> pt
+  const pdf=new jsPDF({ unit:"pt", format:[pw, ph], orientation: ph>=pw?"p":"l" });
+  pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, pw, ph);
+  return new File([pdf.output("blob")], fn, {type:"application/pdf"});
 }
-function shareImage(cv, fn){
+function downloadFile(file){
+  const url=URL.createObjectURL(file);
+  const a=document.createElement("a"); a.href=url; a.download=file.name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  toast("Baixado — é só anexar no WhatsApp.","good");
+}
+function shareOrDownload(file, text){
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share(Object.assign({files:[file], title:"Escala"}, text?{text}:{}))
+      .catch(e=>{ if(!e || e.name!=="AbortError") downloadFile(file); });   // se falhar (não cancelar) -> baixa
+  } else {
+    downloadFile(file);
+  }
+}
+function shareImage(cv, fn){   // mantido por compatibilidade
   if(!cv || !cv.toBlob){ toast("Não consegui gerar a imagem","warn"); return; }
-  cv.toBlob(async (blob)=>{
-    if(!blob){ toast("Não consegui gerar a imagem","warn"); return; }
-    const file=new File([blob], fn, {type:"image/png"});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      try{ await navigator.share({ files:[file], title:"Escala", text:"Escala — "+MONTHS[escMonth]+" "+escYear }); }
-      catch(e){}
-    } else {
-      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fn; a.click();
-      toast("Imagem baixada — é só anexar no WhatsApp.","good");
-    }
-  },"image/png");
+  cv.toBlob(b=>{ if(b) shareOrDownload(new File([b], fn, {type:"image/png"})); }, "image/png");
 }
 
 /* ---------------- Home do voluntário (pessoal, sem panorama de áreas) ---------------- */
@@ -2588,10 +2625,20 @@ function openSchedule(key){
     }).join("");
   }
 
-  const head = `${occ.photo?`<div class="occ-banner" style="background-image:url('${occ.photo}')"></div>`:""}<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+  let occPhoto = occ.photo || "";
+  const showPhoto = occ.type==="culto";   // eventos têm foto na própria tela do evento
+  const head = `<div id="occBanner" class="occ-banner" style="${occPhoto?`background-image:url('${occPhoto}')`:"display:none"}"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:${showPhoto?"10":"14"}px">
     <div class="room-ico" style="width:42px;height:42px;border-radius:12px;background:${occ.color}22;color:${occ.color}">${occ.type==="evento"?"🎉":"⛪"}</div>
     <div><div style="font-family:var(--font-display);font-weight:700;font-size:16px">${esc(occ.title)}</div>
-    <div class="muted-txt">${fmtLong(occ.date)} ${occ.time?"• "+occ.time:""}</div></div></div>`;
+    <div class="muted-txt">${fmtLong(occ.date)} ${occ.time?"• "+occ.time:""}</div></div></div>
+    ${showPhoto?`<div class="field" style="margin-bottom:14px">
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn btn-ghost" id="occPhotoBtn" style="padding:9px 13px;font-size:13px;flex:1">${occPhoto?"Trocar":"Adicionar"} foto do culto</button>
+        <button type="button" class="btn btn-soft" id="occPhotoDel" style="padding:9px 13px;font-size:13px;${occPhoto?"":"display:none"}">Remover</button>
+      </div>
+      <input type="file" id="occPhotoInput" accept="image/*" hidden>
+    </div>`:""}`;
 
   openModal("Escala do culto", head + `<div id="schedRooms">${renderBody()}</div>`,
     `<button class="btn btn-wa btn-block btn-attn" id="schedWa" style="margin-bottom:10px">
@@ -2599,6 +2646,40 @@ function openSchedule(key){
      <button class="btn btn-primary btn-block" id="schedSave">Salvar escala</button>`);
 
   const wrap=document.getElementById("schedRooms");
+  // foto do culto (por ocorrência) — salva na hora
+  if(showPhoto){
+    const banner=document.getElementById("occBanner");
+    const fInput=document.getElementById("occPhotoInput");
+    const fBtn=document.getElementById("occPhotoBtn");
+    const fDel=document.getElementById("occPhotoDel");
+    fBtn.addEventListener("click",()=>fInput.click());
+    fInput.addEventListener("change", ev=>{
+      const file=ev.target.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const im=new Image();
+        im.onload=async ()=>{
+          const W=480,H=270, c=document.createElement("canvas"); c.width=W; c.height=H;
+          const ctx=c.getContext("2d");
+          const s=Math.min(im.width/W, im.height/H), sw=W*s, sh=H*s, sx=(im.width-sw)/2, sy=(im.height-sh)/2;
+          ctx.drawImage(im, sx,sy,sw,sh, 0,0,W,H);
+          occPhoto=c.toDataURL("image/jpeg",0.82);
+          banner.style.backgroundImage=`url('${occPhoto}')`; banner.style.display="";
+          fDel.style.display=""; fBtn.textContent="Trocar foto do culto";
+          try{ await Data.saveOccPhoto(key, occPhoto); toast("Foto do culto salva","good"); }
+          catch(e){ toast("Não salvou a foto — "+e.message,"warn"); }
+        };
+        im.onerror=()=>toast("Não consegui ler essa imagem","warn");
+        im.src=reader.result;
+      };
+      reader.readAsDataURL(file); ev.target.value="";
+    });
+    fDel.addEventListener("click", async ()=>{
+      occPhoto=""; banner.style.backgroundImage="none"; banner.style.display="none";
+      fDel.style.display="none"; fBtn.textContent="Adicionar foto do culto";
+      try{ await Data.saveOccPhoto(key, ""); }catch(e){}
+    });
+  }
   function paint(){ wrap.innerHTML=renderBody(); }
   wrap.addEventListener("click", e=>{
     const it=e.target.closest(".pick-item[data-mid]"); if(!it) return;
@@ -2689,7 +2770,7 @@ function resolveOcc(key){
   if(key.startsWith("e:")){ const ev=DB.events.find(e=>e.id===key.slice(2)); if(!ev) return null;
     return {key,date:ev.date,title:ev.title,time:ev.time,color:ev.color||"#FF8A1E",type:"evento",photo:ev.photo||""}; }
   if(key.startsWith("s:")){ const [,sid,date]=key.split(":"); const s=getService(sid); if(!s) return null;
-    return {key,date,title:s.name,time:s.time,color:s.color,type:"culto"}; }
+    return {key,date,title:s.name,time:s.time,color:cultoColor(s.weekday,s.time),type:"culto",photo:(DB.occPhotos&&DB.occPhotos[key])||""}; }
   return null;
 }
 
