@@ -658,6 +658,23 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .swap-pick span{ display:flex; align-items:center; font-size:13.5px; color:var(--ink); }
 .btn.sm{ padding:6px 10px; font-size:12px; width:auto; }
 
+/* ---------- Card de pedido de troca: laranja pulsante (chama atenção) ---------- */
+.swap-in{ background:linear-gradient(135deg, rgba(255,138,30,.17), rgba(255,178,61,.05));
+  border:1.5px solid rgba(255,138,30,.55); position:relative; overflow:hidden;
+  animation:swapGlow 1.9s ease-in-out infinite; }
+.swap-in::after{ content:""; position:absolute; top:0; left:-55%; width:45%; height:100%; z-index:1;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.14), transparent);
+  transform:skewX(-18deg); animation:attnShine 3s ease-in-out infinite; pointer-events:none; }
+.swap-in .swap-top,.swap-in .swap-body,.swap-in .swap-actions{ position:relative; z-index:2; }
+.swap-in .swap-badge{ color:#241600 !important; background:#FF8A1E !important; }
+.swap-in .swap-body{ color:#FFE9D2; }
+.swap-in .swap-line{ color:#FFD2AD; }
+@keyframes swapGlow{
+  0%,100%{ box-shadow:0 8px 24px rgba(0,0,0,.4), 0 0 0 0 rgba(255,138,30,0); }
+  50%{ box-shadow:0 10px 30px rgba(0,0,0,.48), 0 0 24px 2px rgba(255,138,30,.5); }
+}
+@media (prefers-reduced-motion:reduce){ .swap-in{ animation:none; } .swap-in::after{ display:none; } }
+
   </style>
 </head>
 <body>
@@ -1382,52 +1399,58 @@ function swapDesc(s){
   return `${occ?esc(occ.title):"Culto"} • ${room?esc(room.name):"—"} • ${papel}${occ?" • "+fmtShort(occ.date):""}`;
 }
 function swapsHomeHtml(){
-  const me=myMemberId(); if(!me && !isLeader()) return "";
-  let h="";
-  // 1) Pedidos de troca PRA VOCÊ (você foi indicado)
-  const paraMim = me ? DB.swaps.filter(s=>s.status==="open" && s.targetId===me) : [];
-  paraMim.forEach(s=>{
-    const quem=getMember(s.requestedBy);
-    h += `<div class="swap-card swap-in">
-      <div class="swap-top"><span class="swap-badge">Pedido de troca</span></div>
-      <div class="swap-body"><b>${esc(quem?quem.name.split(" ")[0]:"Alguém")}</b> quer que você cubra:
-        <div class="swap-line">${swapDesc(s)}</div>
-        ${s.note?`<div class="swap-note">"${esc(s.note)}"</div>`:""}</div>
-      <div class="swap-actions">
-        <button class="btn btn-primary" data-action="swap-accept" data-id="${s.id}">Aceitar</button>
-        <button class="btn btn-ghost" data-action="swap-decline" data-id="${s.id}">Recusar</button>
-        ${quem&&quem.phone?`<button class="btn btn-wa" data-action="swap-wa" data-id="${s.id}">WhatsApp</button>`:""}
-      </div></div>`;
-  });
-  // 2) SEUS pedidos (aguardando o colega)
-  const meus = me ? DB.swaps.filter(s=>s.status==="open" && s.requestedBy===me) : [];
-  meus.forEach(s=>{
-    const alvo=getMember(s.targetId);
-    h += `<div class="swap-card">
-      <div class="swap-top"><span class="swap-badge wait">Aguardando troca</span></div>
-      <div class="swap-body">Você pediu troca: <div class="swap-line">${swapDesc(s)}</div>
-        ${alvo?`Aguardando <b>${esc(alvo.name.split(" ")[0])}</b> confirmar.`:""}</div>
-      <div class="swap-actions">
-        ${alvo&&alvo.phone?`<button class="btn btn-wa" data-action="swap-wa" data-id="${s.id}">Lembrar no WhatsApp</button>`:""}
-        <button class="btn btn-ghost" data-action="swap-cancel" data-id="${s.id}">Cancelar</button>
-      </div></div>`;
-  });
-  // 3) LÍDER: trocas nas suas áreas (só aviso)
+  const me=myMemberId();
+  let mine="";   // pedidos pra mim + meus pedidos
+  if(me){
+    DB.swaps.filter(s=>s.status==="open" && s.targetId===me).forEach(s=>{
+      const quem=getMember(s.requestedBy);
+      mine += `<div class="swap-card swap-in">
+        <div class="swap-top"><span class="swap-badge">Pedido de troca</span></div>
+        <div class="swap-body"><b>${esc(quem?quem.name.split(" ")[0]:"Alguém")}</b> quer que você cubra:
+          <div class="swap-line">${swapDesc(s)}</div>
+          ${s.note?`<div class="swap-note">"${esc(s.note)}"</div>`:""}</div>
+        <div class="swap-actions">
+          <button class="btn btn-primary" data-action="swap-accept" data-id="${s.id}">Aceitar</button>
+          <button class="btn btn-ghost" data-action="swap-decline" data-id="${s.id}">Recusar</button>
+          ${quem&&quem.phone?`<button class="btn btn-wa" data-action="swap-wa" data-id="${s.id}">WhatsApp</button>`:""}
+        </div></div>`;
+    });
+    DB.swaps.filter(s=>s.status==="open" && s.requestedBy===me).forEach(s=>{
+      const alvo=getMember(s.targetId);
+      mine += `<div class="swap-card">
+        <div class="swap-top"><span class="swap-badge wait">Aguardando troca</span></div>
+        <div class="swap-body">Você pediu troca: <div class="swap-line">${swapDesc(s)}</div>
+          ${alvo?`Aguardando <b>${esc(alvo.name.split(" ")[0])}</b> confirmar.`:""}</div>
+        <div class="swap-actions">
+          ${alvo&&alvo.phone?`<button class="btn btn-wa" data-action="swap-wa" data-id="${s.id}">Lembrar no WhatsApp</button>`:""}
+          <button class="btn btn-ghost" data-action="swap-cancel" data-id="${s.id}">Cancelar</button>
+        </div></div>`;
+    });
+  }
+  // admin: trocas de TODAS as áreas | líder: só as áreas dele (realizadas e pendentes, futuras)
+  let area="";
   if(isLeader()){
-    const daArea = DB.swaps.filter(s=>canEditRoom(s.roomId) && s.requestedBy!==me && s.targetId!==me && (s.status==="open"||s.status==="accepted"));
-    daArea.forEach(s=>{
+    const todayS=ymd(today());
+    const scope=DB.swaps.filter(s=> s.requestedBy!==me && s.targetId!==me
+        && (isAdmin() || canEditRoom(s.roomId))
+        && (s.status==="open"||s.status==="accepted")
+        && (s.occDate||"")>=todayS)
+      .sort((a,b)=>(a.occDate||"")<(b.occDate||"")?-1:1);
+    scope.forEach(s=>{
       const a=getMember(s.requestedBy), b=getMember(s.targetId);
-      const done = s.status==="accepted";
-      h += `<div class="swap-card">
-        <div class="swap-top"><span class="swap-badge ${done?"done":"wait"}">${done?"Troca feita":"Troca pendente"}</span></div>
+      const done=s.status==="accepted";
+      area += `<div class="swap-card">
+        <div class="swap-top"><span class="swap-badge ${done?"done":"wait"}">${done?"Troca realizada":"Troca pendente"}</span></div>
         <div class="swap-body">${done
           ? `<b>${esc(b?b.name.split(" ")[0]:"—")}</b> entrou no lugar de <b>${esc(a?a.name.split(" ")[0]:"—")}</b>:`
           : `<b>${esc(a?a.name.split(" ")[0]:"—")}</b> pediu troca${b?` com <b>${esc(b.name.split(" ")[0])}</b>`:""}:`}
           <div class="swap-line">${swapDesc(s)}</div></div></div>`;
     });
   }
-  if(!h) return "";
-  return `<div class="section-label" style="margin-top:4px">Trocas</div>`+h;
+  let out="";
+  if(mine) out += `<div class="section-label" style="margin-top:4px">Trocas</div>`+mine;
+  if(area) out += `<div class="section-label"${mine?"":' style="margin-top:4px"'}>${isAdmin()?"Trocas no ministério":"Trocas nas suas áreas"}</div>`+area;
+  return out;
 }
 function openSwapRequest(occKey, roomId, role){
   const me=getMember(DB.settings.meId);
