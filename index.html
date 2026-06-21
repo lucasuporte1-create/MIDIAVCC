@@ -632,6 +632,11 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .brand-logo{ height:30px; width:auto; flex:0 0 auto; display:block; }
 .brand-logo-corner{ position:absolute; top:16px; right:16px; height:40px; z-index:5; }
 
+/* ---------- Vídeos recentes (YouTube incorporado) ---------- */
+.yt-wrap{ position:relative; width:100%; padding-top:56.25%; border-radius:14px;
+  overflow:hidden; border:1px solid var(--line); background:#000; margin-bottom:6px; }
+.yt-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+
   </style>
 </head>
 <body>
@@ -1281,8 +1286,24 @@ function renderHome(c){
   });
   } // fim do bloco admin/líder
 
+  html += videosSectionHtml();
+
   c.innerHTML = html;
   ensureVerseOfDay();
+}
+
+/* ---------------- Vídeos recentes do canal (incorporado, sem API) ---------------- */
+const YT_UPLOADS = "UU9oRit-95mJyOXzHevacKww";       // playlist de uploads do canal
+const YT_CHANNEL = "https://www.youtube.com/@verbocasacaiada";
+function videosSectionHtml(){
+  return `<div class="section-label" style="margin-top:18px">Vídeos recentes
+      <a class="link" href="${YT_CHANNEL}" target="_blank" rel="noopener">Ver canal</a></div>
+    <div class="yt-wrap">
+      <iframe src="https://www.youtube-nocookie.com/embed/videoseries?list=${YT_UPLOADS}&rel=0&modestbranding=1"
+        title="Vídeos recentes — Verbo Casa Caiada" loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>`;
 }
 
 /* ---------------- Home do voluntário (pessoal, sem panorama de áreas) ---------------- */
