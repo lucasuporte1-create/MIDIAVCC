@@ -905,6 +905,13 @@ const Data = {
       if(data){ const map={}; data.forEach(r=>{ if(r.photo) map[r.occ_key]=r.photo; }); DB.occPhotos=map;
         if(typeof currentView!=="undefined" && currentView) try{ go(currentView); }catch(e){} }
     }).catch(()=>{});
+    // configurações compartilhadas (frases da mensagem)
+    sb.from("app_settings").select("key,value").then(({data})=>{
+      if(data){ data.forEach(r=>{
+        if(r.key==="msg_arrival") DB.settings.msgArrival=r.value||"";
+        if(r.key==="msg_dress")   DB.settings.msgDress=r.value||"";
+      }); save(); }
+    }).catch(()=>{});
     if(!DB.rooms.length && isAdmin()) await this.seedDefaults();
     this.loadPhotos();   // fotos carregam em segundo plano (não trava a entrada)
   },
@@ -1058,6 +1065,10 @@ const Data = {
       else await sbErr(sb.from("occ_photos").delete().eq("occ_key",key), "remover foto");
     }
     save();
+  },
+  async saveAppSetting(key, value){
+    if(CLOUD) await sbErr(sb.from("app_settings").upsert({key, value, updated_at:new Date().toISOString()}), "salvar configuração");
+    save();
   }
 };
 function mapSwapRow(d){
@@ -1085,6 +1096,10 @@ function load(){
 function migrate(db){
   if(db && !Array.isArray(db.swaps)) db.swaps = [];
   if(db && (!db.occPhotos || typeof db.occPhotos!=="object")) db.occPhotos = {};
+  if(db && db.settings){
+    if(db.settings.msgArrival===undefined) db.settings.msgArrival="Chegar uma hora antes do culto";
+    if(db.settings.msgDress===undefined)   db.settings.msgDress="Devidamente padronizado, ou all black";
+  }
   if(db && db.schedules){
     for(const k in db.schedules){
       const rooms = db.schedules[k];
@@ -1149,7 +1164,9 @@ function seed(){
   ];
   return {
     settings:{ church:"Verbo Casa Caiada", dept:"Departamento de Mídia",
-               notify:false, reminderTime:"08:00", meId:"", role:"lider" },
+               notify:false, reminderTime:"08:00", meId:"", role:"lider",
+               msgArrival:"Chegar uma hora antes do culto",
+               msgDress:"Devidamente padronizado, ou all black" },
     rooms, services, members,
     events:[],          // eventos pontuais {id,date,title,time,note}
     schedules:{},       // { occKey: { roomId: [memberId,...] } }
@@ -2114,6 +2131,18 @@ function renderConfig(c){
       <div class="hint" style="margin-top:8px">O calendário do celular avisa sozinho na véspera e no dia — funciona como uma notificação, mesmo com o app fechado. Refaça depois de mudar a escala.</div>
     </div>`;
 
+  // Mensagem automática aos escalados (líderes e admin)
+  if(isLeader()){
+    html += `<div class="section-label">Mensagem aos escalados</div>
+      <div class="card" style="padding:16px">
+        <div class="field"><label>⏰ Horário de chegada</label>
+          <input id="cfgArrival" value="${esc(DB.settings.msgArrival||"")}" placeholder="Ex.: Chegar uma hora antes do culto"></div>
+        <div class="field" style="margin-bottom:0"><label>👕 Vestimenta</label>
+          <input id="cfgDress" value="${esc(DB.settings.msgDress||"")}" placeholder="Ex.: Devidamente padronizado, ou all black"></div>
+        <div class="hint" style="margin-top:8px">Essas linhas entram na mensagem enviada aos escalados pelo WhatsApp. Deixe em branco para não incluir.</div>
+      </div>`;
+  }
+
   if(leader){
   // Salas
   html += `<div class="section-label">Áreas <span class="link" data-action="new-room">+ Nova área</span></div>`;
@@ -2175,6 +2204,16 @@ function renderConfig(c){
       save(); toast("Salvo","good");
     });
   });
+  // autosave das frases da mensagem (compartilhado entre líderes via Supabase)
+  [["cfgArrival","msgArrival","msg_arrival"],["cfgDress","msgDress","msg_dress"]].forEach(([id,prop,key])=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.addEventListener("change", async ()=>{
+      DB.settings[prop]=el.value.trim();
+      try{ await Data.saveAppSetting(key, DB.settings[prop]); toast("Salvo","good"); }
+      catch(e){ save(); toast("Salvo neste aparelho (sem internet para sincronizar)","warn"); }
+    });
+  });
+
   const meSel=document.getElementById("cfgMe");
   if(meSel) meSel.addEventListener("change",async e=>{
     DB.settings.meId = e.target.value; save(); toast(e.target.value?"Pronto! Vamos te lembrar.":"Removido","good");
@@ -2804,7 +2843,10 @@ function waSchedule(key, occ){
     btn.addEventListener("click",()=>{
       const m=getMember(btn.dataset.waOne); const r=getRoom(btn.dataset.room);
       const role=memberRoleInRoom(key, btn.dataset.room, btn.dataset.waOne)||"Voluntário";
-      const msg = `Oi ${m.name.split(" ")[0]}! 💙 Lembrete da escala do ${DB.settings.dept}:\n\n📅 ${fmtLong(occ.date)}\n⛪ ${occ.title}${occ.time?" às "+occ.time:""}\n📍 Área: ${r.name}\n🙋 Função: ${role}\n\nConto com você! Deus abençoe.`;
+      const arrival=(DB.settings.msgArrival||"").trim(), dress=(DB.settings.msgDress||"").trim();
+      const extras=[]; if(arrival) extras.push("⏰ "+arrival); if(dress) extras.push("👕 "+dress);
+      const extra = extras.length ? "\n\n"+extras.join("\n") : "";
+      const msg = `Oi ${m.name.split(" ")[0]}! 💙 Lembrete da escala do ${DB.settings.dept}:\n\n📅 ${fmtLong(occ.date)}\n⛪ ${occ.title}${occ.time?" às "+occ.time:""}\n📍 Área: ${r.name}\n🙋 Função: ${role}${extra}\n\nConto com você! Deus abençoe.`;
       window.open(`https://wa.me/${cleanPhone(m.phone)}?text=${encodeURIComponent(msg)}`,"_blank");
     });
   });
