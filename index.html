@@ -1482,23 +1482,29 @@ function swapsHomeHtml(){
     });
   }
   // admin: trocas de TODAS as áreas | líder: só as áreas dele (realizadas e pendentes)
-  let area="";
-  if(isLeader()){
-    const scope=DB.swaps.filter(s=> s.requestedBy!==me && s.targetId!==me
-        && (isAdmin() || canEditRoom(s.roomId))
-        && (s.status==="open"||s.status==="accepted"))
-      .sort((a,b)=>(a.occDate||"")<(b.occDate||"")?-1:1);
-    scope.forEach(s=>{
-      const a=getMember(s.requestedBy), b=getMember(s.targetId);
-      const done=s.status==="accepted";
-      area += `<div class="swap-card ${done?"swap-done":""}">
-        <div class="swap-top"><span class="swap-badge ${done?"done":"wait"}">${done?"Troca realizada":"Troca pendente"}</span></div>
-        <div class="swap-body">${done
-          ? `<b>${esc(b?b.name.split(" ")[0]:"—")}</b> entrou no lugar de <b>${esc(a?a.name.split(" ")[0]:"—")}</b>:`
-          : `<b>${esc(a?a.name.split(" ")[0]:"—")}</b> pediu troca${b?` com <b>${esc(b.name.split(" ")[0])}</b>`:""}:`}
-          <div class="swap-line">${swapDesc(s)}</div></div></div>`;
-    });
-  }
+let area = "";
+if(isLeader()){
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const scope = DB.swaps.filter(s => s.requestedBy !== me && s.targetId !== me
+    && (isAdmin() || canEditRoom(s.roomId))
+    && (s.status === "open" || s.status === "accepted")
+    && new Date(s.occDate) >= hoje  // ← filtra cultos que ainda não passaram
+  )
+  .sort((a,b) => (a.occDate||"") < (b.occDate||"") ? -1 : 1);
+
+  scope.forEach(s => {
+    const a = getMember(s.requestedBy), b = getMember(s.targetId);
+    const done = s.status === "accepted";
+    area += `<div class="swap-card ${done ? "swap-done" : ""}">
+      <div class="swap-top"><span class="swap-badge ${done ? "done" : "wait"}">${done ? "Troca realizada" : "Troca pendente"}</span></div>
+      <div class="swap-body">${done
+        ? `<b>${esc(b.name.split(" ")[0])}</b> entrou no lugar de <b>${esc(a.name.split(" ")[0])}</b>:`
+        : `<b>${esc(a.name.split(" ")[0])}</b> pediu troca<b>${b}</b> com <b>${esc(b.name.split(" ")[0])}</b>::`}
+        <div class="swap-line">${swapDesc(s)}</div></div></div>`;
+  });
+}
   let out="";
   if(mine) out += `<div class="section-label" style="margin-top:4px">Trocas</div>`+mine;
   if(area) out += `<div class="section-label"${mine?"":' style="margin-top:4px"'}>${isAdmin()?"Trocas no ministério":"Trocas nas suas áreas"}</div>`+area;
