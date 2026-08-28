@@ -1490,7 +1490,7 @@ if(isLeader()){
   const scope = DB.swaps.filter(s => s.requestedBy !== me && s.targetId !== me
     && (isAdmin() || canEditRoom(s.roomId))
     && (s.status === "open" || s.status === "accepted")
-    && new Date(s.occDate) >= hoje  // ← filtra cultos que ainda não passaram
+    && new Date(s.occDate + "T00:00:00") >= hoje  // ← filtra cultos que ainda não passaram
   )
   .sort((a,b) => (a.occDate||"") < (b.occDate||"") ? -1 : 1);
 
