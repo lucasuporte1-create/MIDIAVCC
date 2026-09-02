@@ -1399,7 +1399,12 @@ function renderHome(c){
         ? `<span class="dot"></span>${n}`
         : `<span class="x-mark" title="Sem escala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>`;
       html += `<div class="room list-tap" data-action="open-occ" data-key="${o.key}">
-        <div class="room-ico" style="background:${o.color}22;color:${o.color}">${o.type==="evento"?"🎉":"⛪"}</div>
+        "<div class="room-ico" style="background:${o.color}22;color:${o.color};overflow:hidden;padding:0">
+  ${o.photo
+    ? `<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`
+    : (o.type==="evento"?"🎉":"⛪")
+  }
+</div>
         <div class="room-info"><div class="room-name">${esc(o.title)}</div>
           <div class="room-age">${fmtShort(o.date)} ${o.time?"• "+o.time:""}</div></div>
         <div class="room-count">${status}</div>
