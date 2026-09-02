@@ -1417,6 +1417,7 @@ function renderHome(c){
   // Salas resumo
   html += `<div class="section-label">Áreas <span class="link" data-action="goto" data-view="config">Editar</span></div>`;
   DB.rooms.forEach(r=>{
+
     const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
     html += `<div class="room">
       <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
@@ -1959,7 +1960,12 @@ function renderEscala(c){
         const sched=schedFor(o.key); const n=assignedCount(o.key);
         const mineHere = me && occHasMember(o.key, me.id);
         html += `<div class="sched-room" style="border-left:4px solid ${o.color}${mineHere?";background:var(--good-soft)":""}">
-          <div class="room-ico" style="background:${o.color}22;color:${o.color}">${o.type==="evento"?"🎉":"⛪"}</div>
+          <div class="room-ico" style="background:${o.color}22;color:${o.color};overflow:hidden;padding:0">
+  ${o.photo
+    ? `<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`
+    : (o.type==="evento"?"🎉":"⛪")
+  }
+</div>
           <div class="sched-room-names"><div class="sched-room-title">${esc(o.title)} ${o.time?"<span class='sched-when'>• "+o.time+"</span>":""} ${mineHere?"<span class='chip good'>você</span>":""}</div>
             ${n? n+" escalado(s)" : (leader?"Sem escala":"Aguardando escala")}</div>
           <button class="btn btn-ghost" data-action="open-occ" data-key="${o.key}" style="padding:8px 14px;font-size:13px">${leader?(n?"Editar":"Montar"):"Ver"}</button>
