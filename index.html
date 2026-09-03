@@ -1414,17 +1414,8 @@ function renderHome(c){
     html += `<p class="muted-txt" style="text-align:center;padding:14px">Nenhum culto nos próximos dias.</p>`;
   }
 
-  // Salas resumo
-  html += `<div class="section-label">Áreas <span class="link" data-action="goto" data-view="config">Editar</span></div>`;
-  DB.rooms.forEach(r=>{
-
-    const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
-    html += `<div class="room">
-      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
-      <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
-      <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
-    </div>`;
-  });
+    // Salas resumo
+  html += renderAreasSection(true);
   } // fim do bloco admin/líder
 
   html += videosSectionHtml();
@@ -1788,10 +1779,14 @@ function renderVolunteerHome(me, t, todayStr, occs){
         </div>`;
       });
     }
-  } else {
+    } else {
     h += `<div class="today" style="margin-top:14px"><div class="today-empty">Você não tem escalas marcadas no momento. 🙌</div></div>`;
   }
+
+  h += renderAreasSection(false);
+
   return h;
+}
 }
 
 // próximas escalas do voluntário logado (ordenadas por data)
