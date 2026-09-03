@@ -1391,7 +1391,7 @@ function renderHome(c){
 
   // Próximos cultos
   const up = upcomingOccs(14).slice(0,4);
-  const leader = me && me.isLeader();
+  const leader = !vol;
 
   html += `<div class="section-label">Próximos cultos <span class="link" data-action="goto" data-view="escala">Ver escala</span></div>`;
   if(up.length){
