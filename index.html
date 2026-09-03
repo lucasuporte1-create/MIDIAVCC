@@ -1390,43 +1390,44 @@ function renderHome(c){
   </div>`;
 
   // Próximos cultos
-const up = upcomingOccs(14).slice(0,4);
-const leader = me && me.isLeader();
+  const up = upcomingOccs(14).slice(0,4);
+  const leader = me && me.isLeader();
 
-html += `<div class="section-label">Próximos cultos <span class="link" data-action="goto" data-view="escala">Ver escala</span></div>`;
-if(up.length){
-  up.forEach(o=>{
-    const n = assignedCount(o.key);
-    const status = n>0
-      ? `<span class="dot"></span>${n}`
-      : `<span class="x-mark" title="Sem escala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>`;
-    html += `<div class="room ${leader ? 'list-tap' : ''}" ${leader ? `data-action="open-occ" data-key="${o.key}"` : ''}>
-      <div class="room-ico" style="background:${o.color}22;color:${o.color};overflow:hidden;padding:0">
-        ${o.photo
-          ? `<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`
-          : (o.type==="evento"?"🎉":"⛪")
-        }
-      </div>
-      <div class="room-info"><div class="room-name">${esc(o.title)}</div>
-        <div class="room-age">${fmtShort(o.date)} ${o.time?"• "+o.time:""}</div></div>
-      <div class="room-count">${status}</div>
+  html += `<div class="section-label">Próximos cultos <span class="link" data-action="goto" data-view="escala">Ver escala</span></div>`;
+  if(up.length){
+    up.forEach(o=>{
+      const n = assignedCount(o.key);
+      const status = n>0
+        ? `<span class="dot"></span>${n}`
+        : `<span class="x-mark" title="Sem escala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>`;
+      html += `<div class="room ${leader ? 'list-tap' : ''}" ${leader ? `data-action="open-occ" data-key="${o.key}"` : ''}>
+        <div class="room-ico" style="background:${o.color}22;color:${o.color};overflow:hidden;padding:0">
+          ${o.photo
+            ? `<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`
+            : (o.type==="evento"?"🎉":"⛪")
+          }
+        </div>
+        <div class="room-info"><div class="room-name">${esc(o.title)}</div>
+          <div class="room-age">${fmtShort(o.date)} ${o.time?"• "+o.time:""}</div></div>
+        <div class="room-count">${status}</div>
+      </div>`;
+    });
+  } else {
+    html += `<p class="muted-txt" style="text-align:center;padding:14px">Nenhum culto nos próximos dias.</p>`;
+  }
+
+  // Áreas — todos veem, mas "Editar" só aparece para líderes
+  html += `<div class="section-label">Áreas ${leader ? '<span class="link" data-action="goto" data-view="config">Editar</span>' : ''}</div>`;
+  DB.rooms.forEach(r=>{
+    const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
+    html += `<div class="room">
+      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
+      <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
+      <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
     </div>`;
   });
-} else {
-  html += `<p class="muted-txt" style="text-align:center;padding:14px">Nenhum culto nos próximos dias.</p>`;
-}
 
-// Áreas — todos veem, mas "Editar" só aparece para líderes
-html += `<div class="section-label">Áreas ${leader ? '<span class="link" data-action="goto" data-view="config">Editar</span>' : ''}</div>`;
-DB.rooms.forEach(r=>{
-  const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
-  html += `<div class="room">
-    <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
-    <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
-    <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
-  </div>`;
-});
-  }
+  } // fecha o else
 
   html += videosSectionHtml();
 
