@@ -2976,22 +2976,27 @@ async function registerPushToken(){
     if(!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     const reg = await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if(!sub){
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      });
-    }
+    
+    // Força cancelamento da subscription antiga
+    const oldSub = await reg.pushManager.getSubscription();
+    if(oldSub) await oldSub.unsubscribe();
+    
+    // Cria nova subscription
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    
     const token = JSON.stringify(sub);
+    
     // Salva no Supabase se logado
     if(CLOUD && sb){
       const { data:{ user } } = await sb.auth.getUser();
       if(user){
         await sb.from("profiles").update({ push_token: token }).eq("id", user.id);
+        console.log("Token salvo no Supabase:", token.substring(0,50));
       }
     }
-    // Salva local também
     localStorage.setItem("push_token", token);
   } catch(e){
     console.warn("Push token não registrado:", e.message);
