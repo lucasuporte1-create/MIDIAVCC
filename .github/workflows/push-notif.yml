@@ -2,8 +2,8 @@ name: Send Push Notifications
 
 on:
   schedule:
-    - cron: '0 11 * * *'  # Todo dia às 8h de Brasília
-  workflow_dispatch:        # Permite rodar manualmente também
+    - cron: '0 10 * * *'   # Todo dia às 7h de Brasília (véspera e dia)
+  workflow_dispatch:
 
 jobs:
   notify:
