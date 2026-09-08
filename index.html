@@ -2472,13 +2472,14 @@ function editMember(mid){
     try{ await Data.saveMember(member, !mid); closeModal(); go("membros"); toast(mid?"Pessoa atualizada":"Pessoa cadastrada","good"); }
     catch(e){ btn.disabled=false; btn.textContent=o; toast("Não salvou — "+e.message,"warn"); }
   });
-  const mDelBtn = document.getElementById("mDelete");
-if(mid && mDelBtn) mDelBtn.addEventListener("click", async ()=>{
-  confirmModal("Excluir esta pessoa? Ela sairá das escalas futuras.", async ()=>{
-    try{ await Data.deleteMember(mid); closeModal(); go("membros"); toast("Pessoa removida","good"); }
-    catch(e){ toast("Não removeu — "+e.message,"warn"); }
+    const mDelBtn = document.getElementById("mDelete");
+  if(mid && mDelBtn) mDelBtn.addEventListener("click", ()=>{
+    confirmModal("Excluir esta pessoa? Ela sairá das escalas futuras.", async ()=>{
+      try{ await Data.deleteMember(mid); closeModal(); go("membros"); toast("Pessoa removida","good"); }
+      catch(e){ toast("Não removeu — "+e.message,"warn"); }
+    });
   });
-}) ;
+} // fecha editMember
 
 /* ---------- Modal: Ver membro ---------- */
 function openMember(mid){
@@ -3265,8 +3266,9 @@ function wireLogin(){
   else showLogin();
 })();
 
+
 /* Versão arquivo único: sem service worker */
 
-  </script>
+</script>
 </body>
 </html>
