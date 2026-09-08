@@ -2478,7 +2478,7 @@ if(mid && mDelBtn) mDelBtn.addEventListener("click", async ()=>{
     try{ await Data.deleteMember(mid); closeModal(); go("membros"); toast("Pessoa removida","good"); }
     catch(e){ toast("Não removeu — "+e.message,"warn"); }
   });
-}
+}) ;
 
 /* ---------- Modal: Ver membro ---------- */
 function openMember(mid){
