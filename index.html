@@ -2351,6 +2351,20 @@ function closeModal(){ document.getElementById("modalBackdrop").hidden = true; }
 document.getElementById("modalClose").addEventListener("click", closeModal);
 document.getElementById("modalBackdrop").addEventListener("click", e=>{ if(e.target.id==="modalBackdrop") closeModal(); });
 
+function confirmModal(message, onConfirm){
+  const body = `<p style="margin:0;font-size:15px;color:var(--ink);line-height:1.5">${message}</p>`;
+  const foot = `
+    <button class="btn btn-ghost" id="confirmCancel" style="flex:1">Cancelar</button>
+    <button class="btn" id="confirmOk" style="flex:1;background:#ef4444;color:#fff;border:none">Excluir</button>
+  `;
+  openModal("Confirmar exclusão", body, foot);
+  document.getElementById("confirmCancel").addEventListener("click", closeModal);
+  document.getElementById("confirmOk").addEventListener("click", ()=>{
+    closeModal();
+    onConfirm();
+  });
+}
+
 /* ---------- Modal: Membro (cadastro/edição) ---------- */
 function editMember(mid){
   const m = mid ? getMember(mid) : {name:"",phone:"",role:"",roomIds:[],active:true,notes:"",photo:"",training:false};
@@ -2459,8 +2473,8 @@ function editMember(mid){
     catch(e){ btn.disabled=false; btn.textContent=o; toast("Não salvou — "+e.message,"warn"); }
   });
   const mDelBtn = document.getElementById("mDelete");
-  if(mid && mDelBtn) mDelBtn.addEventListener("click", async ()=>{
-    if(!confirm("Excluir esta pessoa? Ela sairá das escalas futuras.")) return;
+if(mid && mDelBtn) mDelBtn.addEventListener("click", async ()=>{
+  confirmModal("Excluir esta pessoa? Ela sairá das escalas futuras.", async ()=>{
     try{ await Data.deleteMember(mid); closeModal(); go("membros"); toast("Pessoa removida","good"); }
     catch(e){ toast("Não removeu — "+e.message,"warn"); }
   });
@@ -2647,7 +2661,7 @@ function editEvent(eid, presetDate){
     catch(e){ toast("Não salvou — "+e.message,"warn"); }
   });
   if(eid) document.getElementById("eDelete").addEventListener("click", async ()=>{
-    if(!confirm("Excluir este evento?")) return;
+  confirmModal("Excluir este evento?", async ()=>{
     try{ await Data.deleteEvent(eid); closeModal(); go("calendario"); toast("Evento removido","good"); }
     catch(e){ toast("Não removeu — "+e.message,"warn"); }
   });
