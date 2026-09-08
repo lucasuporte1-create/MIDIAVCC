@@ -1421,7 +1421,7 @@ function renderHome(c){
   DB.rooms.forEach(r=>{
     const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
     html += `<div class="room">
-      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
+      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomSvgIcon(r.name)}</div>
       <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
       <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
     </div>`;
@@ -1824,7 +1824,7 @@ function renderVolunteerHome(me, t, todayStr, occs){
   DB.rooms.forEach(r=>{
     const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
     h += `<div class="room">
-      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
+      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomSvgIcon(r.name)}</div>
       <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
       <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
     </div>`;
@@ -2205,7 +2205,7 @@ function renderConfig(c){
   html += `<div class="section-label">Áreas <span class="link" data-action="new-room">+ Nova área</span></div>`;
   DB.rooms.forEach(r=>{
     html += `<div class="room list-tap" data-action="edit-room" data-id="${r.id}">
-      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
+      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomSvgIcon(r.name)}</div>
       <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)} • 1 responsável + 2 auxiliares</div></div>
       <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--ink-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 18l6-6-6-6"/></svg>
     </div>`;
@@ -2340,6 +2340,17 @@ document.addEventListener("click", e=>{
 /* =====================================================================
    MODAL
    ===================================================================== */
+function roomSvgIcon(name){
+  const n = name.toLowerCase();
+  if(n.includes("transmiss"))  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a7 7 0 0 1 14 0"/><path d="M2 10a10 10 0 0 1 20 0"/><circle cx="12" cy="16" r="2"/><line x1="12" y1="18" x2="12" y2="21"/></svg>`;
+  if(n.includes("proje"))      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M12 3v4M8 3h8"/><circle cx="12" cy="13" r="3"/></svg>`;
+  if(n.includes("som"))        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21h6M8 17c0 0-3-2-3-6a7 7 0 0 1 14 0c0 4-3 6-3 6"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+  if(n.includes("ilumina"))    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21h6M12 3a6 6 0 0 1 6 6c0 2.5-1.5 4.5-3 6H9c-1.5-1.5-3-3.5-3-6a6 6 0 0 1 6-6z"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
+  if(n.includes("foto"))       return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+  if(n.includes("v") && (n.includes("deo") || n.includes("ídeo"))) return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="15" height="12" rx="2"/><path d="M17 10l5-3v10l-5-3V10z"/></svg>`;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+}
+
 function openModal(title, bodyHtml, footHtml){
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalBody").innerHTML = bodyHtml;
@@ -2472,14 +2483,14 @@ function editMember(mid){
     try{ await Data.saveMember(member, !mid); closeModal(); go("membros"); toast(mid?"Pessoa atualizada":"Pessoa cadastrada","good"); }
     catch(e){ btn.disabled=false; btn.textContent=o; toast("Não salvou — "+e.message,"warn"); }
   });
-    const mDelBtn = document.getElementById("mDelete");
-  if(mid && mDelBtn) mDelBtn.addEventListener("click", ()=>{
-    confirmModal("Excluir esta pessoa? Ela sairá das escalas futuras.", async ()=>{
-      try{ await Data.deleteMember(mid); closeModal(); go("membros"); toast("Pessoa removida","good"); }
-      catch(e){ toast("Não removeu — "+e.message,"warn"); }
-    });
+  const mDelBtn = document.getElementById("mDelete");
+  if(mid && mDelBtn) mDelBtn.addEventListener("click", async ()=>{
+  confirmModal("Excluir esta pessoa? Ela sairá das escalas futuras.", async ()=>{
+    try{ await Data.deleteMember(mid); closeModal(); go("membros"); toast("Pessoa removida","good"); }
+    catch(e){ toast("Não removeu — "+e.message,"warn"); }
   });
-} // fecha editMember
+}) ;
+}
 
 /* ---------- Modal: Ver membro ---------- */
 function openMember(mid){
@@ -2667,7 +2678,6 @@ function editEvent(eid, presetDate){
     catch(e){ toast("Não removeu — "+e.message,"warn"); }
   });
 });
-}
 
 /* ---------- Escolher culto/evento para montar escala ---------- */
 function pickOccForSchedule(){
@@ -2704,7 +2714,7 @@ function openSchedule(key){
       const count=(slot.lider?1:0)+slot.monitores.length;
       const editable=canEditRoom(r.id);
       const header=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-          <div class="room-ico" style="width:38px;height:38px;border-radius:11px;font-size:18px;background:${r.bg};color:${r.fg}">${r.emoji}</div>
+          <div class="room-ico" style="width:38px;height:38px;border-radius:11px;background:${r.bg};color:${r.fg}">${roomSvgIcon(r.name)}</div>
           <div style="flex:1"><div class="room-name" style="font-size:14.5px">${esc(r.name)}</div>
             <div class="room-age">${count}/3 ${count===3?"✓":""}${editable?"":' • <span style="color:var(--ink-faint)">🔒 outra área</span>'}</div></div>
         </div>`;
@@ -2860,7 +2870,7 @@ function openScheduleReadOnly(key, occ){
       return `<span class="chip ${me&&id===me.id?"good":""}" style="margin:2px 4px 2px 0">${ava(p.name,p.id,"width:22px;height:22px;font-size:10px;margin-right:4px")}${isLeader?"★ ":""}${esc(p.name)}</span>`; };
     body += `<div class="card" style="padding:13px;margin-bottom:11px${mineHere?";border-color:#BFE9D7;background:var(--good-soft)":""}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div class="room-ico" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:${r.bg};color:${r.fg}">${r.emoji}</div>
+        <div class="room-ico" style="width:34px;height:34px;border-radius:10px;background:${r.bg};color:${r.fg}">${roomSvgIcon(r.name)}</div>
         <div class="room-name" style="font-size:14.5px">${esc(r.name)} ${mineHere?"<span class='chip good'>você</span>":""}</div>
       </div>
       <div style="font-size:11.5px;font-weight:700;color:var(--ink-faint);margin-bottom:3px">RESPONSÁVEL</div>
