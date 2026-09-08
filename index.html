@@ -2665,7 +2665,7 @@ function editEvent(eid, presetDate){
     try{ await Data.deleteEvent(eid); closeModal(); go("calendario"); toast("Evento removido","good"); }
     catch(e){ toast("Não removeu — "+e.message,"warn"); }
   });
-}
+});
 
 /* ---------- Escolher culto/evento para montar escala ---------- */
 function pickOccForSchedule(){
