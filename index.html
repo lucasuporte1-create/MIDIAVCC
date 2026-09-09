@@ -1568,20 +1568,6 @@ function renderHome(c){
 
   } // fecha o else
 
-  // Áreas — todos veem, clicáveis para todos
-  html += `<div class="section-label">Áreas ${isLeader() ? '<span class="link" data-action="goto" data-view="config">Editar</span>' : ''}</div>`;
-  DB.rooms.forEach(r=>{
-    const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
-    html += `<div class="room list-tap" data-action="open-area" data-room-id="${r.id}" style="cursor:pointer">
-      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
-      <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
-      <div class="room-count">
-        <span class="chip muted">${qtd} aptos</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--ink-faint);margin-left:4px"><path d="M9 18l6-6-6-6"/></svg>
-      </div>
-    </div>`;
-  });
-
   html += videosSectionHtml();
 
   c.innerHTML = html;
