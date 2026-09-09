@@ -948,7 +948,7 @@ const Data = {
     ]);
     for(const r of [rooms,services,events,members,mrooms,assigns]) if(r.error) throw new Error(r.error.message);
 
-    DB.rooms = (rooms.data||[]).map(r=>({id:r.id,name:r.name,age:r.age||"",emoji:r.emoji||"⭐",bg:r.bg||"#EAF4FC",fg:r.fg||"#2E86D6",need:3,sort:r.sort||0}))
+    DB.rooms = (rooms.data||[]).map(r=>({id:r.id,name:r.name,age:r.age||"",emoji:r.emoji||"estrela",bg:r.bg||"#EAF4FC",fg:r.fg||"#2E86D6",need:3,sort:r.sort||0}))
       .sort((a,b)=>(a.sort||0)-(b.sort||0));
     DB.services = (services.data||[]).map(s=>({id:s.id,name:s.name,weekday:s.weekday,time:s.time||"",color:s.color||"#4DA3E8"}));
     DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||"",photo:"",color:e.color||"#FF8A1E"}));
@@ -1209,12 +1209,12 @@ function uid(){
 /* ---------------- Dados iniciais ---------------- */
 function seed(){
   const rooms = [
-    {id:uid(), name:"Transmissão", age:"Live / streaming",     emoji:"📡", bg:"#FF6B6B26", fg:"#FF6B6B", need:3},
-    {id:uid(), name:"Projeção",    age:"Slides / letras",      emoji:"📽️", bg:"#5AA9F026", fg:"#5AA9F0", need:3},
-    {id:uid(), name:"Som",         age:"Mesa / áudio",         emoji:"🎚️", bg:"#4CC38A26", fg:"#4CC38A", need:3},
-    {id:uid(), name:"Iluminação",  age:"Luzes / cenário",      emoji:"💡", bg:"#FFB23D26", fg:"#FFB23D", need:3},
-    {id:uid(), name:"Fotografia",  age:"Fotos do culto",       emoji:"📸", bg:"#B98BE626", fg:"#B98BE6", need:3},
-    {id:uid(), name:"Vídeos",      age:"Captação / edição",    emoji:"🎬", bg:"#45C7D626", fg:"#45C7D6", need:3},
+    {id:uid(), name:"Transmissão", age:"Live / streaming",     emoji:"antena", bg:"#FF6B6B26", fg:"#FF6B6B", need:3},
+    {id:uid(), name:"Projeção",    age:"Slides / letras",      emoji:"projetor", bg:"#5AA9F026", fg:"#5AA9F0", need:3},
+    {id:uid(), name:"Som",         age:"Mesa / áudio",         emoji:"fader", bg:"#4CC38A26", fg:"#4CC38A", need:3},
+    {id:uid(), name:"Iluminação",  age:"Luzes / cenário",      emoji:"luz", bg:"#FFB23D26", fg:"#FFB23D", need:3},
+    {id:uid(), name:"Fotografia",  age:"Fotos do culto",       emoji:"foto", bg:"#B98BE626", fg:"#B98BE6", need:3},
+    {id:uid(), name:"Vídeos",      age:"Captação / edição",    emoji:"claquete", bg:"#45C7D626", fg:"#45C7D6", need:3},
   ];
   const services = [
     {id:uid(), name:"Culto da Família", weekday:0, time:"09:00", color:cultoColor(0,"09:00")},
@@ -1488,7 +1488,7 @@ function renderHome(c){
   DB.rooms.forEach(r=>{
     const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
     html += `<div class="room">
-      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
+      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
       <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
       <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
     </div>`;
@@ -1720,7 +1720,7 @@ function scheduleText(occs, rooms, subtitle){
       const slot=roomSlot(o.key,r.id);
       const resp=slot.lider?getMember(slot.lider):null;
       const aux=slot.monitores.map(id=>getMember(id)).filter(Boolean).map(m=>m.name);
-      t+=r.emoji+" "+r.name+": ★ "+(resp?resp.name:"—")+(aux.length?" | "+aux.join(", "):"")+"\n";
+      t+="▸ "+r.name+": ★ "+(resp?resp.name:"—")+(aux.length?" | "+aux.join(", "):"")+"\n";
     });
   });
   return t;
@@ -1850,7 +1850,7 @@ function renderVolunteerHome(me, t, todayStr, occs){
       h += `<div class="section-label">Suas próximas escalas</div>`;
       mine.slice(1,8).forEach(x=>{
         h += `<div class="room list-tap" data-action="open-occ" data-key="${x.occ.key}">
-          <div class="room-ico" style="background:${x.room?x.room.bg:'#22262e'};color:${x.room?x.room.fg:'#8A9098'}">${x.room?x.room.emoji:"📅"}</div>
+          <div class="room-ico" style="background:${x.room?x.room.bg:'#22262e'};color:${x.room?x.room.fg:'#8A9098'}">${x.room?roomIcon(x.room.emoji):"📅"}</div>
           <div class="room-info"><div class="room-name">${esc(x.occ.title)}</div>
             <div class="room-age">${fmtShort(x.date)} • ${esc(x.room?x.room.name:"—")}${x.role?" • "+x.role:""}</div></div>
           <div class="room-count">${hasMyOpenSwap(x.occ.key,x.room?x.room.id:"",x.roleKey)?`<span class="chip muted">troca ⏳</span>`:`<button class="btn btn-ghost sm" data-action="swap-request" data-key="${x.occ.key}" data-room="${x.room?x.room.id:""}" data-role="${x.roleKey}" onclick="event.stopPropagation()">Trocar</button>`}</div>
@@ -1891,7 +1891,7 @@ function renderVolunteerHome(me, t, todayStr, occs){
   DB.rooms.forEach(r=>{
     const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
     h += `<div class="room">
-      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
+      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
       <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
       <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
     </div>`;
@@ -2084,7 +2084,7 @@ function renderEscala(c){
           const slot=roomSlot(o.key,rid);
           const ordered=[slot.lider,...slot.monitores].filter(Boolean).map(id=>getMember(id)).filter(Boolean);
           html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 13px 6px 50px">
-            <span class="chip" style="background:${r.bg};color:${r.fg}">${r.emoji} ${esc(r.name)}</span>
+            <span class="chip" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)} ${esc(r.name)}</span>
             <div class="ava-row">${ordered.map((p,i)=>ava(p.name,p.id,i===0&&slot.lider?"box-shadow:0 0 0 2px var(--sun)":"")).join("")}</div>
           </div>`;
         });
@@ -2194,7 +2194,7 @@ function renderMembros(c){
 
   let html = `<div class="pick" style="margin-bottom:14px">
     <span class="pick-item ${memberFilter==="all"?"on":""}" data-action="mfilter" data-f="all" style="${memberFilter==="all"?"background:var(--sky-500)":""}">Todos</span>
-    ${DB.rooms.map(r=>`<span class="pick-item ${memberFilter===r.id?"on":""}" data-action="mfilter" data-f="${r.id}" style="${memberFilter===r.id?`background:${r.fg}`:""}">${r.emoji} ${esc(r.name)}</span>`).join("")}
+    ${DB.rooms.map(r=>`<span class="pick-item ${memberFilter===r.id?"on":""}" data-action="mfilter" data-f="${r.id}" style="${memberFilter===r.id?`background:${r.fg}`:""}">${roomIcon(r.emoji)} ${esc(r.name)}</span>`).join("")}
   </div>`;
 
   let list = DB.members.slice().sort((a,b)=>a.name.localeCompare(b.name,"pt"));
@@ -2208,7 +2208,7 @@ function renderMembros(c){
   }
 
   list.forEach(m=>{
-    const roomNames = m.roomIds.map(id=>{ const r=getRoom(id); return r?r.emoji:""; }).join(" ");
+    const roomNames = m.roomIds.map(id=>{ const r=getRoom(id); return r?roomIcon(r.emoji):""; }).join(" ");
     html += `<div class="person list-tap" data-action="open-member" data-id="${m.id}">
       ${ava(m.name,m.id,m.active?"":"opacity:.45")}
       <div class="person-info">
@@ -2272,7 +2272,7 @@ function renderConfig(c){
   html += `<div class="section-label">Áreas <span class="link" data-action="new-room">+ Nova área</span></div>`;
   DB.rooms.forEach(r=>{
     html += `<div class="room list-tap" data-action="edit-room" data-id="${r.id}">
-      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${r.emoji}</div>
+      <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
       <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)} • 1 responsável + 2 auxiliares</div></div>
       <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--ink-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 18l6-6-6-6"/></svg>
     </div>`;
@@ -2561,7 +2561,7 @@ function openMember(mid){
     <div class="divider"></div>
     ${m.phone?`<div class="field" style="margin-bottom:10px"><label>WhatsApp</label><div style="font-size:15px">${esc(m.phone)}</div></div>`:""}
     <div class="field" style="margin-bottom:10px"><label>Salas</label>
-      <div class="pick">${rooms.length?rooms.map(r=>`<span class="chip" style="background:${r.bg};color:${r.fg}">${r.emoji} ${esc(r.name)}</span>`).join(""):'<span class="muted-txt">Nenhuma definida</span>'}</div></div>
+      <div class="pick">${rooms.length?rooms.map(r=>`<span class="chip" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)} ${esc(r.name)}</span>`).join(""):'<span class="muted-txt">Nenhuma definida</span>'}</div></div>
     ${m.notes?`<div class="field"><label>Observações</label><div class="muted-txt">${esc(m.notes)}</div></div>`:""}
   `;
   const foot = `
@@ -2574,12 +2574,32 @@ function openMember(mid){
 }
 
 /* ---------- Modal: Sala ---------- */
-const EMOJIS = ["📡","📽️","🎚️","💡","📸","🎬","🎙️","🎥","🖥️","🔊","🎛️","⭐"];
+// Ícones SVG profissionais (substituem os emojis). Cada sala guarda apenas a
+// CHAVE (ex.: "antena") em r.emoji; roomIcon(key) devolve o markup do ícone.
+const ROOM_ICON_STYLE = "width:1em;height:1em;vertical-align:-.15em;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round";
+const ROOM_ICONS = {
+  antena: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><circle cx="12" cy="12" r="2"/><path d="M4.9 19.1a10 10 0 0 1 0-14.2"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>`,
+  projetor: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><rect x="2" y="8" width="10" height="7" rx="2"/><circle cx="7" cy="11.5" r="1.8"/><path d="M12 10.3 17.5 8v7l-5.5-2.3Z"/><rect x="18.5" y="9" width="3.5" height="5" rx=".8"/></svg>`,
+  fader: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><line x1="6" y1="4" x2="6" y2="20"/><rect x="3.2" y="12" width="5.6" height="4" rx="1"/><line x1="12" y1="4" x2="12" y2="20"/><rect x="9.2" y="5.5" width="5.6" height="4" rx="1"/><line x1="18" y1="4" x2="18" y2="20"/><rect x="15.2" y="15" width="5.6" height="4" rx="1"/></svg>`,
+  luz: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.1 14c.2-1 .7-1.8 1.5-2.6A5 5 0 0 0 18 8a6 6 0 0 0-12 0c0 1.1.3 2.4 1.6 3.7.7.7 1.2 1.5 1.4 2.3"/></svg>`,
+  foto: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><path d="M14.5 4.5h-5L7.3 7.2H4.3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h15.4a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3l-2.2-2.7Z"/><circle cx="12" cy="13.2" r="3.4"/></svg>`,
+  claquete: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><path d="M3 10.5 19.8 6.3a1.6 1.6 0 0 1 1.9 1.2l.5 1.9-18.4 4.6Z"/><path d="m7 9 3 3.6"/><path d="m13 7.4 3 3.6"/><rect x="3" y="12.5" width="18" height="7" rx="1.6"/></svg>`,
+  microfone: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M6 11v1a6 6 0 0 0 12 0v-1"/><line x1="12" y1="18" x2="12" y2="21.5"/><line x1="8.5" y1="21.5" x2="15.5" y2="21.5"/></svg>`,
+  "camera-video": `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><rect x="2.5" y="6.5" width="13" height="11" rx="2"/><path d="m15.5 10.5 6-3.3v9.6l-6-3.3"/></svg>`,
+  monitor: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><rect x="2.5" y="4" width="19" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+  "alto-falante": `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><path d="M11 5 6 9H3v6h3l5 4Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.3 5.7a9 9 0 0 1 0 12.6"/></svg>`,
+  controles: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2"/><line x1="4" y1="14" x2="20" y2="14"/><circle cx="16" cy="14" r="2"/><line x1="4" y1="20" x2="20" y2="20"/><circle cx="7" cy="20" r="2"/></svg>`,
+  estrela: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><path d="M12 2.5 15 9l6.8.8-5 4.7 1.4 6.7L12 17.8 5.8 21.2l1.4-6.7-5-4.7L9 9Z"/></svg>`
+};
+const ICON_ORDER = ["antena","projetor","fader","luz","foto","claquete","microfone","camera-video","monitor","alto-falante","controles","estrela"];
+// Compatibilidade: salas criadas antes da troca para SVG ainda guardam o emoji antigo no banco.
+const LEGACY_EMOJI_MAP = {"📡":"antena","📽️":"projetor","🎚️":"fader","💡":"luz","📸":"foto","🎬":"claquete","🎙️":"microfone","🎥":"camera-video","🖥️":"monitor","🔊":"alto-falante","🎛️":"controles","⭐":"estrela"};
+function roomIcon(key){ return ROOM_ICONS[key] || ROOM_ICONS[LEGACY_EMOJI_MAP[key]] || ROOM_ICONS.estrela; }
 const ROOM_COLORS = [["#FF6B6B26","#FF6B6B"],["#5AA9F026","#5AA9F0"],["#4CC38A26","#4CC38A"],["#FFB23D26","#FFB23D"],["#B98BE626","#B98BE6"],["#45C7D626","#45C7D6"]];
 // 7 cores chamativas para os eventos do calendário (o líder escolhe)
 const EVENT_COLORS = ["#FF3B6B","#FF8A1E","#FFD23F","#28D17C","#17C3D6","#3D8BF0","#B26BFF"];
 function editRoom(rid){
-  const r = rid ? getRoom(rid) : {name:"",age:"",emoji:"⭐",bg:ROOM_COLORS[0][0],fg:ROOM_COLORS[0][1],need:2};
+  const r = rid ? getRoom(rid) : {name:"",age:"",emoji:"estrela",bg:ROOM_COLORS[0][0],fg:ROOM_COLORS[0][1],need:2};
   const body = `
     <div class="field"><label>Nome da área</label><input id="rName" value="${esc(r.name)}" placeholder="Ex.: Berçário"></div>
     <div class="field"><label>Faixa etária</label><input id="rAge" value="${esc(r.age)}" placeholder="0 a 1 ano"></div>
@@ -2588,7 +2608,8 @@ function editRoom(rid){
       <div class="banner-txt" style="color:var(--ink-soft)">Cada área tem no máximo <b style="color:var(--ink)">3 pessoas</b>: 1 responsável + 2 auxiliares.</div>
     </div>
     <div class="field"><label>Ícone</label>
-      <div class="pick" id="rEmoji">${EMOJIS.map(em=>`<span class="pick-item ${r.emoji===em?"on":""}" data-em="${em}" style="font-size:18px;${r.emoji===em?"background:var(--sky-500)":""}">${em}</span>`).join("")}</div></div>
+      <div class="pick" id="rEmoji">${(()=>{ const cur = ROOM_ICONS[r.emoji] ? r.emoji : (LEGACY_EMOJI_MAP[r.emoji] || "estrela");
+        return ICON_ORDER.map(key=>`<span class="pick-item ${cur===key?"on":""}" data-em="${key}" style="font-size:18px;padding:9px 11px;${cur===key?"background:var(--sky-500)":""}">${roomIcon(key)}</span>`).join(""); })()}</div></div>
     <div class="field"><label>Cor</label>
       <div class="pick" id="rColor">${ROOM_COLORS.map((c,i)=>`<span class="pick-item" data-bg="${c[0]}" data-fg="${c[1]}" style="background:${c[0]};border-color:${r.fg===c[1]?c[1]:"var(--line)"};${r.fg===c[1]?"border-width:2.5px":""}"><span class="pk-dot" style="background:${c[1]};width:16px;height:16px"></span></span>`).join("")}</div></div>
   `;
@@ -2771,7 +2792,7 @@ function openSchedule(key){
       const count=(slot.lider?1:0)+slot.monitores.length;
       const editable=canEditRoom(r.id);
       const header=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-          <div class="room-ico" style="width:38px;height:38px;border-radius:11px;font-size:18px;background:${r.bg};color:${r.fg}">${r.emoji}</div>
+          <div class="room-ico" style="width:38px;height:38px;border-radius:11px;font-size:18px;background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
           <div style="flex:1"><div class="room-name" style="font-size:14.5px">${esc(r.name)}</div>
             <div class="room-age">${count}/3 ${count===3?"✓":""}${editable?"":' • <span style="color:var(--ink-faint)">🔒 outra área</span>'}</div></div>
         </div>`;
@@ -2927,7 +2948,7 @@ function openScheduleReadOnly(key, occ){
       return `<span class="chip ${me&&id===me.id?"good":""}" style="margin:2px 4px 2px 0">${ava(p.name,p.id,"width:22px;height:22px;font-size:10px;margin-right:4px")}${isLeader?"★ ":""}${esc(p.name)}</span>`; };
     body += `<div class="card" style="padding:13px;margin-bottom:11px${mineHere?";border-color:#BFE9D7;background:var(--good-soft)":""}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div class="room-ico" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:${r.bg};color:${r.fg}">${r.emoji}</div>
+        <div class="room-ico" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
         <div class="room-name" style="font-size:14.5px">${esc(r.name)} ${mineHere?"<span class='chip good'>você</span>":""}</div>
       </div>
       <div style="font-size:11.5px;font-weight:700;color:var(--ink-faint);margin-bottom:3px">RESPONSÁVEL</div>
@@ -2974,7 +2995,7 @@ function waSchedule(key, occ){
   const body = `<p class="muted-txt" style="margin:0 0 12px">Toque para abrir o WhatsApp de cada pessoa com a mensagem pronta.</p>
     ${people.map(({m,r,role})=>`<div class="person">
       ${ava(m.name,m.id)}
-      <div class="person-info"><div class="person-name">${esc(m.name)}</div><div class="person-meta">${r.emoji} ${esc(r.name)} • ${role}</div></div>
+      <div class="person-info"><div class="person-name">${esc(m.name)}</div><div class="person-meta">${roomIcon(r.emoji)} ${esc(r.name)} • ${role}</div></div>
       <button class="btn btn-wa" data-wa-one="${m.id}" data-room="${r.id}" style="padding:9px 13px;font-size:13px">
         <svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.2-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg> Avisar</button>
     </div>`).join("")}`;
@@ -3384,7 +3405,7 @@ function openProfileDrawer(){
       </div>` : ""}
       <div class="profile-info-row">
         <span class="profile-info-label">Áreas</span>
-        <span>${rooms.length ? rooms.map(r=>`<span class="chip" style="background:${r.bg};color:${r.fg}">${r.emoji} ${esc(r.name)}</span>`).join(" ") : '<span class="muted-txt">Nenhuma</span>'}</span>
+        <span>${rooms.length ? rooms.map(r=>`<span class="chip" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)} ${esc(r.name)}</span>`).join(" ") : '<span class="muted-txt">Nenhuma</span>'}</span>
       </div>
       ${me.notes ? `
       <div class="profile-info-row">
