@@ -728,6 +728,89 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   display:flex;flex-direction:column;align-items:center;gap:10px;
   margin-bottom:22px;
 }
+
+/* ---------- Fake Page — Área ---------- */
+.area-page{
+  position:fixed;inset:0;z-index:110;
+  background:var(--paper);
+  transform:translateX(100%);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  max-width:520px;
+  left:50%;margin-left:-260px;
+}
+@media(max-width:520px){ .area-page{ left:0;margin-left:0; } }
+.area-page.open{ transform:translateX(0); }
+
+.area-page-header{
+  display:flex;align-items:center;gap:14px;
+  padding:calc(var(--safe-t) + 16px) 18px 16px;
+  border-bottom:1px solid var(--line);
+  flex:none;
+}
+.area-page-back{
+  width:38px;height:38px;border-radius:12px;
+  background:var(--sky-100);color:var(--ink);
+  display:grid;place-items:center;flex:none;
+}
+.area-page-back svg{ width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round; }
+.area-page-back:active{ transform:scale(.92); }
+.area-page-ico{
+  width:44px;height:44px;border-radius:14px;
+  display:grid;place-items:center;font-size:22px;flex:none;
+}
+.area-page-title{ font-family:var(--font-display);font-weight:700;font-size:18px;flex:1; }
+.area-page-sub{ font-size:12.5px;color:var(--ink-soft); }
+
+.area-page-body{
+  flex:1;overflow-y:auto;
+  padding:18px 18px calc(var(--safe-b) + 24px);
+}
+
+/* Checklist */
+.checklist{ display:flex;flex-direction:column;gap:8px;margin-top:4px; }
+.check-item{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 14px;border-radius:14px;
+  background:var(--card);border:1px solid var(--line);
+  cursor:pointer;transition:background .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.check-item:active{ background:var(--sky-100); }
+.check-item.done{ opacity:.55; }
+.check-box{
+  width:24px;height:24px;border-radius:8px;flex:none;
+  border:2px solid var(--line);
+  display:grid;place-items:center;transition:all .18s;
+}
+.check-item.done .check-box{
+  background:var(--good);border-color:var(--good);
+}
+.check-box svg{ width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;opacity:0;transition:opacity .15s; }
+.check-item.done .check-box svg{ opacity:1; }
+.check-label{ font-size:14px;font-weight:500;flex:1; }
+.check-item.done .check-label{ text-decoration:line-through;color:var(--ink-faint); }
+
+.area-progress{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.area-progress-bar{
+  flex:1;height:6px;border-radius:99px;background:var(--line);overflow:hidden;
+}
+.area-progress-fill{
+  height:100%;border-radius:99px;background:var(--good);transition:width .3s ease;
+}
+.area-progress-txt{ font-size:12px;font-weight:600;color:var(--ink-soft);white-space:nowrap; }
+
+.area-members-row{ display:flex;flex-wrap:wrap;gap:8px;margin-top:4px; }
+.area-member-chip{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;border-radius:999px;
+  background:var(--card);border:1px solid var(--line);
+  font-size:13px;font-weight:600;
+}
+
 .profile-ava-big{
   width:88px;height:88px;border-radius:50%;
   font-size:32px;font-weight:700;
@@ -1483,18 +1566,21 @@ function renderHome(c){
     html += `<p class="muted-txt" style="text-align:center;padding:14px">Nenhum culto nos próximos dias.</p>`;
   }
 
-  // Áreas — todos veem, mas "Editar" só aparece para líderes
-  html += `<div class="section-label">Áreas ${leader ? '<span class="link" data-action="goto" data-view="config">Editar</span>' : ''}</div>`;
+  } // fecha o else
+
+  // Áreas — todos veem, clicáveis para todos
+  html += `<div class="section-label">Áreas ${isLeader() ? '<span class="link" data-action="goto" data-view="config">Editar</span>' : ''}</div>`;
   DB.rooms.forEach(r=>{
     const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
-    html += `<div class="room">
+    html += `<div class="room list-tap" data-action="open-area" data-room-id="${r.id}" style="cursor:pointer">
       <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
       <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
-      <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
+      <div class="room-count">
+        <span class="chip muted">${qtd} aptos</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--ink-faint);margin-left:4px"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
     </div>`;
   });
-
-  } // fecha o else
 
   html += videosSectionHtml();
 
@@ -1886,14 +1972,17 @@ function renderVolunteerHome(me, t, todayStr, occs){
     h += `<p class="muted-txt" style="text-align:center;padding:14px">Nenhum culto nos próximos dias.</p>`;
   }
 
-  // Áreas (só visualização, sem "Editar")
+  // Áreas (clicáveis para todos)
   h += `<div class="section-label">Áreas</div>`;
   DB.rooms.forEach(r=>{
     const qtd = DB.members.filter(m=>m.active && m.roomIds.includes(r.id)).length;
-    h += `<div class="room">
+    h += `<div class="room list-tap" data-action="open-area" data-room-id="${r.id}" style="cursor:pointer">
       <div class="room-ico" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
       <div class="room-info"><div class="room-name">${esc(r.name)}</div><div class="room-age">${esc(r.age)}</div></div>
-      <div class="room-count"><span class="chip muted">${qtd} aptos</span></div>
+      <div class="room-count">
+        <span class="chip muted">${qtd} aptos</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--ink-faint);margin-left:4px"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
     </div>`;
   });
 
@@ -2364,6 +2453,7 @@ document.addEventListener("click", e=>{
 
   switch(a){
     case "goto": go(el.dataset.view); break;
+    case "open-area": openAreaPage(el.dataset.roomId); break;
     case "open-occ": openSchedule(key); break;
     case "new-schedule": pickOccForSchedule(); break;
     case "open-member": openMember(id); break;
@@ -3497,9 +3587,170 @@ function addProfileBtn(){
   actions.appendChild(btn);
 }
 
+/* =====================================================================
+   FAKE PAGE — ÁREA
+   ===================================================================== */
+
+// Checklists por emoji de área (personalizáveis)
+const AREA_CHECKLISTS = {
+  antena:   ["Verificar conexão de internet","Testar câmera principal","Iniciar software de streaming","Checar áudio no stream","Confirmar link da live","Monitores de retorno ok"],
+  projetor: ["Ligar projetor e aguardar aquecer","Carregar apresentação do culto","Testar slides de letras","Ajustar resolução/foco","Backup em pen drive pronto","Confirmar com o pregador"],
+  fader:    ["Ligar mesa de som","Verificar todos os canais","Testar microfones","Ajustar monitor de palco","Checar in-ear dos músicos","Volume de retorno ok"],
+  luz:      ["Ligar mesa de luz","Checar todas as luminárias","Programar cenas do culto","Testar efeitos especiais","Confirmar cor do ambiente","Comunicar com o líder de louvor"],
+  foto:     ["Carregar bateria da câmera","Formatar cartão de memória","Testar exposição/foco","Posição para entrada dos membros","Capturar momento do pregador","Backup das fotos após o culto"],
+  claquete: ["Carregar bateria das câmeras","Testar gravação","Verificar espaço no cartão","Posicionar câmeras","Testar áudio da gravação","Exportar e fazer backup após culto"],
+};
+
+const DEFAULT_CHECKLIST = ["Chegar com antecedência","Verificar equipamentos","Comunicar com a equipe","Confirmar presença","Registrar ocorrências"];
+
+// Estado dos checklists (por roomId + occKey)
+let areaCheckState = {};
+
+function getCheckKey(roomId){ return `checklist-${roomId}-${ymd(today())}`; }
+
+function loadCheckState(roomId){
+  const k = getCheckKey(roomId);
+  if(areaCheckState[k]) return areaCheckState[k];
+  try{
+    const raw = localStorage.getItem(k);
+    areaCheckState[k] = raw ? JSON.parse(raw) : {};
+  }catch(e){ areaCheckState[k] = {}; }
+  return areaCheckState[k];
+}
+
+function saveCheckState(roomId, state){
+  const k = getCheckKey(roomId);
+  areaCheckState[k] = state;
+  try{ localStorage.setItem(k, JSON.stringify(state)); }catch(e){}
+}
+
+function openAreaPage(roomId){
+  const r = getRoom(roomId); if(!r) return;
+  const members = DB.members.filter(m=>m.active && m.roomIds.includes(r.id));
+  const checklist = AREA_CHECKLISTS[r.emoji] || DEFAULT_CHECKLIST;
+  const state = loadCheckState(roomId);
+
+  // Header
+  document.getElementById("areaPageIco").style.cssText = `background:${r.bg};color:${r.fg}`;
+  document.getElementById("areaPageIco").innerHTML = roomIcon(r.emoji);
+  document.getElementById("areaPageTitle").textContent = r.name;
+  document.getElementById("areaPageSub").textContent = r.age;
+
+  // Body
+  const done = checklist.filter((_,i)=>state[i]).length;
+  const pct = Math.round((done/checklist.length)*100);
+
+  let body = "";
+
+  // Membros da área
+  body += `<div class="section-label" style="margin-top:0">Equipe desta área</div>`;
+  if(members.length){
+    body += `<div class="area-members-row">`;
+    members.forEach(m=>{
+      body += `<div class="area-member-chip">
+        ${ava(m.name, m.id, "width:26px;height:26px;font-size:11px;flex:none")}
+        ${esc(m.name.split(" ")[0])}
+      </div>`;
+    });
+    body += `</div>`;
+  } else {
+    body += `<p class="muted-txt" style="font-size:13px">Nenhum membro cadastrado nesta área.</p>`;
+  }
+
+  // Checklist
+  body += `<div class="section-label" style="margin-top:22px">Checklist do culto</div>`;
+  body += `<div class="area-progress">
+    <div class="area-progress-bar"><div class="area-progress-fill" id="areaProgressFill" style="width:${pct}%"></div></div>
+    <div class="area-progress-txt" id="areaProgressTxt">${done}/${checklist.length}</div>
+  </div>`;
+  body += `<div class="checklist" id="areaChecklist">`;
+  checklist.forEach((item, i)=>{
+    const checked = !!state[i];
+    body += `<div class="check-item${checked?" done":""}" data-check-idx="${i}" data-room-id="${r.id}">
+      <div class="check-box">
+        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <span class="check-label">${esc(item)}</span>
+    </div>`;
+  });
+  body += `</div>`;
+
+  // Botão resetar
+  body += `<button class="btn btn-soft btn-block" id="areaCheckReset" style="margin-top:14px;font-size:13px">
+    Limpar checklist
+  </button>`;
+
+  document.getElementById("areaPageBody").innerHTML = body;
+
+  // Eventos do checklist
+  document.getElementById("areaChecklist").addEventListener("click", e=>{
+    const item = e.target.closest(".check-item"); if(!item) return;
+    const idx = parseInt(item.dataset.checkIdx);
+    const rid = item.dataset.roomId;
+    const st = loadCheckState(rid);
+    st[idx] = !st[idx];
+    saveCheckState(rid, st);
+
+    item.classList.toggle("done", !!st[idx]);
+
+    // Atualiza barra de progresso
+    const cl = AREA_CHECKLISTS[r.emoji] || DEFAULT_CHECKLIST;
+    const d = cl.filter((_,i)=>st[i]).length;
+    const p = Math.round((d/cl.length)*100);
+    document.getElementById("areaProgressFill").style.width = p+"%";
+    document.getElementById("areaProgressTxt").textContent = `${d}/${cl.length}`;
+  });
+
+  document.getElementById("areaCheckReset").addEventListener("click", ()=>{
+    saveCheckState(roomId, {});
+    openAreaPage(roomId); // re-renderiza
+    toast("Checklist limpo","good");
+  });
+
+  // Abrir com animação
+  const page = document.getElementById("areaPage");
+  page.classList.add("open");
+  page.scrollTop = 0;
+}
+
+function closeAreaPage(){
+  document.getElementById("areaPage").classList.remove("open");
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  const backBtn = document.getElementById("areaPageBack");
+  if(backBtn) backBtn.addEventListener("click", closeAreaPage);
+
+  // Fechar com swipe
+  const page = document.getElementById("areaPage");
+  if(page){
+    let startX = 0;
+    page.addEventListener("touchstart", e=>{ startX = e.touches[0].clientX; }, {passive:true});
+    page.addEventListener("touchend", e=>{
+      if(e.changedTouches[0].clientX - startX > 80) closeAreaPage();
+    }, {passive:true});
+  }
+});
+
+
 /* Versão arquivo único: sem service worker */
 
 </script>
+
+<!-- Fake Page — Área -->
+<div class="area-page" id="areaPage">
+  <div class="area-page-header">
+    <button class="area-page-back" id="areaPageBack" aria-label="Voltar">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="area-page-ico" id="areaPageIco"></div>
+    <div>
+      <div class="area-page-title" id="areaPageTitle"></div>
+      <div class="area-page-sub" id="areaPageSub"></div>
+    </div>
+  </div>
+  <div class="area-page-body" id="areaPageBody"></div>
+</div>
 
 <!-- Drawer de perfil do voluntário -->
 <div class="profile-drawer-overlay" id="profileOverlay"></div>
