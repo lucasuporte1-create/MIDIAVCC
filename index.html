@@ -711,6 +711,13 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   color:#6CB2FF; background:rgba(61,139,240,.14); padding:3px 9px; border-radius:999px; }
 .swap-badge.wait{ color:#FFB23D; background:rgba(255,178,61,.15); }
 .swap-badge.done{ color:#3FCB7E; background:rgba(63,203,126,.15); }
+.swap-badge.declined{ color:#FF6B6B; background:rgba(255,107,107,.15); }
+.swap-badge.cancelled{ color:var(--ink-faint); background:rgba(150,150,150,.15); }
+.swap-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.swap-dismiss{ background:none; border:none; padding:2px; cursor:pointer; color:var(--ink-faint);
+  display:flex; align-items:center; justify-content:center; flex:none; }
+.swap-dismiss svg{ width:16px; height:16px; }
+.swap-dismiss:active{ color:var(--ink-soft); }
 .swap-body{ font-size:13.5px; color:var(--ink); line-height:1.5; }
 .swap-line{ font-size:12.5px; color:var(--ink-soft); margin-top:4px; }
 .swap-note{ font-size:12.5px; color:var(--ink-soft); font-style:italic; margin-top:5px; }
@@ -1350,6 +1357,7 @@ function migrate(db){
   if(db && db.settings){
     if(db.settings.msgArrival===undefined) db.settings.msgArrival="Chegar uma hora antes do culto";
     if(db.settings.msgDress===undefined)   db.settings.msgDress="Devidamente padronizado, ou all black";
+    if(!Array.isArray(db.settings.dismissedSwaps)) db.settings.dismissedSwaps=[];
   }
   if(db && db.schedules){
     for(const k in db.schedules){
@@ -1550,6 +1558,7 @@ const VIEWS = {
   calendario:{title:"Agenda", render:renderCalendario},
   membros:{title:"Equipe", render:renderMembros},
   config:{title:"Mais", render:renderConfig},
+  trocas:{title:"Trocas", render:renderTrocas},
 };
 let currentView = "home";
 
@@ -1765,6 +1774,7 @@ if(isLeader()){
   const scope = DB.swaps.filter(s => s.requestedBy !== me && s.targetId !== me
     && (isAdmin() || canEditRoom(s.roomId))
     && (s.status === "open" || s.status === "accepted")
+    && !(DB.settings.dismissedSwaps||[]).includes(s.id)
     && new Date(s.occDate + "T00:00:00") > hoje   // ← some às 00:00 do próprio dia do evento
   )
   .sort((a,b) => (a.occDate||"") < (b.occDate||"") ? -1 : 1);
@@ -1773,7 +1783,12 @@ if(isLeader()){
     const a = getMember(s.requestedBy), b = getMember(s.targetId);
     const done = s.status === "accepted";
     area += `<div class="swap-card ${done ? "swap-done" : ""}">
-      <div class="swap-top"><span class="swap-badge ${done ? "done" : "wait"}">${done ? "Troca realizada" : "Troca pendente"}</span></div>
+      <div class="swap-top">
+        <span class="swap-badge ${done ? "done" : "wait"}">${done ? "Troca realizada" : "Troca pendente"}</span>
+        ${done ? `<button class="swap-dismiss" data-action="swap-dismiss" data-id="${s.id}" title="Dispensar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>` : ""}
+      </div>
       <div class="swap-body">${done
         ? `<b>${esc(b.name.split(" ")[0])}</b> entrou no lugar de <b>${esc(a.name.split(" ")[0])}</b>:`
         : `<b>${esc(a.name.split(" ")[0])}</b> pediu troca<b>${b}</b> com <b>${esc(b.name.split(" ")[0])}</b>::`}
@@ -1782,8 +1797,51 @@ if(isLeader()){
 }
   let out="";
   if(mine) out += `<div class="section-label" style="margin-top:4px">Trocas</div>`+mine;
-  if(area) out += `<div class="section-label"${mine?"":' style="margin-top:4px"'}>${isAdmin()?"Trocas no ministério":"Trocas nas suas áreas"}</div>`+area;
+  if(isLeader()) out += `<div class="section-label"${mine?"":' style="margin-top:4px"'}>${isAdmin()?"Trocas no ministério":"Trocas nas suas áreas"} <span class="link" data-action="goto" data-view="trocas">Ver todas</span></div>`
+    + (area || `<p class="muted-txt" style="padding:2px 0 4px">Nenhuma troca pendente ou realizada no momento.</p>`);
   return out;
+}
+function renderTrocas(c){
+  if(!isLeader()){
+    c.innerHTML = `<p class="muted-txt" style="padding:16px 4px">Apenas líderes e administradores podem ver o histórico completo de trocas.</p>`;
+    return;
+  }
+  const STATUS = {
+    open:      { label:"Pendente",  cls:"wait" },
+    accepted:  { label:"Realizada", cls:"done" },
+    declined:  { label:"Recusada",  cls:"declined" },
+    cancelled: { label:"Cancelada", cls:"cancelled" },
+  };
+  const list = DB.swaps
+    .filter(s => isAdmin() || canEditRoom(s.roomId))
+    .slice()
+    .sort((a,b) => (a.occDate||"") > (b.occDate||"") ? -1 : 1); // mais recentes primeiro
+
+  if(!list.length){
+    c.innerHTML = `<p class="muted-txt" style="padding:16px 4px">Nenhuma troca registrada ainda.</p>`;
+    return;
+  }
+
+  let html = `<div class="hint" style="margin:0 0 14px">Histórico completo de trocas ${isAdmin()?"do ministério":"das suas áreas"} — pendentes, realizadas, recusadas e canceladas.</div>`;
+  list.forEach(s=>{
+    const a=getMember(s.requestedBy), b=getMember(s.targetId);
+    const st = STATUS[s.status] || { label:s.status, cls:"wait" };
+    const dismissed = (DB.settings.dismissedSwaps||[]).includes(s.id);
+    html += `<div class="swap-card">
+      <div class="swap-top">
+        <span class="swap-badge ${st.cls}">${st.label}</span>
+        ${s.status==="accepted" ? `<button class="swap-dismiss" data-action="swap-dismiss" data-id="${s.id}" title="${dismissed?'Reexibir na Início':'Dispensar da Início'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${dismissed?'<path d="M3 12s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7z"/><circle cx="12" cy="12" r="2.5"/>':'<path d="M18 6L6 18M6 6l12 12"/>'}</svg>
+        </button>` : ""}
+      </div>
+      <div class="swap-body">
+        <b>${a?esc(a.name.split(" ")[0]):"Alguém"}</b>${b?` ↔ <b>${esc(b.name.split(" ")[0])}</b>`:""}
+        <div class="swap-line">${swapDesc(s)}</div>
+        ${s.note?`<div class="swap-note">"${esc(s.note)}"</div>`:""}
+      </div>
+    </div>`;
+  });
+  c.innerHTML = html;
 }
 function openSwapRequest(occKey, roomId, role){
   const me=getMember(DB.settings.meId);
@@ -2579,6 +2637,14 @@ document.addEventListener("click", e=>{
     case "swap-decline": (async()=>{ try{ await Data.setSwapStatus(id,"declined"); toast("Pedido recusado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
     case "swap-cancel": (async()=>{ try{ await Data.setSwapStatus(id,"cancelled"); toast("Pedido cancelado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
     case "swap-wa": swapWhatsApp(id); break;
+    case "swap-dismiss": {
+      if(!Array.isArray(DB.settings.dismissedSwaps)) DB.settings.dismissedSwaps=[];
+      const i = DB.settings.dismissedSwaps.indexOf(id);
+      if(i===-1){ DB.settings.dismissedSwaps.push(id); toast("Aviso dispensado","good"); }
+      else { DB.settings.dismissedSwaps.splice(i,1); toast("Aviso reexibido","good"); }
+      save(); go(currentView);
+      break;
+    }
     case "share-month": shareMonthSchedule(); break;
     case "ics-member": downloadIcs(id); break;
     case "ics-me": {
