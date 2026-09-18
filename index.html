@@ -2732,10 +2732,44 @@ function editMember(mid){
     <div class="field"><label>Observações</label><textarea id="mNotes" placeholder="Restrições de horário, preferências...">${esc(m.notes)}</textarea></div>
     <div class="toggle"><span class="toggle-label">Ativo na equipe</span><div class="sw ${m.active?"on":""}" id="mActive"></div></div>
     <div class="toggle"><span class="toggle-label">🎓 Em treinamento</span><div class="sw ${m.training?"on":""}" id="mTraining"></div></div>
+    <div id="mAccessWrap"></div>
   `;
   const foot = `<button class="btn btn-primary btn-block" id="mSave">${mid?"Salvar alterações":"Cadastrar"}</button>
     ${(mid && isAdmin())?`<button class="btn btn-danger btn-block" id="mDelete" style="margin-top:8px">Excluir da equipe</button>`:""}`;
   openModal(mid?"Editar pessoa":"Nova pessoa", body, foot);
+
+  // ---- Nível de acesso (admin only, pessoa já cadastrada, com Supabase ativo) ----
+  let linkedProfileId = null, originalRole = null, selectedRole = null;
+  const accessWrap = document.getElementById("mAccessWrap");
+  if(accessWrap && mid && isAdmin() && CLOUD){
+    (async ()=>{
+      try{
+        const { data, error } = await sb.from("profiles").select("id, role").eq("member_id", mid);
+        if(error || !data || !data.length){
+          accessWrap.innerHTML = `<p class="hint" style="margin-top:2px">Essa pessoa ainda não fez login no app — o nível de acesso aparece aqui assim que ela entrar pela primeira vez.</p>`;
+          return;
+        }
+        const p = data[0]; // caso raro de mais de uma conta vinculada, usa a primeira
+        linkedProfileId = p.id; originalRole = p.role || "volunteer"; selectedRole = originalRole;
+        const ROLE_LABEL = { volunteer:"Voluntário", leader:"Líder", admin:"Admin" };
+        accessWrap.innerHTML = `<div class="field"><label>Nível de acesso</label>
+          <div class="pick" id="mAccessPick">
+            ${["volunteer","leader","admin"].map(r=>`<span class="pick-item ${r===selectedRole?"on":""}" data-role="${r}" style="${r===selectedRole?`background:var(--sky-500);color:#fff`:""}">${ROLE_LABEL[r]}</span>`).join("")}
+          </div>
+          <p class="hint" style="margin-top:6px">Líderes editam as áreas deles; admins têm acesso total ao app.</p>
+        </div>`;
+        document.getElementById("mAccessPick").addEventListener("click", e=>{
+          const it = e.target.closest(".pick-item"); if(!it) return;
+          selectedRole = it.dataset.role;
+          document.querySelectorAll("#mAccessPick .pick-item").forEach(x=>{
+            const on = x.dataset.role===selectedRole;
+            x.classList.toggle("on", on);
+            x.style.background = on ? "var(--sky-500)" : ""; x.style.color = on ? "#fff" : "";
+          });
+        });
+      }catch(_){ /* sem internet ou erro silencioso — não bloqueia edição normal */ }
+    })();
+  }
 
   // foto: abrir seletor, redimensionar para miniatura e pré-visualizar
   const prev=document.getElementById("mPhotoPrev");
@@ -2806,7 +2840,14 @@ function editMember(mid){
       notes:document.getElementById("mNotes").value.trim(), active, photo, training };
     const member = mid ? {id:mid,...data} : {id:uid(),...data};
     const btn=document.getElementById("mSave"); btn.disabled=true; const o=btn.textContent; btn.textContent="Salvando...";
-    try{ await Data.saveMember(member, !mid); closeModal(); go("membros"); toast(mid?"Pessoa atualizada":"Pessoa cadastrada","good"); }
+    try{
+      await Data.saveMember(member, !mid);
+      if(linkedProfileId && selectedRole && selectedRole!==originalRole){
+        try{ await sb.from("profiles").update({ role: selectedRole }).eq("id", linkedProfileId); }
+        catch(_){ toast("Pessoa salva, mas não deu pra atualizar o nível de acesso — tente de novo.","warn"); }
+      }
+      closeModal(); go("membros"); toast(mid?"Pessoa atualizada":"Pessoa cadastrada","good");
+    }
     catch(e){ btn.disabled=false; btn.textContent=o; toast("Não salvou — "+e.message,"warn"); }
   });
   const mDelBtn = document.getElementById("mDelete");
