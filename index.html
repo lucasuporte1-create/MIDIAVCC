@@ -710,6 +710,16 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .swap-badge{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
   color:#6CB2FF; background:rgba(61,139,240,.14); padding:3px 9px; border-radius:999px; }
 .swap-badge.wait{ color:#FFB23D; background:rgba(255,178,61,.15); }
+.hist-wrap{ display:flex; align-items:center; gap:16px; margin:4px 0 2px; }
+.hist-donut{ width:78px; height:78px; border-radius:50%; flex:none; position:relative;
+  display:flex; align-items:center; justify-content:center; }
+.hist-donut-hole{ width:48px; height:48px; border-radius:50%; background:var(--paper);
+  display:flex; align-items:center; justify-content:center; font-weight:800; font-size:17px; color:var(--ink); }
+.hist-legend{ flex:1; display:flex; flex-direction:column; gap:5px; }
+.hist-legend-row{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-soft); }
+.hist-dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+.hist-legend-name{ flex:1; color:var(--ink); }
+.hist-legend-count{ font-weight:700; color:var(--ink); }
 .swap-badge.done{ color:#3FCB7E; background:rgba(63,203,126,.15); }
 .swap-badge.declined{ color:#FF6B6B; background:rgba(255,107,107,.15); }
 .swap-badge.cancelled{ color:var(--ink-faint); background:rgba(150,150,150,.15); }
@@ -1485,6 +1495,35 @@ function upcomingOccs(days=21){
   return out;
 }
 function schedFor(key){ return DB.schedules[key] || {}; }
+
+// Quantas vezes a pessoa já serviu, em cada área, desde o início (só ocorrências já passadas)
+function allTimeCountsForMember(mid){
+  const todayStr = ymd(today());
+  const byRoom = {}; // roomId -> count
+  let total = 0;
+  Object.keys(DB.schedules).forEach(k=>{
+    const o = resolveOcc(k); if(!o || (o.date||"") > todayStr) return;
+    const s = DB.schedules[k] || {};
+    Object.keys(s).forEach(rid=>{
+      const slot = s[rid];
+      if(slot && (slot.lider===mid || (slot.monitores||[]).includes(mid))){
+        byRoom[rid] = (byRoom[rid]||0) + 1; total++;
+      }
+    });
+  });
+  const rows = Object.keys(byRoom).map(rid=>({ room:getRoom(rid), count:byRoom[rid] }))
+    .filter(x=>x.room).sort((a,b)=>b.count-a.count);
+  return { total, rows };
+}
+function historyDonutHtml(rows, total){
+  if(!total) return "";
+  let acc = 0;
+  const stops = rows.map(({room,count})=>{
+    const from = acc/total*360; acc += count; const to = acc/total*360;
+    return `${room.fg} ${from}deg ${to}deg`;
+  }).join(", ");
+  return `<div class="hist-donut" style="background:conic-gradient(${stops})"><div class="hist-donut-hole">${total}</div></div>`;
+}
 
 /* Slot de uma sala: 1 líder + até 2 monitores (máx 3) */
 function roomSlot(key, roomId){
@@ -2863,11 +2902,29 @@ function editMember(mid){
 function openMember(mid){
   const m=getMember(mid); if(!m) return;
   const rooms = m.roomIds.map(id=>getRoom(id)).filter(Boolean);
+  const hist = allTimeCountsForMember(mid);
+  const histSummary = hist.total
+    ? `Desde o início: <b>${hist.total}x</b> no total — ${hist.rows.map(x=>`${x.count}x ${esc(x.room.name)}`).join(", ")}`
+    : `Ainda não há escalas registradas pra essa pessoa.`;
   const body = `
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
       <div class="ava" style="width:60px;height:60px;font-size:22px;${m.photo?`background-image:url('${m.photo}');background-size:cover;background-position:center`:`background:${avaColor(m.id)}`}">${m.photo?"":esc(initials(m.name))}</div>
       <div><div style="font-family:var(--font-display);font-weight:700;font-size:20px">${esc(m.name)}</div>
       <div class="muted-txt">${esc(m.role||"Voluntário")} ${m.active?"":"• inativo"}${m.training?` • <span style="color:var(--sun)">🎓 em treinamento</span>`:""}</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="field" style="margin-bottom:10px"><label>Histórico de escalas</label>
+      <div class="hist-wrap">
+        ${historyDonutHtml(hist.rows, hist.total)}
+        <div class="hist-legend">
+          ${hist.total ? hist.rows.map(x=>`<div class="hist-legend-row">
+            <span class="hist-dot" style="background:${x.room.fg}"></span>
+            <span class="hist-legend-name">${esc(x.room.name)}</span>
+            <span class="hist-legend-count">${x.count}x</span>
+          </div>`).join("") : `<span class="muted-txt" style="font-size:13px">Ainda não há escalas registradas pra essa pessoa.</span>`}
+        </div>
+      </div>
+      ${hist.total?`<p class="hint" style="margin-top:8px">${histSummary}</p>`:""}
     </div>
     <div class="divider"></div>
     ${m.phone?`<div class="field" style="margin-bottom:10px"><label>WhatsApp</label><div style="font-size:15px">${esc(m.phone)}</div></div>`:""}
