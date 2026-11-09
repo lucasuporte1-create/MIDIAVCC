@@ -851,41 +851,6 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   padding:18px 18px calc(var(--safe-b) + 24px);
 }
 
-/* Checklist */
-.checklist{ display:flex;flex-direction:column;gap:8px;margin-top:4px; }
-.check-item{
-  display:flex;align-items:center;gap:12px;
-  padding:13px 14px;border-radius:14px;
-  background:var(--card);border:1px solid var(--line);
-  cursor:pointer;transition:background .15s;
-  -webkit-tap-highlight-color:transparent;
-}
-.check-item:active{ background:var(--sky-100); }
-.check-item.done{ opacity:.55; }
-.check-box{
-  width:24px;height:24px;border-radius:8px;flex:none;
-  border:2px solid var(--line);
-  display:grid;place-items:center;transition:all .18s;
-}
-.check-item.done .check-box{
-  background:var(--good);border-color:var(--good);
-}
-.check-box svg{ width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;opacity:0;transition:opacity .15s; }
-.check-item.done .check-box svg{ opacity:1; }
-.check-label{ font-size:14px;font-weight:500;flex:1; }
-.check-item.done .check-label{ text-decoration:line-through;color:var(--ink-faint); }
-
-.area-progress{
-  display:flex;align-items:center;gap:10px;margin-bottom:14px;
-}
-.area-progress-bar{
-  flex:1;height:6px;border-radius:99px;background:var(--line);overflow:hidden;
-}
-.area-progress-fill{
-  height:100%;border-radius:99px;background:var(--good);transition:width .3s ease;
-}
-.area-progress-txt{ font-size:12px;font-weight:600;color:var(--ink-soft);white-space:nowrap; }
-
 .area-members-row{ display:flex;flex-wrap:wrap;gap:8px;margin-top:4px; }
 .area-member-chip{
   display:flex;align-items:center;gap:8px;
@@ -1142,7 +1107,7 @@ const Data = {
     const [rooms, services, events, members, mrooms, assigns, swaps] = await Promise.all([
       sb.from("rooms").select("*"),
       sb.from("services").select("*"),
-      sb.from("events").select("id,date,title,time,note,color"),
+      sb.from("events").select("id,date,title,time,note,color,kind,end_time,obs"),
       sb.from("members").select("id,full_name,phone,fn,active,notes,training"),
       sb.from("member_rooms").select("*"),
       sb.from("assignments").select("*"),
@@ -1153,7 +1118,7 @@ const Data = {
     DB.rooms = (rooms.data||[]).map(r=>({id:r.id,name:r.name,age:r.age||"",emoji:r.emoji||"estrela",bg:r.bg||"#EAF4FC",fg:r.fg||"#2E86D6",need:3,sort:r.sort||0}))
       .sort((a,b)=>(a.sort||0)-(b.sort||0));
     DB.services = (services.data||[]).map(s=>({id:s.id,name:s.name,weekday:s.weekday,time:s.time||"",color:s.color||"#4DA3E8"}));
-    DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||"",photo:"",color:e.color||"#FF8A1E"}));
+    DB.events = (events.data||[]).map(e=>({id:e.id,date:e.date,title:e.title,time:e.time||"",note:e.note||"",photo:"",color:e.color||"#FF8A1E",kind:e.kind||"",endTime:e.end_time||"",obs:e.obs||""}));
     const byMember={};
     (mrooms.data||[]).forEach(mr=>{ (byMember[mr.member_id]=byMember[mr.member_id]||[]).push(mr.room_id); });
     DB.members = (members.data||[]).map(m=>({id:m.id,name:m.full_name,phone:m.phone||"",role:m.fn||"",roomIds:byMember[m.id]||[],active:m.active!==false,notes:m.notes||"",photo:"",training:m.training===true}));
@@ -1161,9 +1126,10 @@ const Data = {
     (assigns.data||[]).forEach(a=>{
       const key = a.source_type==="event" ? `e:${a.source_id}` : `s:${a.source_id}:${a.occ_date}`;
       sched[key]=sched[key]||{};
-      sched[key][a.room_id]=sched[key][a.room_id]||{lider:null,monitores:[]};
+      sched[key][a.room_id]=sched[key][a.room_id]||{lider:null,monitores:[],times:{}};
       if(a.role_in_room==="leader") sched[key][a.room_id].lider=a.member_id;
       else sched[key][a.room_id].monitores.push(a.member_id);
+      if(a.start_time||a.end_time) sched[key][a.room_id].times[a.member_id]={from:hm(a.start_time),to:hm(a.end_time)};
     });
     DB.schedules = sched;
     DB.swaps = (swaps && swaps.data ? swaps.data : []).map(mapSwapRow);
@@ -1251,7 +1217,7 @@ const Data = {
   },
 
   async saveEvent(e, isNew){
-    if(CLOUD){ const row={id:e.id,date:e.date,title:e.title,time:e.time||null,note:e.note||null,photo:e.photo||null,color:e.color||null};
+    if(CLOUD){ const row={id:e.id,date:e.date,title:e.title,time:e.time||null,note:e.note||null,photo:e.photo||null,color:e.color||null,kind:e.kind||null,end_time:e.endTime||null,obs:e.obs||null};
       if(isNew) await sbErr(sb.from("events").insert(row),"criar evento"); else await sbErr(sb.from("events").update(row).eq("id",e.id),"salvar evento"); }
     if(isNew) DB.events.push(e); else Object.assign(DB.events.find(x=>x.id===e.id), e); save();
   },
@@ -1278,8 +1244,9 @@ const Data = {
     const buildRows = ids => {
       const rows=[];
       ids.forEach(rid=>{ const slot=sched[rid]; if(!slot) return;
-        if(slot.lider) rows.push({occ_date:date,source_type:st,source_id:sid,room_id:rid,member_id:slot.lider,role_in_room:"leader"});
-        (slot.monitores||[]).forEach(mid=>rows.push({occ_date:date,source_type:st,source_id:sid,room_id:rid,member_id:mid,role_in_room:"monitor"}));
+        const tm=(mid)=>{ const t=(slot.times||{})[mid]; return (t&&(t.from||t.to)) ? {start_time:t.from||null,end_time:t.to||null} : {}; };
+        if(slot.lider) rows.push(Object.assign({occ_date:date,source_type:st,source_id:sid,room_id:rid,member_id:slot.lider,role_in_room:"leader"},tm(slot.lider)));
+        (slot.monitores||[]).forEach(mid=>rows.push(Object.assign({occ_date:date,source_type:st,source_id:sid,room_id:rid,member_id:mid,role_in_room:"monitor"},tm(mid))));
       });
       return rows;
     };
@@ -1320,6 +1287,7 @@ const Data = {
     if(s.role==="leader"){ if(slot.lider===s.requestedBy) slot.lider=s.targetId; }
     else { const i=slot.monitores.indexOf(s.requestedBy); if(i>=0) slot.monitores[i]=s.targetId; }
     DB.schedules[s.occKey]=DB.schedules[s.occKey]||{}; DB.schedules[s.occKey][s.roomId]=slot;
+    if(slot.times && slot.times[s.requestedBy]){ slot.times[s.targetId]=slot.times[s.requestedBy]; delete slot.times[s.requestedBy]; }
     s.status="accepted"; s.acceptedBy=s.targetId; save();
   },
   async setSwapStatus(id, status){
@@ -1374,10 +1342,11 @@ function migrate(db){
       const rooms = db.schedules[k];
       for(const rid in rooms){
         const v = rooms[rid];
+        const evk = k.startsWith("e:");
         if(Array.isArray(v)){
-          rooms[rid] = { lider: v[0]||null, monitores: v.slice(1,3) };
+          rooms[rid] = { lider: v[0]||null, monitores: evk?v.slice(1):v.slice(1,3) };
         } else if(v && typeof v==="object"){
-          rooms[rid] = { lider: v.lider||null, monitores: (v.monitores||[]).slice(0,2) };
+          rooms[rid] = { lider: v.lider||null, monitores: evk?(v.monitores||[]):(v.monitores||[]).slice(0,2), times: v.times||{} };
         }
       }
     }
@@ -1482,10 +1451,21 @@ function cultoColor(weekday, time){
                                           : "#1A4E8F";       // domingo noite — azul escuro
   return "#3D8BF0";                                          // demais cultos — azul padrão
 }
+const EVENT_KINDS={culto:{l:"Culto",i:"⛪"},vigilia:{l:"Vigília",i:"🌙"},batismo:{l:"Batismo",i:"💧"},reuniao:{l:"Reunião",i:"🤝"},treinamento:{l:"Treinamento",i:"🎓"}};
+const hm=t=>String(t||"").slice(0,5);
+const isVigil=o=>!!o && o.kind==="vigilia";
+function occIcon(o){ if(o.type==="evento") return (EVENT_KINDS[o.kind]||{i:"🎉"}).i; return "⛪"; }
+function occRange(o){ return o.time ? (hm(o.time)+(o.endTime?" às "+hm(o.endTime):"")) : ""; }
+const toMin=t=>{ const p=String(t||"").split(":"); return (+p[0]||0)*60+(+p[1]||0); };
+const fromMin=m=>{ m=((m%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
+const timeTxt=t=>(t&&(t.from||t.to))?(hm(t.from)+" às "+hm(t.to)):"";
+function vgTime(o,slot,id){ if(!isVigil(o)) return ""; const t=timeTxt((slot.times||{})[id]); return t?` <b style="margin-left:6px;color:var(--sky-600,#2E86D6)">${t}</b>`:""; }
+function obsBox(o){ return (o&&o.obs)?`<div class="card" style="padding:12px;margin-bottom:12px;background:var(--sun-soft,#FFF4E0);border-color:#F3D9A4"><div style="font-size:11.5px;font-weight:700;color:var(--ink-faint);margin-bottom:4px">📝 OBSERVAÇÕES</div><div style="font-size:13.5px;white-space:pre-wrap">${esc(o.obs)}</div></div>`:""; }
+function kindLabel(o){ return (o && o.type==="evento" && EVENT_KINDS[o.kind]) ? EVENT_KINDS[o.kind].l+" • " : ""; }
 function occsOnDate(dateStr){
   const d=parseYmd(dateStr), wd=d.getDay(), list=[];
   DB.services.forEach(s=>{ if(s.weekday===wd) list.push({key:`s:${s.id}:${dateStr}`,date:dateStr,title:s.name,time:s.time,color:cultoColor(s.weekday,s.time),type:"culto",refId:s.id,photo:(DB.occPhotos&&DB.occPhotos[`s:${s.id}:${dateStr}`])||""}); });
-  DB.events.filter(e=>e.date===dateStr).forEach(e=>{ list.push({key:`e:${e.id}`,date:dateStr,title:e.title,time:e.time||"",color:e.color||"#FF8A1E",type:"evento",refId:e.id,note:e.note,photo:e.photo||""}); });
+  DB.events.filter(e=>e.date===dateStr).forEach(e=>{ list.push({key:`e:${e.id}`,date:dateStr,title:e.title,time:e.time||"",color:e.color||"#FF8A1E",type:"evento",refId:e.id,note:e.note,kind:e.kind||"",endTime:e.endTime||"",obs:e.obs||"",photo:e.photo||""}); });
   return list.sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));
 }
 /* Próximas ocorrências a partir de hoje (n dias à frente) */
@@ -1528,9 +1508,10 @@ function historyDonutHtml(rows, total){
 /* Slot de uma sala: 1 líder + até 2 monitores (máx 3) */
 function roomSlot(key, roomId){
   const v = schedFor(key)[roomId];
-  if(!v) return { lider:null, monitores:[] };
-  if(Array.isArray(v)) return { lider:v[0]||null, monitores:v.slice(1,3) };
-  return { lider:v.lider||null, monitores:(v.monitores||[]).slice(0,2) };
+  if(!v) return { lider:null, monitores:[], times:{} };
+  const ev = String(key).startsWith("e:");          // eventos: sem limite de auxiliares
+  if(Array.isArray(v)) return { lider:v[0]||null, monitores:ev?v.slice(1):v.slice(1,3), times:{} };
+  return { lider:v.lider||null, monitores:ev?(v.monitores||[]):(v.monitores||[]).slice(0,2), times:v.times||{} };
 }
 function roomPeopleIds(key, roomId){ const s=roomSlot(key,roomId); return [s.lider, ...s.monitores].filter(Boolean); }
 function assignedCount(key){ const s=schedFor(key); return Object.keys(s).reduce((a,rid)=>a+roomPeopleIds(key,rid).length,0); }
@@ -1704,7 +1685,7 @@ function renderHome(c){
         <div class="room-ico" style="background:${o.color}22;color:${o.color};overflow:hidden;padding:0">
           ${o.photo
             ? `<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`
-            : (o.type==="evento"?"🎉":"⛪")
+            : (occIcon(o))
           }
         </div>
         <div class="room-info"><div class="room-name">${esc(o.title)}</div>
@@ -1939,7 +1920,7 @@ function buildScheduleBlocks(occs, rooms){
     o,
     rooms: rooms.filter(r=>roomPeopleIds(o.key,r.id).length).map(r=>{
       const slot=roomSlot(o.key,r.id);
-      return { r, lider: slot.lider?getMember(slot.lider):null,
+      return { r, times:slot.times||{}, lider: slot.lider?getMember(slot.lider):null,
                aux: slot.monitores.map(id=>getMember(id)).filter(Boolean) };
     })
   })).filter(b=>b.rooms.length);
@@ -1949,6 +1930,11 @@ function peopleLine(rm){
   const aux  = rm.aux.length ? ("Aux: "+rm.aux.map(m=>m.name).join(", ")) : "";
   return aux ? (resp+"    "+aux) : resp;
 }
+function personLines(o,rm){
+  if(!isVigil(o)) return [peopleLine(rm)];
+  const out=[]; const add=(m,ld)=>{ if(!m) return; const t=timeTxt(rm.times[m.id]); out.push((ld?"★ ":"• ")+m.name+(t?"   "+t:"")); };
+  add(rm.lider,true); rm.aux.forEach(m=>add(m,false)); return out;
+}
 function roundRectPath(ctx,x,y,w,h,r){ ctx.beginPath();
   ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
   ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
@@ -1956,14 +1942,16 @@ function wrapText(ctx,text,maxW){ const words=String(text).split(" "); const lin
   words.forEach(w=>{ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW && line){ lines.push(line); line=w; } else line=t; });
   if(line) lines.push(line); return lines; }
 const SFONT='"Helvetica Neue", Arial, sans-serif';
-function paintSchedule(ctx, blocks, draw, subtitle){
+function paintSchedule(ctx, blocks, draw, subtitle, ttl){
   const W=720, M=34, innerW=W-2*M;
   let y=44;
   if(draw){ ctx.textBaseline="alphabetic"; ctx.fillStyle="#6B7785"; ctx.font='600 13px '+SFONT;
     ctx.fillText((DB.settings.church+" • "+DB.settings.dept).toUpperCase(), M, y); }
   y+=34;
-  if(draw){ ctx.fillStyle="#15324f"; ctx.font='800 30px '+SFONT;
-    ctx.fillText("Escala — "+MONTHS[escMonth]+" "+escYear, M, y); }
+  if(draw){ const T=ttl||("Escala — "+MONTHS[escMonth]+" "+escYear); let fs=30;
+    ctx.fillStyle="#15324f"; ctx.font='800 '+fs+'px '+SFONT;
+    while(ctx.measureText(T).width>innerW && fs>16){ fs-=2; ctx.font='800 '+fs+'px '+SFONT; }
+    ctx.fillText(T, M, y); }
   y+=24;
   if(subtitle){
     if(draw){ ctx.fillStyle="#3D8BF0"; ctx.font='700 15px '+SFONT; ctx.fillText(subtitle, M, y+4); }
@@ -1973,14 +1961,17 @@ function paintSchedule(ctx, blocks, draw, subtitle){
     const barH=38;
     if(draw){ roundRectPath(ctx,M,y,innerW,barH,9); ctx.fillStyle=b.o.color||"#3D8BF0"; ctx.fill();
       ctx.fillStyle="#ffffff"; ctx.font='700 15px '+SFONT;
-      ctx.fillText(fmtShort(b.o.date)+(b.o.time?"  "+b.o.time:"")+"  •  "+b.o.title, M+13, y+24); }
+      ctx.fillText(fmtShort(b.o.date)+(b.o.time?"  "+occRange(b.o):"")+"  •  "+b.o.title, M+13, y+24); }
     y+=barH+12;
+    if(b.o.obs){ ctx.font='italic 13px '+SFONT;
+      wrapText(ctx,"Obs.: "+b.o.obs,innerW-8).forEach(ln=>{ if(draw){ ctx.fillStyle="#6B7785"; ctx.font='italic 13px '+SFONT; ctx.fillText(ln, M+4, y); } y+=18; });
+      y+=8; }
     b.rooms.forEach(rm=>{
       if(draw){ ctx.beginPath(); ctx.arc(M+7, y-3, 5, 0, Math.PI*2); ctx.fillStyle=rm.r.fg; ctx.fill();
         ctx.fillStyle="#15324f"; ctx.font='700 14.5px '+SFONT; ctx.fillText(rm.r.name, M+22, y+1); }
       y+=22;
       ctx.font='14px '+SFONT;
-      wrapText(ctx, peopleLine(rm), innerW-24).forEach(ln=>{
+      personLines(b.o,rm).reduce((acc,t)=>acc.concat(wrapText(ctx,t,innerW-24)),[]).forEach(ln=>{
         if(draw){ ctx.fillStyle="#3a4654"; ctx.font='14px '+SFONT; ctx.fillText(ln, M+22, y); }
         y+=20;
       });
@@ -1994,44 +1985,50 @@ function paintSchedule(ctx, blocks, draw, subtitle){
   y+=20;
   return Math.ceil(y);
 }
-function renderScheduleImage(blocks, subtitle){
+function renderScheduleImage(blocks, subtitle, ttl){
   const probe=document.createElement("canvas").getContext("2d");
   if(!probe) return null;                       // navegador sem canvas
   const W=720, scale=2;
-  const H=paintSchedule(probe, blocks, false, subtitle);
+  const H=paintSchedule(probe, blocks, false, subtitle, ttl);
   const cv=document.createElement("canvas"); cv.width=W*scale; cv.height=H*scale;
   const ctx=cv.getContext("2d"); ctx.scale(scale,scale);
   ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,W,H);
   ctx.fillStyle="#3D8BF0"; ctx.fillRect(0,0,W,5);
-  paintSchedule(ctx, blocks, true, subtitle);
+  paintSchedule(ctx, blocks, true, subtitle, ttl);
   return cv;
 }
-function scheduleText(occs, rooms, subtitle){
-  let t="*ESCALA — "+MONTHS[escMonth]+" "+escYear+"*\n"+DB.settings.dept+" • "+DB.settings.church+"\n";
+function scheduleText(occs, rooms, subtitle, ttl){
+  let t="*"+(ttl||("ESCALA — "+MONTHS[escMonth]+" "+escYear))+"*\n"+DB.settings.dept+" • "+DB.settings.church+"\n";
   if(subtitle) t+="_"+subtitle+"_\n";
   occs.forEach(o=>{
     const rs=rooms.filter(r=>roomPeopleIds(o.key,r.id).length);
     if(!rs.length) return;
-    t+="\n*"+fmtShort(o.date)+(o.time?" "+o.time:"")+" — "+o.title+"*\n";
+    t+="\n*"+fmtShort(o.date)+(o.time?" "+occRange(o):"")+" — "+o.title+"*\n";
+    if(o.obs) t+="📝 "+o.obs+"\n";
     rs.forEach(r=>{
       const slot=roomSlot(o.key,r.id);
       const resp=slot.lider?getMember(slot.lider):null;
       const aux=slot.monitores.map(id=>getMember(id)).filter(Boolean).map(m=>m.name);
+      if(isVigil(o)){ t+="▸ "+r.name+"\n";
+        [slot.lider,...slot.monitores].filter(Boolean).forEach(id=>{ const m=getMember(id); if(!m) return; const tt=timeTxt((slot.times||{})[id]);
+          t+="   "+(id===slot.lider?"★ ":"• ")+m.name+(tt?" — "+tt:"")+"\n"; });
+      } else
       t+="▸ "+r.name+": ★ "+(resp?resp.name:"—")+(aux.length?" | "+aux.join(", "):"")+"\n";
     });
   });
   return t;
 }
-function shareMonthSchedule(){
+function shareMonthSchedule(opt){ opt=(opt&&opt.occs)?opt:{};
   const rooms = shareScopeRooms();
   if(!rooms.length){ toast("Você não tem área para compartilhar","warn"); return; }
-  const occs = occsInMonth(escYear, escMonth).filter(o=>rooms.some(r=>roomPeopleIds(o.key,r.id).length));
+  const occs = (opt.occs||occsInMonth(escYear, escMonth)).filter(o=>o && rooms.some(r=>roomPeopleIds(o.key,r.id).length));
   if(!occs.length){ toast("Não há escala montada (na sua área) neste mês","warn"); return; }
-  const subtitle = isAdmin() ? "" : rooms.map(r=>r.name).join(" • ");
+  let subtitle = isAdmin() ? "" : rooms.map(r=>r.name).join(" • ");
+  if(opt.occs && opt.occs[0] && EVENT_KINDS[opt.occs[0].kind]) subtitle=[EVENT_KINDS[opt.occs[0].kind].l, subtitle].filter(Boolean).join(" • ");
   const blocks = buildScheduleBlocks(occs, rooms);
-  let cv=null; try{ cv=renderScheduleImage(blocks, subtitle); }catch(e){ cv=null; }
+  let cv=null; try{ cv=renderScheduleImage(blocks, subtitle, opt.title); }catch(e){ cv=null; }
   const dataUrl = cv ? cv.toDataURL("image/png") : "";
-  const base = `escala-${MONTHS[escMonth].toLowerCase()}-${escYear}${subtitle?"-"+subtitle.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""):""}`;
+  const base = opt.occs ? ("escala-"+(opt.title||"evento").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"")) : `escala-${MONTHS[escMonth].toLowerCase()}-${escYear}${subtitle?"-"+subtitle.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""):""}`;
   const body = (cv?`<img src="${dataUrl}" style="width:100%;border-radius:12px;border:1px solid var(--line);display:block" alt="Escala"/>`
                   :`<p class="muted-txt">Pré-visualização de imagem indisponível neste navegador — você ainda pode enviar como texto.</p>`);
   const foot = `${cv?`<button class="btn btn-primary btn-block" id="shImg">Compartilhar imagem</button>
@@ -2039,7 +2036,7 @@ function shareMonthSchedule(){
       <button class="btn btn-ghost btn-block" id="shDl" style="margin-top:8px">Baixar imagem</button>`:""}
     <button class="btn btn-wa btn-block" id="shTxt" style="margin-top:8px">Enviar como texto no WhatsApp</button>`;
   openModal("Compartilhar escala"+(subtitle?" — "+subtitle:""), body, foot);
-  const txtMsg = "Escala — "+MONTHS[escMonth]+" "+escYear+(subtitle?" ("+subtitle+")":"");
+  const txtMsg = (opt.title||("Escala — "+MONTHS[escMonth]+" "+escYear))+(subtitle?" ("+subtitle+")":"");
 
   // pré-gera os arquivos AGORA, pra o compartilhar funcionar no toque (iOS exige isso)
   let imgFile=null, pdfFile=null;
@@ -2063,7 +2060,7 @@ function shareMonthSchedule(){
       .catch(()=>toast("Não consegui gerar o PDF agora. Verifique a internet e tente de novo, ou use a imagem.","warn"))
       .finally(()=>{ pf.disabled=false; pf.textContent=old; });
   });
-  document.getElementById("shTxt").addEventListener("click",()=>window.open("https://wa.me/?text="+encodeURIComponent(scheduleText(occs, rooms, subtitle)),"_blank"));
+  document.getElementById("shTxt").addEventListener("click",()=>window.open("https://wa.me/?text="+encodeURIComponent(scheduleText(occs, rooms, subtitle, opt.title)),"_blank"));
 }
 function loadJsPDF(){
   if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf);
@@ -2171,7 +2168,7 @@ function renderVolunteerHome(me, t, todayStr, occs){
         <div class="room-ico" style="background:${o.color}22;color:${o.color};overflow:hidden;padding:0">
           ${o.photo
             ? `<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`
-            : (o.type==="evento"?"🎉":"⛪")
+            : (occIcon(o))
           }
         </div>
         <div class="room-info"><div class="room-name">${esc(o.title)}</div>
@@ -2370,7 +2367,7 @@ function renderEscala(c){
           <div class="room-ico" style="background:${o.color}22;color:${o.color};overflow:hidden;padding:0">
   ${o.photo
     ? `<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`
-    : (o.type==="evento"?"🎉":"⛪")
+    : (occIcon(o))
   }
 </div>
           <div class="sched-room-names"><div class="sched-room-title">${esc(o.title)} ${o.time?"<span class='sched-when'>• "+o.time+"</span>":""} ${mineHere?"<span class='chip good'>você</span>":""}</div>
@@ -2695,8 +2692,8 @@ document.addEventListener("click", e=>{
     case "edit-room": editRoom(id); break;
     case "new-service": editService(null); break;
     case "edit-service": editService(id); break;
-    case "new-event": editEvent(null, calSelected); break;
-    case "new-event-on": editEvent(null, el.dataset.date); break;
+    case "new-event": pickEventKind(calSelected); break;
+    case "new-event-on": pickEventKind(el.dataset.date); break;
     case "edit-event": editEvent(id); break;
     case "sel-day": calSelected=el.dataset.date; go("calendario"); break;
     case "esc-prev": escMonth--; if(escMonth<0){escMonth=11;escYear--;} go("escala"); break;
@@ -3040,8 +3037,16 @@ function editService(sid){
 }
 
 /* ---------- Modal: Evento pontual ---------- */
-function editEvent(eid, presetDate){
-  const ev = eid ? DB.events.find(e=>e.id===eid) : {title:"",date:presetDate||ymd(today()),time:"",note:"",photo:"",color:EVENT_COLORS[0]};
+function pickEventKind(date){
+  const body = `<p class="muted-txt" style="margin:0 0 12px">Qual o tipo do evento?</p>` +
+    Object.keys(EVENT_KINDS).map(k=>`<button type="button" class="btn btn-soft btn-block" data-kind="${k}" style="margin-bottom:8px;justify-content:flex-start;gap:10px;font-size:15px"><span style="font-size:20px">${EVENT_KINDS[k].i}</span> ${EVENT_KINDS[k].l}</button>`).join("");
+  openModal("Novo evento", body, "");
+  document.getElementById("modalBody").querySelectorAll("[data-kind]").forEach(b=>{
+    b.addEventListener("click",()=>{ const k=b.dataset.kind; closeModal(); setTimeout(()=>editEvent(null,date,k),200); });
+  });
+}
+function editEvent(eid, presetDate, presetKind){
+  const ev = eid ? DB.events.find(e=>e.id===eid) : {title:"",date:presetDate||ymd(today()),time:"",endTime:"",kind:presetKind||"culto",obs:"",note:"",photo:"",color:EVENT_COLORS[0]};
   let ePhoto = ev.photo || "";
   let eColor = ev.color || EVENT_COLORS[0];
   const body = `
@@ -3054,11 +3059,14 @@ function editEvent(eid, presetDate){
       </div>
       <input type="file" id="ePhotoInput" accept="image/*" hidden>
     </div>
+    <div class="field"><label>Tipo de evento</label><select id="eKind">${(ev.kind?"":'<option value="" selected>Outro</option>')+Object.keys(EVENT_KINDS).map(k=>`<option value="${k}" ${ev.kind===k?"selected":""}>${EVENT_KINDS[k].i} ${EVENT_KINDS[k].l}</option>`).join("")}</select></div>
     <div class="field"><label>Nome do evento</label><input id="eTitle" value="${esc(ev.title)}" placeholder="Ex.: Ensaio, Conferência, Gravação"></div>
     <div class="row2">
       <div class="field"><label>Data</label><input id="eDate" type="date" value="${ev.date}"></div>
-      <div class="field"><label>Horário</label><input id="eTime" type="time" value="${ev.time||""}"></div>
+      <div class="field"><label id="eTimeLb">${ev.kind==="vigilia"?"Início":"Horário"}</label><input id="eTime" type="time" value="${hm(ev.time)}"></div>
     </div>
+    <div class="field" id="eEndWrap" style="${ev.kind==="vigilia"?"":"display:none"}"><label>Término da vigília</label><input id="eEnd" type="time" value="${hm(ev.endTime)}"></div>
+    <div class="field"><label>Observações para os escalados</label><textarea id="eObs" placeholder="Ex.: chegar 30 min antes, levar lanche, roupa preta...">${esc(ev.obs||"")}</textarea></div>
     <div class="field"><label>Detalhes</label><textarea id="eNote" placeholder="Local, instruções...">${esc(ev.note||"")}</textarea></div>
     <div class="field"><label>Cor no calendário</label>
       <div class="color-row" id="eColors">${EVENT_COLORS.map(c=>`<span class="color-dot ${eColor===c?"on":""}" data-color="${c}" style="background:${c}"></span>`).join("")}</div>
@@ -3098,6 +3106,12 @@ function editEvent(eid, presetDate){
     eDel.style.display="none"; document.getElementById("ePhotoBtn").textContent="Adicionar foto";
   });
 
+  // tipo: mostra o término só na vigília
+  document.getElementById("eKind").addEventListener("change",e=>{
+    const v=e.target.value==="vigilia";
+    document.getElementById("eEndWrap").style.display=v?"":"none";
+    document.getElementById("eTimeLb").textContent=v?"Início":"Horário";
+  });
   // seletor de cor do evento
   const colorRow=document.getElementById("eColors");
   if(colorRow) colorRow.addEventListener("click", e=>{
@@ -3111,7 +3125,10 @@ function editEvent(eid, presetDate){
     const date=document.getElementById("eDate").value;
     if(!title){ toast("Dê um nome ao evento","warn"); return; }
     if(!date){ toast("Escolha a data","warn"); return; }
-    const data={ title, date, time:document.getElementById("eTime").value, note:document.getElementById("eNote").value.trim(), photo:ePhoto, color:eColor };
+    const kind=document.getElementById("eKind").value;
+    const endTime=kind==="vigilia"?document.getElementById("eEnd").value:"";
+    if(kind==="vigilia" && (!document.getElementById("eTime").value || !endTime)){ toast("Informe o início e o término da vigília","warn"); return; }
+    const data={ title, date, kind, endTime, obs:document.getElementById("eObs").value.trim(), time:document.getElementById("eTime").value, note:document.getElementById("eNote").value.trim(), photo:ePhoto, color:eColor };
     const evt = eid ? {id:eid,...data} : {id:uid(),...data};
     calSelected=date;
     try{ await Data.saveEvent(evt, !eid); closeModal(); go("calendario"); toast(eid?"Evento atualizado":"Evento criado","good"); }
@@ -3131,7 +3148,7 @@ function pickOccForSchedule(){
   if(!occs.length){ toast("Cadastre cultos na aba Agenda primeiro","warn"); return; }
   const body = `<p class="muted-txt" style="margin:0 0 12px">Para qual culto ou evento?</p>
     ${occs.map(o=>`<div class="sched-room list-tap" data-pick-occ="${o.key}" style="border-left:4px solid ${o.color};cursor:pointer">
-      <div class="room-ico" style="background:${o.color}22;color:${o.color}">${o.type==="evento"?"🎉":"⛪"}</div>
+      <div class="room-ico" style="background:${o.color}22;color:${o.color}">${occIcon(o)}</div>
       <div class="sched-room-names"><div class="sched-room-title">${esc(o.title)}</div>${fmtShort(o.date)} ${o.time?"• "+o.time:""}</div>
       <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--ink-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 18l6-6-6-6"/></svg>
     </div>`).join("")}`;
@@ -3149,7 +3166,17 @@ function openSchedule(key){
 
   // cópia editável já no formato {lider, monitores[]}
   const sched={};
-  DB.rooms.forEach(r=>{ const sl=roomSlot(key,r.id); sched[r.id]={lider:sl.lider, monitores:[...sl.monitores]}; });
+  DB.rooms.forEach(r=>{ const sl=roomSlot(key,r.id); sched[r.id]={lider:sl.lider, monitores:[...sl.monitores], times:Object.assign({},sl.times)}; });
+  const isEv = occ.type==="evento", vig = isVigil(occ);
+  const pruneTimes=slot=>{ const ok=new Set([slot.lider,...slot.monitores].filter(Boolean)); Object.keys(slot.times||{}).forEach(id=>{ if(!ok.has(id)) delete slot.times[id]; }); };
+  function vigRows(r,slot){
+    if(!vig) return "";
+    const ids=[slot.lider,...slot.monitores].filter(Boolean); if(!ids.length) return "";
+    return `<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:14px 0 4px">🕒 Horário de cada pessoa</div>`+ids.map(id=>{ const m=getMember(id); if(!m) return ""; const t=slot.times[id]||{};
+      return `<div style="display:flex;align-items:center;gap:6px;margin-top:6px"><span style="flex:1;font-size:13px;font-weight:600">${id===slot.lider?"★ ":""}${esc(m.name.split(" ")[0])}</span>
+        <input type="time" class="vg-time" data-room="${r.id}" data-mid="${id}" data-k="from" value="${hm(t.from)}" style="width:auto;flex:none"><span style="font-size:12px">às</span>
+        <input type="time" class="vg-time" data-room="${r.id}" data-mid="${id}" data-k="to" value="${hm(t.to)}" style="width:auto;flex:none"></div>`; }).join("");
+  }
 
   const shortName=m=>esc(m.name.split(" ")[0])+(m.name.split(" ")[1]?" "+m.name.split(" ")[1][0]+".":"");
   function availFor(r){ return DB.members.filter(m=>m.active).filter(m=>!m.roomIds.length||m.roomIds.includes(r.id)).sort((a,b)=>a.name.localeCompare(b.name,"pt")); }
@@ -3162,12 +3189,12 @@ function openSchedule(key){
       const header=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
           <div class="room-ico" style="width:38px;height:38px;border-radius:11px;font-size:18px;background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
           <div style="flex:1"><div class="room-name" style="font-size:14.5px">${esc(r.name)}</div>
-            <div class="room-age">${count}/3 ${count===3?"✓":""}${editable?"":' • <span style="color:var(--ink-faint)">🔒 outra área</span>'}</div></div>
+            <div class="room-age">${isEv?count+" escalado(s)":count+"/3 "+(count===3?"✓":"")}${editable?"":' • <span style="color:var(--ink-faint)">🔒 outra área</span>'}</div></div>
         </div>`;
       if(!editable){
         const nm=id=>{ const m=getMember(id); return m?shortName(m):""; };
-        const liderRO = slot.lider?`<span class="pick-item on" style="background:${r.fg}">★ ${nm(slot.lider)}</span>`:'<span class="muted-txt">—</span>';
-        const monRO = slot.monitores.length?slot.monitores.map(id=>`<span class="pick-item on" style="background:${r.fg}">${nm(id)}</span>`).join(""):'<span class="muted-txt">—</span>';
+        const liderRO = slot.lider?`<span class="pick-item on" style="background:${r.fg}">★ ${nm(slot.lider)}${vgTime(occ,slot,slot.lider)}</span>`:'<span class="muted-txt">—</span>';
+        const monRO = slot.monitores.length?slot.monitores.map(id=>`<span class="pick-item on" style="background:${r.fg}">${nm(id)}${vgTime(occ,slot,id)}</span>`).join(""):'<span class="muted-txt">—</span>';
         return `<div class="card" style="padding:13px;margin-bottom:11px;opacity:.7">
           ${header}
           <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">★</span> Responsável</div>
@@ -3187,8 +3214,9 @@ function openSchedule(key){
         ${header}
         <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">★</span> Responsável</div>
         <div class="pick" data-grp="lider" data-room="${r.id}">${liderG}</div>
-        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:12px 0 6px">Auxiliares <span style="font-weight:500">(até 2)</span></div>
+        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:12px 0 6px">Auxiliares ${isEv?"":'<span style="font-weight:500">(até 2)</span>'}</div>
         <div class="pick" data-grp="monitor" data-room="${r.id}">${monG}</div>
+        ${vigRows(r,slot)}
       </div>`;
     }).join("");
   }
@@ -3197,9 +3225,9 @@ function openSchedule(key){
   const showPhoto = occ.type==="culto";   // eventos têm foto na própria tela do evento
   const head = `<div id="occBanner" class="occ-banner" style="${occPhoto?`background-image:url('${occPhoto}')`:"display:none"}"></div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:${showPhoto?"10":"14"}px">
-    <div class="room-ico" style="width:42px;height:42px;border-radius:12px;background:${occ.color}22;color:${occ.color}">${occ.type==="evento"?"🎉":"⛪"}</div>
+    <div class="room-ico" style="width:42px;height:42px;border-radius:12px;background:${occ.color}22;color:${occ.color}">${occIcon(occ)}</div>
     <div><div style="font-family:var(--font-display);font-weight:700;font-size:16px">${esc(occ.title)}</div>
-    <div class="muted-txt">${fmtLong(occ.date)} ${occ.time?"• "+occ.time:""}</div></div></div>
+    <div class="muted-txt">${kindLabel(occ)}${fmtLong(occ.date)} ${occ.time?"• "+occRange(occ):""}</div></div></div>
     ${showPhoto?`<div class="field" style="margin-bottom:14px">
       <div style="display:flex;gap:8px">
         <button type="button" class="btn btn-ghost" id="occPhotoBtn" style="padding:9px 13px;font-size:13px;flex:1">${occPhoto?"Trocar":"Adicionar"} foto do culto</button>
@@ -3208,9 +3236,14 @@ function openSchedule(key){
       <input type="file" id="occPhotoInput" accept="image/*" hidden>
     </div>`:""}`;
 
-  openModal("Escala do culto", head + `<div id="schedRooms">${renderBody()}</div>`,
+  const evTools = isEv ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button type="button" class="btn btn-soft" id="evAll" style="padding:9px 13px;font-size:13px;flex:1">👥 Escalar todos</button>
+      <button type="button" class="btn btn-soft" id="evClear" style="padding:9px 13px;font-size:13px;flex:1">Limpar</button>
+      ${vig?`<button type="button" class="btn btn-soft" id="evSplit" style="padding:9px 13px;font-size:13px;flex-basis:100%">🕒 Dividir horários igualmente</button>`:""}</div>` : "";
+  openModal(isEv?"Escala do evento":"Escala do culto", head + obsBox(occ) + evTools + `<div id="schedRooms">${renderBody()}</div>`,
     `<button class="btn btn-wa btn-block btn-attn" id="schedWa" style="margin-bottom:10px">
        <svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.2-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg> Avisar escalados no WhatsApp</button>
+     ${isEv?`<button class="btn btn-ghost btn-block" id="schedShare" style="margin-bottom:10px">📤 Compartilhar escala do evento</button>`:""}
      <button class="btn btn-primary btn-block" id="schedSave">Salvar escala</button>`);
 
   const wrap=document.getElementById("schedRooms");
@@ -3262,10 +3295,11 @@ function openSchedule(key){
       if(slot.monitores.includes(mid)) slot.monitores=slot.monitores.filter(x=>x!==mid);
       else {
         if(slot.lider===mid) slot.lider=null;
-        if(slot.monitores.length>=2){ toast("Máximo de 2 auxiliares por área","warn"); return; }
+        if(!isEv && slot.monitores.length>=2){ toast("Máximo de 2 auxiliares por área","warn"); return; }
         slot.monitores.push(mid); added=true;
       }
     }
+    pruneTimes(slot);
     paint();
     if(added) checkAssignWarnings(mid, rid);
   });
@@ -3296,15 +3330,53 @@ function openSchedule(key){
     try{ await commit(); }catch(e){ toast("Não salvou — "+e.message,"warn"); return; }
     waSchedule(key, occ);
   });
+  if(isEv){
+    document.getElementById("schedShare").addEventListener("click", async ()=>{
+      try{ await commit(); }catch(e){ toast("Não salvou — "+e.message,"warn"); return; }
+      shareMonthSchedule({occs:[resolveOcc(key)], title:occ.title});
+    });
+    document.getElementById("evAll").addEventListener("click",()=>{
+      const used=new Set(); Object.values(sched).forEach(sl=>{ if(sl.lider) used.add(sl.lider); sl.monitores.forEach(x=>used.add(x)); });
+      let n=0;
+      DB.rooms.filter(r=>canEditRoom(r.id)).forEach(r=>{
+        DB.members.filter(m=>m.active && m.roomIds.includes(r.id) && !used.has(m.id)).forEach(m=>{ sched[r.id].monitores.push(m.id); used.add(m.id); n++; });
+      });
+      paint(); toast(n?`${n} pessoa(s) escalada(s)`:"Todos já estão escalados","good");
+    });
+    document.getElementById("evClear").addEventListener("click",()=>{
+      DB.rooms.filter(r=>canEditRoom(r.id)).forEach(r=>{ sched[r.id]={lider:null,monitores:[],times:{}}; });
+      paint();
+    });
+    if(vig){
+      document.getElementById("evSplit").addEventListener("click",()=>{
+        if(!occ.time || !occ.endTime){ toast("Defina início e término no evento","warn"); return; }
+        const a=toMin(occ.time); let b=toMin(occ.endTime); if(b<=a) b+=1440;
+        let any=false;
+        DB.rooms.filter(r=>canEditRoom(r.id)).forEach(r=>{
+          const sl=sched[r.id], ids=[sl.lider,...sl.monitores].filter(Boolean); if(!ids.length) return;
+          sl.times={}; any=true;
+          ids.forEach((id,i)=>{ sl.times[id]={from:fromMin(a+Math.round((b-a)*i/ids.length)), to:fromMin(a+Math.round((b-a)*(i+1)/ids.length))}; });
+        });
+        if(!any){ toast("Escale as pessoas primeiro","warn"); return; }
+        paint(); toast("Horários divididos. Ajuste se precisar","good");
+      });
+    }
+  }
+  wrap.addEventListener("input", e=>{
+    const t=e.target.closest(".vg-time"); if(!t) return;
+    const sl=sched[t.dataset.room]; if(!sl) return;
+    sl.times=sl.times||{}; const cur=sl.times[t.dataset.mid]||{from:"",to:""};
+    cur[t.dataset.k]=t.value; sl.times[t.dataset.mid]=cur;
+  });
 }
 
 function openScheduleReadOnly(key, occ){
   const sched = schedFor(key);
   const me = DB.settings.meId ? getMember(DB.settings.meId) : null;
   const head = `${occ.photo?`<div class="occ-banner" style="background-image:url('${occ.photo}')"></div>`:""}<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-    <div class="room-ico" style="width:42px;height:42px;border-radius:12px;background:${occ.color}22;color:${occ.color}">${occ.type==="evento"?"🎉":"⛪"}</div>
+    <div class="room-ico" style="width:42px;height:42px;border-radius:12px;background:${occ.color}22;color:${occ.color}">${occIcon(occ)}</div>
     <div><div style="font-family:var(--font-display);font-weight:700;font-size:16px">${esc(occ.title)}</div>
-    <div class="muted-txt">${fmtLong(occ.date)} ${occ.time?"• "+occ.time:""}</div></div></div>`;
+    <div class="muted-txt">${kindLabel(occ)}${fmtLong(occ.date)} ${occ.time?"• "+occRange(occ):""}</div></div></div>`;
 
   let body = "";
   const rooms = DB.rooms.filter(r=>roomPeopleIds(key,r.id).length);
@@ -3313,7 +3385,7 @@ function openScheduleReadOnly(key, occ){
     const slot=roomSlot(key,r.id);
     const mineHere = me && roomPeopleIds(key,r.id).includes(me.id);
     const chip=(id,isLeader)=>{ const p=getMember(id); if(!p) return "";
-      return `<span class="chip ${me&&id===me.id?"good":""}" style="margin:2px 4px 2px 0">${ava(p.name,p.id,"width:22px;height:22px;font-size:10px;margin-right:4px")}${isLeader?"★ ":""}${esc(p.name)}</span>`; };
+      return `<span class="chip ${me&&id===me.id?"good":""}" style="margin:2px 4px 2px 0">${ava(p.name,p.id,"width:22px;height:22px;font-size:10px;margin-right:4px")}${isLeader?"★ ":""}${esc(p.name)}${vgTime(occ,slot,id)}</span>`; };
     body += `<div class="card" style="padding:13px;margin-bottom:11px${mineHere?";border-color:#BFE9D7;background:var(--good-soft)":""}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         <div class="room-ico" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
@@ -3330,13 +3402,13 @@ function openScheduleReadOnly(key, occ){
     </div>`;
   });
 
-  openModal("Escala do culto", head+body,
+  openModal(occ.type==="evento"?"Escala do evento":"Escala do culto", head+obsBox(occ)+body,
     me ? `<button class="btn btn-ghost btn-block" data-action="ics-me"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M8 2.5v4M16 2.5v4M3.5 9.5h17"/></svg> Pôr meus dias no calendário</button>` : "");
 }
 
 function resolveOcc(key){
   if(key.startsWith("e:")){ const ev=DB.events.find(e=>e.id===key.slice(2)); if(!ev) return null;
-    return {key,date:ev.date,title:ev.title,time:ev.time,color:ev.color||"#FF8A1E",type:"evento",photo:ev.photo||""}; }
+    return {key,date:ev.date,title:ev.title,time:ev.time,color:ev.color||"#FF8A1E",type:"evento",kind:ev.kind||"",endTime:ev.endTime||"",obs:ev.obs||"",photo:ev.photo||""}; }
   if(key.startsWith("s:")){ const [,sid,date]=key.split(":"); const s=getService(sid); if(!s) return null;
     return {key,date,title:s.name,time:s.time,color:cultoColor(s.weekday,s.time),type:"culto",photo:(DB.occPhotos&&DB.occPhotos[key])||""}; }
   return null;
@@ -3375,7 +3447,9 @@ function waSchedule(key, occ){
       const arrival=(DB.settings.msgArrival||"").trim(), dress=(DB.settings.msgDress||"").trim();
       const extras=[]; if(arrival) extras.push("⏰ "+arrival); if(dress) extras.push("👕 "+dress);
       const extra = extras.length ? "\n\n"+extras.join("\n") : "";
-      const msg = `Oi ${m.name.split(" ")[0]}! 💙 Lembrete da escala do ${DB.settings.dept}:\n\n📅 ${fmtLong(occ.date)}\n⛪ ${occ.title}${occ.time?" às "+occ.time:""}\n📍 Área: ${r.name}\n🙋 Função: ${role}${extra}\n\nConto com você! Deus abençoe.`;
+      const tt = isVigil(occ) ? timeTxt((roomSlot(key,btn.dataset.room).times||{})[m.id]) : "";
+      const myT = tt ? "\n🕒 Seu horário: "+tt : "", obsT = occ.obs ? "\n📝 "+occ.obs : "";
+      const msg = `Oi ${m.name.split(" ")[0]}! 💙 Lembrete da escala do ${DB.settings.dept}:\n\n📅 ${fmtLong(occ.date)}\n${occIcon(occ)} ${occ.title}${occ.time?" às "+occRange(occ).replace(/^(\d\d:\d\d) às /,"$1 até "):""}\n📍 Área: ${r.name}\n🙋 Função: ${role}${myT}${obsT}${extra}\n\nConto com você! Deus abençoe.`;
       window.open(`https://wa.me/${cleanPhone(m.phone)}?text=${encodeURIComponent(msg)}`,"_blank");
     });
   });
@@ -3884,44 +3958,9 @@ function addProfileBtn(){
    FAKE PAGE — ÁREA
    ===================================================================== */
 
-// Checklists por emoji de área (personalizáveis)
-const AREA_CHECKLISTS = {
-  antena:   ["Verificar conexão de internet","Testar câmera principal","Iniciar software de streaming","Checar áudio no stream","Confirmar link da live","Monitores de retorno ok"],
-  projetor: ["Ligar projetor e aguardar aquecer","Carregar apresentação do culto","Testar slides de letras","Ajustar resolução/foco","Backup em pen drive pronto","Confirmar com o pregador"],
-  fader:    ["Ligar mesa de som","Verificar todos os canais","Testar microfones","Ajustar monitor de palco","Checar in-ear dos músicos","Volume de retorno ok"],
-  luz:      ["Ligar mesa de luz","Checar todas as luminárias","Programar cenas do culto","Testar efeitos especiais","Confirmar cor do ambiente","Comunicar com o líder de louvor"],
-  foto:     ["Carregar bateria da câmera","Formatar cartão de memória","Testar exposição/foco","Posição para entrada dos membros","Capturar momento do pregador","Backup das fotos após o culto"],
-  claquete: ["Carregar bateria das câmeras","Testar gravação","Verificar espaço no cartão","Posicionar câmeras","Testar áudio da gravação","Exportar e fazer backup após culto"],
-};
-
-const DEFAULT_CHECKLIST = ["Chegar com antecedência","Verificar equipamentos","Comunicar com a equipe","Confirmar presença","Registrar ocorrências"];
-
-// Estado dos checklists (por roomId + occKey)
-let areaCheckState = {};
-
-function getCheckKey(roomId){ return `checklist-${roomId}-${ymd(today())}`; }
-
-function loadCheckState(roomId){
-  const k = getCheckKey(roomId);
-  if(areaCheckState[k]) return areaCheckState[k];
-  try{
-    const raw = localStorage.getItem(k);
-    areaCheckState[k] = raw ? JSON.parse(raw) : {};
-  }catch(e){ areaCheckState[k] = {}; }
-  return areaCheckState[k];
-}
-
-function saveCheckState(roomId, state){
-  const k = getCheckKey(roomId);
-  areaCheckState[k] = state;
-  try{ localStorage.setItem(k, JSON.stringify(state)); }catch(e){}
-}
-
 function openAreaPage(roomId){
   const r = getRoom(roomId); if(!r) return;
   const members = DB.members.filter(m=>m.active && m.roomIds.includes(r.id));
-  const checklist = AREA_CHECKLISTS[r.emoji] || DEFAULT_CHECKLIST;
-  const state = loadCheckState(roomId);
 
   // Header
   document.getElementById("areaPageIco").style.cssText = `background:${r.bg};color:${r.fg}`;
@@ -3930,9 +3969,6 @@ function openAreaPage(roomId){
   document.getElementById("areaPageSub").textContent = r.age;
 
   // Body
-  const done = checklist.filter((_,i)=>state[i]).length;
-  const pct = Math.round((done/checklist.length)*100);
-
   let body = "";
 
   // Membros da área
@@ -3950,55 +3986,7 @@ function openAreaPage(roomId){
     body += `<p class="muted-txt" style="font-size:13px">Nenhum membro cadastrado nesta área.</p>`;
   }
 
-  // Checklist
-  body += `<div class="section-label" style="margin-top:22px">Checklist do culto</div>`;
-  body += `<div class="area-progress">
-    <div class="area-progress-bar"><div class="area-progress-fill" id="areaProgressFill" style="width:${pct}%"></div></div>
-    <div class="area-progress-txt" id="areaProgressTxt">${done}/${checklist.length}</div>
-  </div>`;
-  body += `<div class="checklist" id="areaChecklist">`;
-  checklist.forEach((item, i)=>{
-    const checked = !!state[i];
-    body += `<div class="check-item${checked?" done":""}" data-check-idx="${i}" data-room-id="${r.id}">
-      <div class="check-box">
-        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
-      </div>
-      <span class="check-label">${esc(item)}</span>
-    </div>`;
-  });
-  body += `</div>`;
-
-  // Botão resetar
-  body += `<button class="btn btn-soft btn-block" id="areaCheckReset" style="margin-top:14px;font-size:13px">
-    Limpar checklist
-  </button>`;
-
   document.getElementById("areaPageBody").innerHTML = body;
-
-  // Eventos do checklist
-  document.getElementById("areaChecklist").addEventListener("click", e=>{
-    const item = e.target.closest(".check-item"); if(!item) return;
-    const idx = parseInt(item.dataset.checkIdx);
-    const rid = item.dataset.roomId;
-    const st = loadCheckState(rid);
-    st[idx] = !st[idx];
-    saveCheckState(rid, st);
-
-    item.classList.toggle("done", !!st[idx]);
-
-    // Atualiza barra de progresso
-    const cl = AREA_CHECKLISTS[r.emoji] || DEFAULT_CHECKLIST;
-    const d = cl.filter((_,i)=>st[i]).length;
-    const p = Math.round((d/cl.length)*100);
-    document.getElementById("areaProgressFill").style.width = p+"%";
-    document.getElementById("areaProgressTxt").textContent = `${d}/${cl.length}`;
-  });
-
-  document.getElementById("areaCheckReset").addEventListener("click", ()=>{
-    saveCheckState(roomId, {});
-    openAreaPage(roomId); // re-renderiza
-    toast("Checklist limpo","good");
-  });
 
   // Abrir com animação
   const page = document.getElementById("areaPage");
