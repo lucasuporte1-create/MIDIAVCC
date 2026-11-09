@@ -511,20 +511,20 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   --sky-400:#5AA0F5; --sky-500:#3D8BF0; --sky-600:#2C6FD1;
   --sun:#6CB2FF; --sun-soft:#0f1d2e;
 }
-.btn-primary{ background:var(--sky-500); color:#fff; box-shadow:0 6px 16px rgba(61,139,240,.32); }
+.btn-primary{ background:var(--sky-500); color:#fff; box-shadow:0 6px 16px rgba(var(--acc-rgb),.32); }
 .btn-primary:active{ background:var(--sky-600); }
 .fab{ background:var(--sky-500); color:#fff; }
 .cal-cell.today{ background:var(--sky-500); color:#fff; }
 .cal-cell.today .pip{ background:#fff; }
-.tab.is-active::before{ background:rgba(61,139,240,.16); }
-.today::after{ background:rgba(61,139,240,.10); }
-.today-sun{ background:rgba(61,139,240,.16); color:var(--sun); }
+.tab.is-active::before{ background:rgba(var(--acc-rgb),.16); }
+.today::after{ background:rgba(var(--acc-rgb),.10); }
+.today-sun{ background:rgba(var(--acc-rgb),.16); color:var(--sun); }
 .sw.on{ background:var(--sky-500); }
-.banner{ background:rgba(61,139,240,.10); border-color:rgba(61,139,240,.30); }
+.banner{ background:rgba(var(--acc-rgb),.10); border-color:rgba(var(--acc-rgb),.30); }
 .banner svg{ color:var(--sun); }
 .banner-txt{ color:#C9DEF7; }
 .banner-txt b{ color:var(--sun); }
-.today-mine{ background:linear-gradient(135deg, rgba(55,201,142,.18), rgba(61,139,240,.06)); }
+.today-mine{ background:linear-gradient(135deg, rgba(55,201,142,.18), rgba(var(--acc-rgb),.06)); }
 
 /* ============================================================
    ANIMAÇÃO DO LOGO NO LOGIN (mídia)
@@ -536,20 +536,20 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   will-change: transform, filter;
 }
 @keyframes logoIn{
-  0%{   opacity:0; transform:translateY(18px) scale(.78) rotate(-5deg); filter:drop-shadow(0 0 0 rgba(61,139,240,0)); }
+  0%{   opacity:0; transform:translateY(18px) scale(.78) rotate(-5deg); filter:drop-shadow(0 0 0 rgba(var(--acc-rgb),0)); }
   55%{  opacity:1; transform:translateY(-4px) scale(1.06) rotate(2deg); }
   100%{ opacity:1; transform:translateY(0) scale(1) rotate(0); }
 }
 @keyframes logoFloat{
   0%,100%{ transform:translateY(0); filter:drop-shadow(0 8px 22px rgba(0,0,0,.5)); }
-  50%{    transform:translateY(-8px); filter:drop-shadow(0 18px 34px rgba(61,139,240,.45)); }
+  50%{    transform:translateY(-8px); filter:drop-shadow(0 18px 34px rgba(var(--acc-rgb),.45)); }
 }
 /* leve respiro de brilho atrás do logo via o card (halo) */
 .login-card{ position:relative; }
 .login-card::before{
   content:""; position:absolute; top:18px; left:50%; transform:translateX(-50%);
   width:160px; height:160px; border-radius:50%; z-index:0;
-  background:radial-gradient(circle, rgba(61,139,240,.22), transparent 70%);
+  background:radial-gradient(circle, rgba(var(--acc-rgb),.22), transparent 70%);
   animation:haloPulse 4.5s ease-in-out .85s infinite; pointer-events:none;
 }
 .login-card > *{ position:relative; z-index:1; }
@@ -581,15 +581,15 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .enter-splash.hide{ opacity:0; }
 .enter-splash-inner{ display:flex; flex-direction:column; align-items:center; gap:20px; }
 .enter-splash-logo{ width:128px; height:auto;
-  filter:drop-shadow(0 10px 28px rgba(61,139,240,.45));
+  filter:drop-shadow(0 10px 28px rgba(var(--acc-rgb),.45));
   animation:splashLogo 1.6s ease-in-out infinite; }
 @keyframes splashLogo{ 0%,100%{ transform:translateY(0) scale(1); } 50%{ transform:translateY(-7px) scale(1.05); } }
 .enter-spinner{ width:34px; height:34px; border-radius:50%;
-  border:3px solid rgba(108,178,255,.22); border-top-color:#6CB2FF;
+  border:3px solid rgba(var(--acc-rgb),.22); border-top-color:var(--sun);
   animation:spin .8s linear infinite; }
 @keyframes spin{ to{ transform:rotate(360deg); } }
 .enter-splash-txt{ font-family:var(--font-display); font-weight:600;
-  color:#6CB2FF; letter-spacing:.02em; font-size:15px; }
+  color:var(--sun); letter-spacing:.02em; font-size:15px; }
 @media (prefers-reduced-motion:reduce){ .enter-splash-logo,.enter-spinner{ animation:none; } }
 
 /* ---------- Seletor de cor do evento ---------- */
@@ -614,7 +614,7 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .enter-spinner, .enter-splash-txt{ display:none !important; }
 .enter-splash-logo{
   width:140px; height:auto;
-  filter:drop-shadow(0 12px 30px rgba(61,139,240,.45));
+  filter:drop-shadow(0 12px 30px rgba(var(--acc-rgb),.45));
   animation: spinLogo 1.15s linear infinite !important;
 }
 @keyframes spinLogo{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
@@ -636,10 +636,10 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 @keyframes caPop{ from{opacity:0; transform:scale(.92)} to{opacity:1; transform:scale(1)} }
 
 /* ---------- Versículo do dia ---------- */
-.verse-card{ background:var(--card); border:1px solid var(--line); border-left:3px solid #3D8BF0;
+.verse-card{ background:var(--card); border:1px solid var(--line); border-left:3px solid var(--sky-500);
   border-radius:14px; padding:14px 16px; margin-bottom:14px; }
 .verse-label{ font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
-  color:#6CB2FF; margin-bottom:8px; }
+  color:var(--sun); margin-bottom:8px; }
 .verse-text{ font-size:15px; line-height:1.62; color:var(--ink); font-style:italic; }
 .verse-ref{ margin-top:9px; font-size:12.5px; font-weight:600; color:var(--ink-soft); text-align:right; }
 
@@ -705,10 +705,10 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 
 /* ---------- Troca de escalas ---------- */
 .swap-card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 14px; margin-bottom:11px; }
-.swap-in{ border-left:3px solid #3D8BF0; }
+.swap-in{ border-left:3px solid var(--sky-500); }
 .swap-top{ margin-bottom:7px; }
 .swap-badge{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
-  color:#6CB2FF; background:rgba(61,139,240,.14); padding:3px 9px; border-radius:999px; }
+  color:var(--sun); background:rgba(var(--acc-rgb),.14); padding:3px 9px; border-radius:999px; }
 .swap-badge.wait{ color:#FFB23D; background:rgba(255,178,61,.15); }
 .hist-wrap{ display:flex; align-items:center; gap:16px; margin:4px 0 2px; }
 .hist-donut{ width:78px; height:78px; border-radius:50%; flex:none; position:relative;
@@ -737,7 +737,7 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .swap-summary{ background:var(--bg-soft,rgba(255,255,255,.03)); border:1px solid var(--line); border-radius:11px; padding:11px 12px; font-size:13.5px; font-weight:600; color:var(--ink); }
 .swap-cands{ display:flex; flex-direction:column; gap:4px; max-height:230px; overflow:auto; }
 .swap-pick{ display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
-.swap-pick input{ accent-color:#3D8BF0; }
+.swap-pick input{ accent-color:var(--sky-500); }
 .swap-pick span{ display:flex; align-items:center; font-size:13.5px; color:var(--ink); }
 .btn.sm{ padding:6px 10px; font-size:12px; width:auto; }
 
@@ -884,9 +884,80 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   display:flex;align-items:center;justify-content:center;gap:8px;
   margin-top:20px;
 }
+
+/* ============================================================
+   TEMA PERSONALIZÁVEL — primária (círculos do fundo) e
+   secundária (detalhes do app). Valores finais vêm do JS (Theme),
+   que ajusta brilho/contraste para nunca brigar com o tema escuro.
+   ============================================================ */
+:root{
+  --acc-rgb:61,139,240; --on-accent:#fff;
+  --orb-a:#2a62c4; --orb-b:#143a80; --orb-alpha:.49; --orb-blur:12px;
+  --s1:#1d1d24; --s2:#141419; --s3:#101015;
+  --s1-rgb:29,29,36; --s2-rgb:20,20,25; --s3-rgb:16,16,21;
+}
+body{ background:radial-gradient(1000px 460px at 50% -10%, var(--s1), transparent 60%), var(--paper); }
+#publicInfo{ position:relative; }
+
+/* Círculos do fundo */
+.bg-orbs{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.bg-orbs i{ position:absolute; display:block; border-radius:50%;
+  background:linear-gradient(125deg,var(--orb-a),var(--orb-b));
+  opacity:var(--orb-alpha); filter:blur(var(--orb-blur)); transition:opacity .25s; }
+.bg-orbs .o1{ --d:clamp(300px,112vw,620px); width:var(--d); height:var(--d);
+  left:calc(var(--d) * -.6); top:calc(var(--d) * -.16); }
+.bg-orbs .o2{ --d:clamp(340px,124vw,700px); width:var(--d); height:var(--d);
+  right:calc(var(--d) * -.38); bottom:calc(var(--d) * -.34); }
+
+/* Superfícies que antes eram cinza fixo passam a seguir o tema */
+.topbar{ background:linear-gradient(180deg, rgba(var(--s1-rgb),.82), rgba(var(--s3-rgb),.64));
+  -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); }
+.tabbar{ background:rgba(var(--s3-rgb),.88); }
+.today{ background:linear-gradient(135deg,var(--s1),var(--s2)); }
+.field input,.field select,.field textarea{ background:var(--s2); }
+.field input:focus,.field select:focus,.field textarea:focus{ background:var(--s1); }
+.event-photo-prev{ background:var(--s2); }
+.sw{ background:var(--sky-300); }
+.login{ background:radial-gradient(800px 460px at 50% -10%, rgba(var(--s1-rgb),.7), transparent 60%); }
+
+/* Cor de texto sobre a secundária (branco ou escuro, o que ler melhor) */
+.btn-primary{ color:var(--on-accent); box-shadow:0 6px 16px rgba(var(--acc-rgb),.32); }
+.fab{ color:var(--on-accent); }
+.cal-cell.today{ color:var(--on-accent); }
+.cal-cell.today .pip{ background:var(--on-accent); }
+
+/* ---------- Painel "Aparência" (aba Mais) ---------- */
+.th-card{ padding:16px; }
+.th-preview{ position:relative; height:132px; border-radius:16px; overflow:hidden; isolation:isolate;
+  background:var(--paper); border:1px solid var(--line); margin-bottom:14px; }
+.th-preview i{ position:absolute; border-radius:50%; background:linear-gradient(125deg,var(--orb-a),var(--orb-b));
+  opacity:var(--orb-alpha); filter:blur(5px); }
+.th-o1{ width:130px; height:130px; left:-52px; top:-44px; }
+.th-o2{ width:156px; height:156px; right:-58px; bottom:-76px; }
+.th-ui{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:10px; }
+.th-chip{ background:var(--sky-100); color:var(--sun); font:700 12px var(--font-display); padding:6px 12px; border-radius:999px; }
+.th-btn{ background:var(--sky-500); color:var(--on-accent); font:700 13px var(--font-display); padding:9px 16px; border-radius:12px; }
+.th-pip{ width:10px; height:10px; border-radius:50%; background:var(--sky-500); }
+.th-presets{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
+.th-preset{ width:34px; height:34px; border-radius:50%; border:2px solid var(--line); transition:transform .12s, box-shadow .12s; }
+.th-preset.on{ border-color:var(--ink); transform:scale(1.12); box-shadow:0 0 0 3px rgba(var(--acc-rgb),.28); }
+.th-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-top:1px solid var(--line); }
+.th-txt b{ display:block; font-family:var(--font-display); font-weight:600; font-size:14px; color:var(--ink); }
+.th-txt span{ font-size:12px; color:var(--ink-soft); }
+.th-row input[type=color]{ -webkit-appearance:none; appearance:none; width:46px; height:46px; padding:0; border:0;
+  background:none; border-radius:14px; cursor:pointer; flex:none; }
+.th-row input[type=color]::-webkit-color-swatch-wrapper{ padding:0; }
+.th-row input[type=color]::-webkit-color-swatch{ border:2px solid var(--line); border-radius:12px; }
+.th-row input[type=color]::-moz-color-swatch{ border:2px solid var(--line); border-radius:12px; }
+.th-row input[type=range]{ width:46%; accent-color:var(--sky-500); }
+.th-card .btn{ margin-top:6px; }
+.th-hint{ font-size:11.5px; color:var(--ink-faint); line-height:1.5; margin-top:10px; }
 </style>
-</head>
+
 <body>
+
+  <!-- Fundo: círculos da cor primária -->
+  <div class="bg-orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i></div>
 
   <!-- Seção pública: visível para todos, inclusive sem login (SEO / verificação Google) -->
   <div id="publicInfo" style="max-width:520px;margin:0 auto;padding:40px 24px;font-family:system-ui,sans-serif;color:#143B57;">
@@ -2130,7 +2201,7 @@ function renderVolunteerHome(me, t, todayStr, occs){
     const nx = mine[0];
     h += `<div class="today" style="margin-top:14px">
       <div class="today-date">
-        <div class="today-sun" style="background:rgba(61,139,240,.16);color:#6CB2FF"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg></div>
+        <div class="today-sun" style="background:rgba(var(--acc-rgb),.16);color:var(--sun)"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg></div>
         <div><div class="today-day">Sua próxima escala</div>
         <div class="today-sub">${countdownLabel(nx.date)}</div></div>
       </div>
@@ -2523,6 +2594,42 @@ function renderMembros(c){
 /* =====================================================================
    VIEW: CONFIG / MAIS
    ===================================================================== */
+
+/* ---------- Aparência (tema personalizável) ---------- */
+function themeSectionHtml(){
+  const t=Theme.get();
+  const same=(p)=>p.p.toLowerCase()===t.p.toLowerCase() && p.s.toLowerCase()===t.s.toLowerCase();
+  const presets=Theme.PRESETS.map((p,i)=>`<button type="button" class="th-preset${same(p)?" on":""}" data-th="${i}" aria-label="Paleta ${esc(p.n)}" title="${esc(p.n)}" style="background:linear-gradient(135deg,${p.p} 50%,${p.s} 50%)"></button>`).join("");
+  return `<div class="section-label">Aparência</div>
+    <div class="card th-card">
+      <div class="th-preview" aria-hidden="true"><i class="th-o1"></i><i class="th-o2"></i>
+        <div class="th-ui"><span class="th-chip">Escala</span><span class="th-btn">Botão</span><span class="th-pip"></span></div></div>
+      <div class="th-presets">${presets}</div>
+      <div class="th-row"><div class="th-txt"><b>Cor primária</b><span>Círculos do fundo</span></div>
+        <input type="color" id="thP" value="${t.p}" aria-label="Cor primária"></div>
+      <div class="th-row"><div class="th-txt"><b>Cor secundária</b><span>Botões, abas e detalhes</span></div>
+        <input type="color" id="thS" value="${t.s}" aria-label="Cor secundária"></div>
+      <div class="th-row"><div class="th-txt"><b>Intensidade do fundo</b><span id="thIv">${t.i}%</span></div>
+        <input type="range" id="thI" min="0" max="100" value="${t.i}" aria-label="Intensidade do fundo"></div>
+      <button type="button" class="btn btn-soft btn-block" id="thReset">Restaurar padrão</button>
+      <div class="th-hint">Salvo só neste aparelho. O app ajusta o brilho das cores sozinho para o texto continuar legível no tema escuro.</div>
+    </div>`;
+}
+function wireTheme(c){
+  const P=c.querySelector("#thP"), S=c.querySelector("#thS"), I=c.querySelector("#thI"), IV=c.querySelector("#thIv");
+  if(!P||!S||!I) return;
+  const marks=()=>{ const t=Theme.get();
+    c.querySelectorAll(".th-preset").forEach((b,i)=>{ const p=Theme.PRESETS[i];
+      b.classList.toggle("on", p.p.toLowerCase()===t.p.toLowerCase() && p.s.toLowerCase()===t.s.toLowerCase()); }); };
+  const fill=()=>{ const t=Theme.get(); P.value=t.p; S.value=t.s; I.value=t.i; IV.textContent=t.i+"%"; marks(); };
+  P.addEventListener("input",()=>{ Theme.set({p:P.value}); marks(); });
+  S.addEventListener("input",()=>{ Theme.set({s:S.value}); marks(); });
+  I.addEventListener("input",()=>{ Theme.set({i:+I.value}); IV.textContent=I.value+"%"; });
+  c.querySelectorAll(".th-preset").forEach(b=>b.addEventListener("click",()=>{
+    const p=Theme.PRESETS[+b.dataset.th]; Theme.set({p:p.p,s:p.s}); fill(); }));
+  c.querySelector("#thReset").addEventListener("click",()=>{ Theme.reset(); fill(); toast("Visual restaurado","good"); });
+}
+
 function renderConfig(c){
   const me = DB.settings.meId ? getMember(DB.settings.meId) : null;
   const leader = isAdmin();
@@ -2534,6 +2641,9 @@ function renderConfig(c){
       <div class="field"><label>Igreja</label><input id="cfgChurch" value="${esc(DB.settings.church)}" ${leader?"":"disabled"}></div>
       <div class="field" style="margin-bottom:0"><label>Departamento</label><input id="cfgDept" value="${esc(DB.settings.dept)}" ${leader?"":"disabled"}></div>
     </div>`;
+
+  // Aparência (todos os usuários)
+  html += themeSectionHtml();
 
   // Lembretes
   html += `<div class="section-label">Lembretes</div>
@@ -2615,6 +2725,7 @@ function renderConfig(c){
     <div class="spacer"></div>`;
 
   c.innerHTML = html;
+  wireTheme(c);
 
   // autosave da identidade
   ["cfgChurch","cfgDept"].forEach(id=>{
