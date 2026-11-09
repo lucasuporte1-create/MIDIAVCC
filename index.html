@@ -1169,6 +1169,127 @@ html[data-theme="light"] .cal-cell.today{background:var(--user-secondary)!import
 .modal .btn{transition:transform .16s ease,filter .16s ease,box-shadow .16s ease}
 .modal .btn:active{transform:scale(.975);filter:brightness(.96)}
 .modal .btn:focus-visible{outline:2px solid var(--sky-500);outline-offset:3px}
+
+/* ===========================================================
+   Feedback animado v2 — toast, carimbo de confirmação e botão
+   Só usa tokens do tema (--good, --sun): vale p/ claro e escuro
+   =========================================================== */
+:root{ --fb-on:#06231a; }
+html[data-theme="light"]{ --fb-on:#fff; }
+
+@keyframes fbDraw{ to{ stroke-dashoffset:0 } }
+
+/* ---------- Toast ---------- */
+.toast{ transition:opacity .2s ease, transform .38s cubic-bezier(.2,.9,.3,1.16); }
+html[data-theme="light"] .toast.good{ background:var(--good); color:#fff; }
+html[data-theme="light"] .toast.warn{ background:var(--warn); color:#fff; }
+.toast-message,.toast-icon{ position:relative; z-index:1; }
+.toast::before{
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:linear-gradient(105deg,transparent 32%,rgba(255,255,255,.3) 50%,transparent 68%);
+  transform:translateX(-120%);
+}
+.toast.show::before{ animation:fbSweep .85s .12s ease-out both; }
+@keyframes fbSweep{ to{ transform:translateX(120%) } }
+
+.toast.good .toast-icon{
+  color:var(--fb-on);
+  background:rgba(6,35,26,.16);
+  background:color-mix(in srgb,var(--fb-on) 16%,transparent);
+}
+.toast.good .toast-icon::after{ border-color:var(--fb-on); }
+.toast.good .toast-icon path{
+  stroke-dasharray:1; stroke-dashoffset:1;
+  animation:fbDraw .36s .16s cubic-bezier(.65,0,.35,1) forwards;
+}
+/* faíscas ao redor do ícone */
+.fx{ position:absolute; inset:0; pointer-events:none; }
+.fx i{
+  position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px;
+  border-radius:50%; background:var(--fb-on); opacity:0;
+  animation:fbDot .6s .16s cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes fbDot{
+  0%{ opacity:.9; transform:rotate(var(--a)) translateY(-16px) scale(1) }
+  100%{ opacity:0; transform:rotate(var(--a)) translateY(-25px) scale(.3) }
+}
+/* aviso: balançadinha curta, sem exagero */
+.toast.warn.show{ animation:fbShake .46s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes fbShake{
+  0%,100%{ transform:translateX(-50%) translateY(0) scale(1) }
+  20%{ transform:translateX(calc(-50% - 6px)) translateY(0) scale(1) }
+  40%{ transform:translateX(calc(-50% + 5px)) translateY(0) scale(1) }
+  60%{ transform:translateX(calc(-50% - 3px)) translateY(0) scale(1) }
+  80%{ transform:translateX(calc(-50% + 2px)) translateY(0) scale(1) }
+}
+.toast.warn .toast-icon{ animation:fbWiggle .6s .12s ease both; }
+@keyframes fbWiggle{
+  0%{ transform:scale(.6) rotate(0) } 35%{ transform:scale(1.12) rotate(-14deg) }
+  60%{ transform:scale(1) rotate(10deg) } 80%{ transform:rotate(-5deg) } 100%{ transform:rotate(0) }
+}
+.toast.info .toast-icon{ animation:fbPulse .5s ease both; }
+@keyframes fbPulse{ 0%{ transform:scale(.7) } 60%{ transform:scale(1.1) } 100%{ transform:scale(1) } }
+
+/* ---------- Carimbo de confirmação (escala salva, troca, cadastros) ---------- */
+.fb-stamp{
+  position:fixed; left:50%; top:40%; width:0; height:0; z-index:119;
+  pointer-events:none; animation:fbLife 1.5s ease both;
+}
+@keyframes fbLife{ 0%,70%{ opacity:1 } 100%{ opacity:0 } }
+.fb-stamp::before{
+  content:""; position:absolute; left:-120px; top:-120px; width:240px; height:240px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(55,201,142,.3),transparent 68%);
+  background:radial-gradient(circle,color-mix(in srgb,var(--good) 34%,transparent),transparent 68%);
+  animation:fbGlow 1.3s ease-out both;
+}
+@keyframes fbGlow{ 0%{ transform:scale(.4); opacity:0 } 30%{ opacity:1 } 100%{ transform:scale(1.15); opacity:0 } }
+.fb-core{
+  position:absolute; left:-36px; top:-36px; width:72px; height:72px; border-radius:50%;
+  display:grid; place-items:center; background:var(--good); color:var(--fb-on);
+  box-shadow:0 14px 36px rgba(0,0,0,.28), 0 0 0 6px rgba(55,201,142,.22);
+  box-shadow:0 14px 36px rgba(0,0,0,.28), 0 0 0 6px color-mix(in srgb,var(--good) 22%,transparent);
+  animation:fbCore .55s cubic-bezier(.2,1.25,.3,1) both;
+}
+@keyframes fbCore{ 0%{ transform:scale(.3); opacity:0 } 55%{ opacity:1 } 100%{ transform:scale(1); opacity:1 } }
+.fb-core svg{ width:36px; height:36px; fill:none; stroke:currentColor; stroke-width:3;
+  stroke-linecap:round; stroke-linejoin:round; }
+.fb-core path{ stroke-dasharray:1; stroke-dashoffset:1;
+  animation:fbDraw .4s .24s cubic-bezier(.65,0,.35,1) forwards; }
+.fb-ring{
+  position:absolute; left:-36px; top:-36px; width:72px; height:72px; border-radius:50%;
+  border:2px solid var(--good); opacity:0; animation:fbRing .9s .1s ease-out both;
+}
+.fb-ring.r2{ border-color:var(--sun); animation-delay:.28s; }
+@keyframes fbRing{ 0%{ transform:scale(.9); opacity:.7 } 100%{ transform:scale(2.3); opacity:0 } }
+.fb-burst i{
+  position:absolute; left:-3px; top:-3px; width:6px; height:6px; border-radius:50%;
+  background:var(--good); opacity:0;
+  animation:fbBurst .8s .2s cubic-bezier(.15,.8,.3,1) both;
+}
+.fb-burst i:nth-child(3n+2){ background:var(--sun); }
+.fb-burst i:nth-child(4n){ width:3px; height:9px; border-radius:2px; left:-1.5px; top:-4.5px; }
+@keyframes fbBurst{
+  0%{ opacity:1; transform:rotate(var(--a)) translateY(-34px) scale(1) }
+  100%{ opacity:0; transform:rotate(var(--a)) translateY(calc(var(--d,62px) * -1)) scale(.3) }
+}
+
+/* ---------- Botão que vira "Salvo ✓" ---------- */
+.btn.is-done{
+  background:var(--good)!important; color:var(--fb-on)!important;
+  box-shadow:0 8px 22px rgba(55,201,142,.38)!important;
+  pointer-events:none; animation:fbBtn .45s cubic-bezier(.2,1.2,.3,1) both;
+}
+.btn .btn-check{ width:19px; height:19px; stroke-width:3; }
+.btn-check path{ stroke-dasharray:1; stroke-dashoffset:1;
+  animation:fbDraw .32s .06s cubic-bezier(.65,0,.35,1) forwards; }
+@keyframes fbBtn{ 0%{ transform:scale(.97) } 55%{ transform:scale(1.035) } 100%{ transform:scale(1) } }
+
+@media(prefers-reduced-motion:reduce){
+  .fb-burst,.fb-ring,.fb-stamp::before,.toast::before,.fx{ display:none!important; }
+  .toast.warn.show,.toast.warn .toast-icon,.toast.info .toast-icon{ animation:none!important; }
+  .toast.good .toast-icon path,.fb-core path,.btn-check path{ animation:none!important; stroke-dashoffset:0; }
+}
 \n</style>
 </head>
 <body>
@@ -2213,7 +2334,7 @@ function openSwapRequest(occKey, roomId, role){
         sourceType: occKey.startsWith("e:")?"event":"service", sourceId:sid,
         roomId, role, requestedBy:me.id, targetId:sel.value,
         note:(document.getElementById("swapNote").value||"").trim() });
-      closeModal(); toast("Pedido enviado!","good");
+      closeModal(); toast("Pedido enviado!","good","stamp");
       swapWhatsApp(s.id);   // já abre o WhatsApp pro colega
       go(currentView);
     }catch(e){ sendBtn.disabled=false; toast("Não enviou — "+e.message,"warn"); }
@@ -3073,7 +3194,7 @@ document.addEventListener("click", e=>{
     case "edit-member": editMember(id); break;
     case "wa-member": waMember(id); break;
     case "swap-request": openSwapRequest(el.dataset.key, el.dataset.room, el.dataset.role); break;
-    case "swap-accept": (async()=>{ try{ await Data.acceptSwap(id); toast("Troca confirmada! Você assumiu a escala.","good"); go(currentView); }catch(e){ toast("Não deu — "+e.message,"warn"); } })(); break;
+    case "swap-accept": (async()=>{ try{ await Data.acceptSwap(id); toast("Troca confirmada! Você assumiu a escala.","good","stamp"); go(currentView); }catch(e){ toast("Não deu — "+e.message,"warn"); } })(); break;
     case "swap-decline": (async()=>{ try{ await Data.setSwapStatus(id,"declined"); toast("Pedido recusado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
     case "swap-cancel": (async()=>{ try{ await Data.setSwapStatus(id,"cancelled"); toast("Pedido cancelado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
     case "swap-wa": swapWhatsApp(id); break;
@@ -3286,7 +3407,7 @@ function editMember(mid){
         try{ await sb.from("profiles").update({ role: selectedRole }).eq("id", linkedProfileId); }
         catch(_){ toast("Pessoa salva, mas não deu pra atualizar o nível de acesso — tente de novo.","warn"); }
       }
-      closeModal(); go("membros"); toast(mid?"Pessoa atualizada":"Pessoa cadastrada","good");
+      await btnDone(btn); closeModal(); go("membros"); toast(mid?"Pessoa atualizada":"Pessoa cadastrada","good","stamp");
     }
     catch(e){ btn.disabled=false; btn.textContent=o; toast("Não salvou — "+e.message,"warn"); }
   });
@@ -3399,7 +3520,7 @@ function editRoom(rid){
     if(!name){ toast("Dê um nome para a área","warn"); return; }
     const data={ name, age:document.getElementById("rAge").value.trim(), need:3, emoji:em, bg, fg };
     const room = rid ? {id:rid,...data} : {id:uid(),...data};
-    try{ await Data.saveRoom(room, !rid); closeModal(); go(currentView==="config"?"config":"home"); toast(rid?"Área atualizada":"Área criada","good"); }
+    try{ await Data.saveRoom(room, !rid); await btnDone(document.getElementById("rSave")); closeModal(); go(currentView==="config"?"config":"home"); toast(rid?"Área atualizada":"Área criada","good","stamp"); }
     catch(e){ toast("Não salvou — "+e.message,"warn"); }
   });
   if(rid) document.getElementById("rDelete").addEventListener("click", async ()=>{
@@ -3430,7 +3551,7 @@ function editService(sid){
     const data={ name, weekday:parseInt(document.getElementById("sWd").value),
       time:document.getElementById("sTime").value, color:s.color||"#4DA3E8" };
     const svc = sid ? {id:sid,...data} : {id:uid(),...data};
-    try{ await Data.saveService(svc, !sid); closeModal(); go("config"); toast(sid?"Atualizado":"Culto criado","good"); }
+    try{ await Data.saveService(svc, !sid); await btnDone(document.getElementById("sSave")); closeModal(); go("config"); toast(sid?"Atualizado":"Culto criado","good","stamp"); }
     catch(e){ toast("Não salvou — "+e.message,"warn"); }
   });
   if(sid) document.getElementById("sDelete").addEventListener("click", async ()=>{
@@ -3535,7 +3656,7 @@ function editEvent(eid, presetDate, presetKind){
     const data={ title, date, kind, endTime, obs:document.getElementById("eObs").value.trim(), time:document.getElementById("eTime").value, note:document.getElementById("eNote").value.trim(), photo:ePhoto, color:eColor };
     const evt = eid ? {id:eid,...data} : {id:uid(),...data};
     calSelected=date;
-    try{ await Data.saveEvent(evt, !eid); closeModal(); go("calendario"); toast(eid?"Evento atualizado":"Evento criado","good"); }
+    try{ await Data.saveEvent(evt, !eid); await btnDone(document.getElementById("eSave")); closeModal(); go("calendario"); toast(eid?"Evento atualizado":"Evento criado","good","stamp"); }
     catch(e){ toast("Não salvou — "+e.message,"warn"); }
   });
   if(eid) document.getElementById("eDelete").addEventListener("click", async ()=>{
@@ -3727,7 +3848,7 @@ function openSchedule(key){
   }
   document.getElementById("schedSave").addEventListener("click", async ()=>{
     const btn=document.getElementById("schedSave"); btn.disabled=true; const o=btn.textContent; btn.textContent="Salvando...";
-    try{ await commit(); closeModal(); go(currentView); toast("Escala salva","good"); }
+    try{ await commit(); await btnDone(btn); closeModal(); go(currentView); toast("Escala salva","good","stamp"); }
     catch(e){ btn.disabled=false; btn.textContent=o; toast("Não salvou — "+e.message,"warn"); }
   });
   document.getElementById("schedWa").addEventListener("click", async ()=>{
@@ -4046,14 +4167,22 @@ function emptyState(emoji,title,text,btn){
 /* =====================================================================
    TOAST
    ===================================================================== */
+const FB_REDUCED = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+const fbReduced = ()=> !!(FB_REDUCED && FB_REDUCED.matches);
+const FB_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.2 4.2L19 7"/></svg>';
+function fbBuzz(kind){
+  try{ if(navigator.vibrate && !fbReduced()) navigator.vibrate(kind==="warn" ? [18,50,18] : 14); }catch(_){}
+}
+
 let toastT, toastHideT;
-function toast(msg,type){
+/* toast(msg, "good"|"warn"|undefined, "stamp")  — "stamp" soma o carimbo central nas confirmações grandes */
+function toast(msg,type,opt){
   const el=document.getElementById("toast");
   if(!el) return;
   clearTimeout(toastT); clearTimeout(toastHideT);
   const kind = type==="good" ? "good" : (type==="warn" ? "warn" : "info");
   const icon = kind==="good"
-    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>'
+    ? FB_CHECK
     : kind==="warn"
       ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5m0 3h.01"/><path d="M10.3 3.9 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3l-7.5-13.1a2 2 0 0 0-3.4 0Z"/></svg>'
       : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v-4m0-4h.01"/><circle cx="12" cy="12" r="9"/></svg>';
@@ -4066,6 +4195,12 @@ function toast(msg,type){
   const iconWrap=document.createElement("span");
   iconWrap.className="toast-icon";
   iconWrap.innerHTML=icon;
+  if(kind==="good"){
+    const fx=document.createElement("span");
+    fx.className="fx"; fx.setAttribute("aria-hidden","true");
+    for(let i=0;i<8;i++){ const d=document.createElement("i"); d.style.setProperty("--a",(i*45)+"deg"); fx.appendChild(d); }
+    iconWrap.appendChild(fx);
+  }
   const progress=document.createElement("span");
   progress.className="toast-progress";
   el.replaceChildren(iconWrap,message,progress);
@@ -4074,10 +4209,40 @@ function toast(msg,type){
   el.classList.remove("show");
   void el.offsetWidth;
   requestAnimationFrame(()=>el.classList.add("show"));
+  fbBuzz(kind);
+  if(kind==="good" && opt==="stamp") stamp();
   toastT=setTimeout(()=>{
     el.classList.remove("show");
     toastHideT=setTimeout(()=>{el.hidden=true;},240);
   },2700);
+}
+
+/* Carimbo central: círculo com check desenhado, ondas e confete discreto */
+let stampT;
+function stamp(){
+  clearTimeout(stampT);
+  document.querySelectorAll(".fb-stamp").forEach(n=>n.remove());
+  const n=12; let dots="";
+  for(let i=0;i<n;i++){
+    const a=Math.round(i*(360/n)+(i%2?9:-5));
+    const d=54+((i*17)%22);
+    dots+='<i style="--a:'+a+'deg;--d:'+d+'px"></i>';
+  }
+  const el=document.createElement("div");
+  el.className="fb-stamp"; el.setAttribute("aria-hidden","true");
+  el.innerHTML='<span class="fb-ring"></span><span class="fb-ring r2"></span>'
+    +'<span class="fb-core">'+FB_CHECK+'</span><span class="fb-burst">'+dots+'</span>';
+  document.body.appendChild(el);
+  stampT=setTimeout(()=>el.remove(), fbReduced()?900:1600);
+}
+
+/* Botão principal vira "Salvo ✓" por um instante antes de fechar o modal */
+function btnDone(btn,label){
+  if(!btn) return Promise.resolve();
+  btn.disabled=true;
+  btn.classList.add("is-done");
+  btn.innerHTML='<svg class="btn-check" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.2 4.2L19 7"/></svg><span>'+(label||"Salvo")+'</span>';
+  return new Promise(r=>setTimeout(r, fbReduced()?80:400));
 }
 function centerAlert(title, msg){
   let ov=document.getElementById("centerAlert");
