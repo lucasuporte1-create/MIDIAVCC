@@ -973,7 +973,7 @@ body::after{width:clamp(190px,48vw,330px);height:clamp(190px,48vw,330px);right:c
 html[data-theme="light"] body{background:radial-gradient(900px 500px at 50% -12%,#fff,transparent 72%),#F3F4F6;}
 html[data-theme="dark"] body::before,html[data-theme="dark"] body::after{opacity:.14;filter:saturate(.8);}
 
-/* Faixas diagonais animadas: usam a cor secundária escolhida pelo usuário */
+/* Faixas paralelas em trajetória sinuosa (S), usando a cor secundária */
 .bg-ribbons{
   position:fixed;
   inset:0;
@@ -986,38 +986,43 @@ html[data-theme="dark"] body::before,html[data-theme="dark"] body::after{opacity
 .bg-ribbons::after{
   content:"";
   position:absolute;
-  left:-35vw;
-  width:170vw;
-  height:clamp(9px,1.35vw,15px);
+  left:-42vw;
+  width:184vw;
+  height:clamp(8px,1.15vw,14px);
   border-radius:999px;
   background:linear-gradient(90deg,
     transparent 0%,
-    color-mix(in srgb,var(--user-secondary) 12%,transparent) 12%,
-    color-mix(in srgb,var(--user-secondary) 78%,transparent) 48%,
-    color-mix(in srgb,var(--user-secondary) 24%,transparent) 82%,
+    color-mix(in srgb,var(--user-secondary) 10%,transparent) 10%,
+    color-mix(in srgb,var(--user-secondary) 76%,transparent) 48%,
+    color-mix(in srgb,var(--user-secondary) 22%,transparent) 88%,
     transparent 100%);
   box-shadow:
-    0 0 12px color-mix(in srgb,var(--user-secondary) 28%,transparent),
-    0 0 30px color-mix(in srgb,var(--user-secondary) 14%,transparent);
+    0 0 12px color-mix(in srgb,var(--user-secondary) 25%,transparent),
+    0 0 28px color-mix(in srgb,var(--user-secondary) 12%,transparent);
   will-change:transform;
-  transform:translate3d(0,0,0) rotate(-27deg);
 }
 .bg-ribbons::before{
-  top:44%;
-  animation:ribbon-forward 3.8s linear infinite;
+  top:43%;
+  animation:ribbon-s-up 5.2s ease-in-out infinite alternate;
 }
 .bg-ribbons::after{
-  top:53%;
-  animation:ribbon-reverse 4.4s linear infinite;
+  top:51%;
   opacity:.78;
+  animation:ribbon-s-down 5.2s ease-in-out infinite alternate;
 }
-@keyframes ribbon-forward{
-  from{transform:translate3d(-23vw,0,0) rotate(-27deg);}
-  to{transform:translate3d(23vw,0,0) rotate(-27deg);}
+@keyframes ribbon-s-up{
+  0%{transform:translate3d(-17vw,-7vh,0) rotate(-20deg);}
+  25%{transform:translate3d(-7vw,5vh,0) rotate(-12deg);}
+  50%{transform:translate3d(3vw,10vh,0) rotate(-5deg);}
+  75%{transform:translate3d(14vw,1vh,0) rotate(-14deg);}
+  100%{transform:translate3d(25vw,-8vh,0) rotate(-23deg);}
 }
-@keyframes ribbon-reverse{
-  from{transform:translate3d(23vw,0,0) rotate(-27deg);}
-  to{transform:translate3d(-23vw,0,0) rotate(-27deg);}
+@keyframes ribbon-s-down{
+  0%{transform:translate3d(25vw,8vh,0) rotate(-23deg);}
+  25%{transform:translate3d(14vw,-1vh,0) rotate(-14deg);}
+  50%{transform:translate3d(3vw,-10vh,0) rotate(-5deg);}
+  75%{transform:translate3d(-7vw,-5vh,0) rotate(-12deg);}
+  100%{transform:translate3d(-17vw,7vh,0) rotate(-20deg);}
 }
 html[data-theme="light"] .bg-ribbons::before,
 html[data-theme="light"] .bg-ribbons::after{opacity:.72;}
