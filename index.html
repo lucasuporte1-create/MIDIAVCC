@@ -1100,7 +1100,36 @@ html[data-theme="light"] .cal-cell.today{background:var(--user-secondary)!import
 @media(prefers-reduced-motion:reduce){
   .member-filter-track .pick-item{transition:none}
 }
-\n</style>
+\n
+/* Transição de tema com efeito de gota d'água */
+.theme-drop-ripple{
+  position:fixed;
+  z-index:99999;
+  width:24px;
+  height:24px;
+  left:0;
+  top:0;
+  border-radius:50%;
+  pointer-events:none;
+  transform:translate(-50%,-50%) scale(.08);
+  opacity:.72;
+  border:3px solid var(--drop-color,#fff);
+  box-shadow:0 0 0 7px color-mix(in srgb,var(--drop-color,#fff) 13%,transparent),
+             0 0 28px color-mix(in srgb,var(--drop-color,#fff) 45%,transparent);
+  animation:themeDropExpand .72s cubic-bezier(.16,.72,.24,1) forwards;
+}
+@keyframes themeDropExpand{
+  0%{transform:translate(-50%,-50%) scale(.08);opacity:.78;border-width:4px}
+  45%{opacity:.55}
+  100%{transform:translate(-50%,-50%) scale(115);opacity:0;border-width:1px}
+}
+.theme-opt{position:relative;overflow:hidden;isolation:isolate}
+.theme-opt:active{transform:scale(.975)}
+@media(prefers-reduced-motion:reduce){
+  .theme-drop-ripple{animation-duration:.01ms}
+}
+
+</style>
 </head>
 <body>
   <div class="bg-ribbons" aria-hidden="true"></div>
@@ -2975,9 +3004,23 @@ document.addEventListener("click", e=>{
     }
     case "set-theme": {
       const t = el.dataset.theme==="light" ? "light" : "dark";
+      const current = document.documentElement.getAttribute("data-theme")==="light" ? "light" : "dark";
+      if(t === current) break;
+
+      // A gota nasce no botão selecionado e se expande pela tela.
+      const rect = el.getBoundingClientRect();
+      const ripple = document.createElement("span");
+      ripple.className = "theme-drop-ripple";
+      ripple.style.left = (rect.left + rect.width/2) + "px";
+      ripple.style.top = (rect.top + rect.height/2) + "px";
+      ripple.style.setProperty("--drop-color", t==="light" ? "#F4F2EE" : "#0D0D0F");
+      document.body.appendChild(ripple);
+
       document.documentElement.setAttribute("data-theme", t);
       try{ localStorage.setItem("escala-midia-theme", t); }catch(_){}
       const m=document.getElementById("metaTheme"); if(m) m.setAttribute("content", t==="light"?"#F4F2EE":"#0D0D0F");
+      ripple.addEventListener("animationend", ()=>ripple.remove(), {once:true});
+      setTimeout(()=>{ if(ripple.isConnected) ripple.remove(); }, 900);
       go("config");
       break;
     }
