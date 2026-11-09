@@ -3,7 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0D0D0F" />
+  <meta name="theme-color" content="#0D0D0F" id="metaTheme" />
+  <script>
+    (function(){
+      try{
+        var t=localStorage.getItem("escala-midia-theme")||"dark";
+        document.documentElement.setAttribute("data-theme",t);
+        var m=document.getElementById("metaTheme");
+        if(m) m.setAttribute("content", t==="light"?"#F4F2EE":"#0D0D0F");
+      }catch(e){ document.documentElement.setAttribute("data-theme","dark"); }
+    })();
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Escala Mídia" />
@@ -405,6 +415,11 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;color:var(--in
   --shadow-lg:0 16px 40px rgba(0,0,0,.55);
 }
 body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent 60%), var(--paper); color:var(--ink); }
+/* Acabamento compacto inspirado na referência mobile */
+#app{background:transparent;}
+.content{padding-left:14px;padding-right:14px;}
+.topbar{border-radius:0 0 22px 22px;}
+.card,.stat,.room,.swap-card{box-shadow:0 5px 18px rgba(0,0,0,.22);}
 .topbar{ background:linear-gradient(180deg,#1c1c22,#101015); box-shadow:var(--shadow-md); }
 .topbar-eyebrow{ color:var(--sun); opacity:1; }
 .topbar .icon-btn{ background:rgba(255,255,255,.10); }
@@ -511,20 +526,20 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   --sky-400:#5AA0F5; --sky-500:#3D8BF0; --sky-600:#2C6FD1;
   --sun:#6CB2FF; --sun-soft:#0f1d2e;
 }
-.btn-primary{ background:var(--sky-500); color:#fff; box-shadow:0 6px 16px rgba(var(--acc-rgb),.32); }
+.btn-primary{ background:var(--sky-500); color:#fff; box-shadow:0 6px 16px rgba(61,139,240,.32); }
 .btn-primary:active{ background:var(--sky-600); }
 .fab{ background:var(--sky-500); color:#fff; }
 .cal-cell.today{ background:var(--sky-500); color:#fff; }
 .cal-cell.today .pip{ background:#fff; }
-.tab.is-active::before{ background:rgba(var(--acc-rgb),.16); }
-.today::after{ background:rgba(var(--acc-rgb),.10); }
-.today-sun{ background:rgba(var(--acc-rgb),.16); color:var(--sun); }
+.tab.is-active::before{ background:rgba(61,139,240,.16); }
+.today::after{ background:rgba(61,139,240,.10); }
+.today-sun{ background:rgba(61,139,240,.16); color:var(--sun); }
 .sw.on{ background:var(--sky-500); }
-.banner{ background:rgba(var(--acc-rgb),.10); border-color:rgba(var(--acc-rgb),.30); }
+.banner{ background:rgba(61,139,240,.10); border-color:rgba(61,139,240,.30); }
 .banner svg{ color:var(--sun); }
 .banner-txt{ color:#C9DEF7; }
 .banner-txt b{ color:var(--sun); }
-.today-mine{ background:linear-gradient(135deg, rgba(55,201,142,.18), rgba(var(--acc-rgb),.06)); }
+.today-mine{ background:linear-gradient(135deg, rgba(55,201,142,.18), rgba(61,139,240,.06)); }
 
 /* ============================================================
    ANIMAÇÃO DO LOGO NO LOGIN (mídia)
@@ -536,20 +551,20 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   will-change: transform, filter;
 }
 @keyframes logoIn{
-  0%{   opacity:0; transform:translateY(18px) scale(.78) rotate(-5deg); filter:drop-shadow(0 0 0 rgba(var(--acc-rgb),0)); }
+  0%{   opacity:0; transform:translateY(18px) scale(.78) rotate(-5deg); filter:drop-shadow(0 0 0 rgba(61,139,240,0)); }
   55%{  opacity:1; transform:translateY(-4px) scale(1.06) rotate(2deg); }
   100%{ opacity:1; transform:translateY(0) scale(1) rotate(0); }
 }
 @keyframes logoFloat{
   0%,100%{ transform:translateY(0); filter:drop-shadow(0 8px 22px rgba(0,0,0,.5)); }
-  50%{    transform:translateY(-8px); filter:drop-shadow(0 18px 34px rgba(var(--acc-rgb),.45)); }
+  50%{    transform:translateY(-8px); filter:drop-shadow(0 18px 34px rgba(61,139,240,.45)); }
 }
 /* leve respiro de brilho atrás do logo via o card (halo) */
 .login-card{ position:relative; }
 .login-card::before{
   content:""; position:absolute; top:18px; left:50%; transform:translateX(-50%);
   width:160px; height:160px; border-radius:50%; z-index:0;
-  background:radial-gradient(circle, rgba(var(--acc-rgb),.22), transparent 70%);
+  background:radial-gradient(circle, rgba(61,139,240,.22), transparent 70%);
   animation:haloPulse 4.5s ease-in-out .85s infinite; pointer-events:none;
 }
 .login-card > *{ position:relative; z-index:1; }
@@ -581,15 +596,15 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .enter-splash.hide{ opacity:0; }
 .enter-splash-inner{ display:flex; flex-direction:column; align-items:center; gap:20px; }
 .enter-splash-logo{ width:128px; height:auto;
-  filter:drop-shadow(0 10px 28px rgba(var(--acc-rgb),.45));
+  filter:drop-shadow(0 10px 28px rgba(61,139,240,.45));
   animation:splashLogo 1.6s ease-in-out infinite; }
 @keyframes splashLogo{ 0%,100%{ transform:translateY(0) scale(1); } 50%{ transform:translateY(-7px) scale(1.05); } }
 .enter-spinner{ width:34px; height:34px; border-radius:50%;
-  border:3px solid rgba(var(--acc-rgb),.22); border-top-color:var(--sun);
+  border:3px solid rgba(108,178,255,.22); border-top-color:#6CB2FF;
   animation:spin .8s linear infinite; }
 @keyframes spin{ to{ transform:rotate(360deg); } }
 .enter-splash-txt{ font-family:var(--font-display); font-weight:600;
-  color:var(--sun); letter-spacing:.02em; font-size:15px; }
+  color:#6CB2FF; letter-spacing:.02em; font-size:15px; }
 @media (prefers-reduced-motion:reduce){ .enter-splash-logo,.enter-spinner{ animation:none; } }
 
 /* ---------- Seletor de cor do evento ---------- */
@@ -614,7 +629,7 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .enter-spinner, .enter-splash-txt{ display:none !important; }
 .enter-splash-logo{
   width:140px; height:auto;
-  filter:drop-shadow(0 12px 30px rgba(var(--acc-rgb),.45));
+  filter:drop-shadow(0 12px 30px rgba(61,139,240,.45));
   animation: spinLogo 1.15s linear infinite !important;
 }
 @keyframes spinLogo{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
@@ -636,10 +651,10 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 @keyframes caPop{ from{opacity:0; transform:scale(.92)} to{opacity:1; transform:scale(1)} }
 
 /* ---------- Versículo do dia ---------- */
-.verse-card{ background:var(--card); border:1px solid var(--line); border-left:3px solid var(--sky-500);
+.verse-card{ background:var(--card); border:1px solid var(--line); border-left:3px solid #3D8BF0;
   border-radius:14px; padding:14px 16px; margin-bottom:14px; }
 .verse-label{ font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
-  color:var(--sun); margin-bottom:8px; }
+  color:#6CB2FF; margin-bottom:8px; }
 .verse-text{ font-size:15px; line-height:1.62; color:var(--ink); font-style:italic; }
 .verse-ref{ margin-top:9px; font-size:12.5px; font-weight:600; color:var(--ink-soft); text-align:right; }
 
@@ -649,66 +664,29 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .brand-logo{ height:30px; width:auto; flex:0 0 auto; display:block; }
 .brand-logo-corner{ position:absolute; top:16px; right:16px; height:40px; z-index:5; }
 
-/* ---------- Vídeos recentes (YouTube incorporado) ---------- */
-.yt-wrap{ position:relative; width:100%; padding-top:56.25%; border-radius:14px;
-  overflow:hidden; border:1px solid var(--line); background:#000; margin-bottom:6px; }
-.yt-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
-.spotify-wrap{ border-radius:14px; overflow:hidden; border:1px solid var(--line); margin-bottom:6px; }
-.spotify-wrap iframe{ display:block; border-radius:14px; }
-
-/* ---------- Spotify Card ---------- */
-.spotify-card{
-  border-radius:18px;
-  background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
-  padding:18px;
-  margin-bottom:10px;
-  position:relative;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,.07);
-  box-shadow:0 8px 24px rgba(0,0,0,.18);
-}
-.spotify-card::before{
-  content:'';
-  position:absolute;
-  top:-40px;right:-40px;
-  width:160px;height:160px;
-  background:radial-gradient(circle,rgba(30,215,96,.18) 0%,transparent 70%);
-  pointer-events:none;
-}
-.spotify-card-top{
-  display:flex;align-items:center;gap:12px;margin-bottom:14px;
-}
-.spotify-logo{
-  width:36px;height:36px;flex:none;
-}
-.spotify-card-title{
-  font-family:var(--font-display);
-  font-weight:700;font-size:16px;color:#fff;
-}
-.spotify-card-sub{
-  font-size:12px;color:rgba(255,255,255,.55);margin-top:1px;
-}
-.spotify-embed-wrap{
-  border-radius:12px;overflow:hidden;
-}
-.spotify-open-btn{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  background:#1ED760;color:#000;
-  font-family:var(--font-display);font-weight:700;font-size:14px;
-  border-radius:999px;padding:10px 20px;
-  margin-top:12px;width:100%;
-  transition:transform .15s,filter .15s;
-  text-decoration:none;
-}
-.spotify-open-btn:active{ transform:scale(.96);filter:brightness(.9); }
-.spotify-open-btn svg{ width:18px;height:18px;fill:#000;flex:none; }
+/* ---------- Central de mídia: YouTube + Spotify lado a lado ---------- */
+.media-hub{margin:22px 0 16px;}
+.media-hub-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 3px 11px;}
+.media-hub-title{font:700 14px var(--font-display);letter-spacing:.045em;text-transform:uppercase;color:var(--ink);}
+.media-hub-link{font-size:12px;font-weight:700;color:var(--sun);text-decoration:none;white-space:nowrap;}
+.media-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch;}
+.media-tile{min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:linear-gradient(160deg,#202027,#151519);box-shadow:var(--shadow-sm);padding:9px;}
+.media-tile-head{display:flex;align-items:center;gap:6px;min-height:28px;margin-bottom:8px;font-size:11px;font-weight:800;letter-spacing:.035em;color:var(--ink);}
+.media-tile-head svg{width:17px;height:17px;flex:none;}
+.media-tile-head .yt-mark{color:#ff4545;}
+.media-tile-head .sp-mark{color:#1ed760;}
+.yt-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;}
+.yt-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.spotify-embed-wrap{width:100%;height:152px;border-radius:10px;overflow:hidden;background:#121212;}
+.spotify-embed-wrap iframe{display:block;width:100%;height:152px;border:0;border-radius:10px;}
+@media(max-width:360px){.media-grid{gap:12px}.media-tile{padding:8px}.media-tile-head{font-size:11px}.spotify-embed-wrap,.spotify-embed-wrap iframe{height:152px;}}
 
 /* ---------- Troca de escalas ---------- */
 .swap-card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 14px; margin-bottom:11px; }
-.swap-in{ border-left:3px solid var(--sky-500); }
+.swap-in{ border-left:3px solid #3D8BF0; }
 .swap-top{ margin-bottom:7px; }
 .swap-badge{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
-  color:var(--sun); background:rgba(var(--acc-rgb),.14); padding:3px 9px; border-radius:999px; }
+  color:#6CB2FF; background:rgba(61,139,240,.14); padding:3px 9px; border-radius:999px; }
 .swap-badge.wait{ color:#FFB23D; background:rgba(255,178,61,.15); }
 .hist-wrap{ display:flex; align-items:center; gap:16px; margin:4px 0 2px; }
 .hist-donut{ width:78px; height:78px; border-radius:50%; flex:none; position:relative;
@@ -737,7 +715,7 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .swap-summary{ background:var(--bg-soft,rgba(255,255,255,.03)); border:1px solid var(--line); border-radius:11px; padding:11px 12px; font-size:13.5px; font-weight:600; color:var(--ink); }
 .swap-cands{ display:flex; flex-direction:column; gap:4px; max-height:230px; overflow:auto; }
 .swap-pick{ display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
-.swap-pick input{ accent-color:var(--sky-500); }
+.swap-pick input{ accent-color:#3D8BF0; }
 .swap-pick span{ display:flex; align-items:center; font-size:13.5px; color:var(--ink); }
 .btn.sm{ padding:6px 10px; font-size:12px; width:auto; }
 
@@ -884,80 +862,143 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
   display:flex;align-items:center;justify-content:center;gap:8px;
   margin-top:20px;
 }
-
 /* ============================================================
-   TEMA PERSONALIZÁVEL — primária (círculos do fundo) e
-   secundária (detalhes do app). Valores finais vêm do JS (Theme),
-   que ajusta brilho/contraste para nunca brigar com o tema escuro.
+   SELETOR DE TEMA (aba Mais) + TEMA CLARO
+   Escuro continua sendo o padrão; claro entra com data-theme="light"
    ============================================================ */
-:root{
-  --acc-rgb:61,139,240; --on-accent:#fff;
-  --orb-a:#2a62c4; --orb-b:#143a80; --orb-alpha:.49; --orb-blur:12px;
-  --s1:#1d1d24; --s2:#141419; --s3:#101015;
-  --s1-rgb:29,29,36; --s2-rgb:20,20,25; --s3-rgb:16,16,21;
+.theme-seg{ display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px;
+  background:var(--sky-100); border:1px solid var(--line); border-radius:14px; }
+.theme-opt{ display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:11px 10px; border-radius:10px; font-family:var(--font-display);
+  font-weight:700; font-size:14px; color:var(--ink-soft); transition:background .18s,color .18s; }
+.theme-opt svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round; }
+.theme-opt.on{ background:var(--card); color:var(--ink); box-shadow:var(--shadow-sm); }
+
+html[data-theme="light"]{
+  --sky-50:#F7F5F1; --sky-100:#EEEBE5; --sky-200:#E1DDD5; --sky-300:#CFCAC0;
+  --sky-400:#3D7BE0; --sky-500:#2F6FD6; --sky-600:#2459B3;
+  --ink:#1B1B1F; --ink-soft:#55555E; --ink-faint:#8A8A93;
+  --paper:#F4F2EE; --card:#FFFFFF; --line:#E4E0D8;
+  --sun:#2F6FD6; --sun-soft:#E9F0FC;
+  --good:#1F9D6E; --good-soft:#E3F4EC; --danger:#D64545; --danger-soft:#FBE9E9;
+  --shadow-sm:0 1px 2px rgba(30,30,40,.06); --shadow-md:0 4px 14px rgba(30,30,40,.08);
+  --shadow-lg:0 12px 32px rgba(30,30,40,.14);
 }
-body{ background:radial-gradient(1000px 460px at 50% -10%, var(--s1), transparent 60%), var(--paper); }
-#publicInfo{ position:relative; }
+html[data-theme="light"] body{ background:var(--paper); color:var(--ink); }
+html[data-theme="light"] .topbar{ background:var(--card); border-bottom:1px solid var(--line); box-shadow:none; color:var(--ink); }
+html[data-theme="light"] .topbar-title{ color:var(--ink); }
+html[data-theme="light"] .topbar-eyebrow{ color:var(--sky-500); }
+html[data-theme="light"] .topbar .icon-btn{ background:var(--sky-100); color:var(--ink); }
+html[data-theme="light"] .tabbar{ background:rgba(255,255,255,.94); box-shadow:none; }
+html[data-theme="light"] .tab.is-active::before{ background:rgba(47,111,214,.12); }
+html[data-theme="light"] .btn-primary,
+html[data-theme="light"] .fab,
+html[data-theme="light"] .btn-google{ background:var(--sky-500); color:#fff; box-shadow:none; }
+html[data-theme="light"] .btn-primary:active{ background:var(--sky-600); }
+html[data-theme="light"] .btn-ghost{ background:var(--sky-100); color:var(--sky-600); }
+html[data-theme="light"] .btn-soft{ background:var(--card); color:var(--ink-soft); }
+html[data-theme="light"] .today{ background:var(--card); border-color:var(--line); }
+html[data-theme="light"] .today::after{ background:rgba(47,111,214,.06); }
+html[data-theme="light"] .today-sun{ background:var(--sun-soft); color:var(--sky-500); }
+html[data-theme="light"] .today-event{ color:var(--sky-600); }
+html[data-theme="light"] .stat b{ color:var(--sky-600); }
+html[data-theme="light"] .cal-nav button{ background:var(--sky-100); color:var(--sky-600); }
+html[data-theme="light"] .cal-cell.muted{ color:#C2BEB5; }
+html[data-theme="light"] .cal-cell.today{ background:var(--sky-500); color:#fff; }
+html[data-theme="light"] .cal-cell.has{ background:var(--sky-50); border-color:var(--sky-200); }
+html[data-theme="light"] .chip{ background:var(--sun-soft); color:var(--sky-600); }
+html[data-theme="light"] .chip.muted{ background:var(--sky-100); color:var(--ink-faint); }
+html[data-theme="light"] .chip.good{ background:var(--good-soft); color:#17795A; }
+html[data-theme="light"] .chip.sun{ background:var(--sun-soft); color:var(--sky-600); }
+html[data-theme="light"] .field input,
+html[data-theme="light"] .field select,
+html[data-theme="light"] .field textarea{ background:#fff; color:var(--ink); border-color:var(--line); }
+html[data-theme="light"] .field input:focus,
+html[data-theme="light"] .field select:focus,
+html[data-theme="light"] .field textarea:focus{ background:#fff; border-color:var(--sky-500); }
+html[data-theme="light"] .field input::placeholder,
+html[data-theme="light"] .field textarea::placeholder{ color:#A5A29A; }
+html[data-theme="light"] .toggle{ background:var(--sky-50); }
+html[data-theme="light"] .sw{ background:#CFCAC0; }
+html[data-theme="light"] .sw.on{ background:var(--sky-500); }
+html[data-theme="light"] .modal-backdrop{ background:rgba(30,30,40,.40); }
+html[data-theme="light"] .toast{ background:#1B1B1F; color:#fff; }
+html[data-theme="light"] .banner{ background:var(--sun-soft); border-color:#CFDDF6; }
+html[data-theme="light"] .banner-txt{ color:#2B4A7E; }
+html[data-theme="light"] .banner-txt b{ color:var(--sky-600); }
+html[data-theme="light"] .login{ background:var(--paper); }
+html[data-theme="light"] .login-card::before{ display:none; }
+html[data-theme="light"] .login-logo{ filter:none; }
+html[data-theme="light"] .event-photo-prev{ background:var(--sky-100); }
+html[data-theme="light"] .today-mine{ background:linear-gradient(135deg, rgba(31,157,110,.12), rgba(31,157,110,.03)); border-color:rgba(31,157,110,.5); }
+html[data-theme="light"] .today-mine-ico{ background:rgba(31,157,110,.16) !important; color:#17795A !important; }
+html[data-theme="light"] .today-mine .today-day{ color:var(--ink); }
+html[data-theme="light"] .today-mine-sub{ color:#17795A !important; }
+html[data-theme="light"] .today-mine-ev{ color:#17795A !important; }
+html[data-theme="light"] .swap-in{ background:linear-gradient(135deg, rgba(255,138,30,.14), rgba(255,178,61,.04)); }
+html[data-theme="light"] .swap-in .swap-body{ color:#5A3300; }
+html[data-theme="light"] .swap-in .swap-line{ color:#8A5416; }
+html[data-theme="light"] .swap-done{ border-color:#1B1B1F !important; background:rgba(255,210,63,.18) !important; }
+html[data-theme="light"] .swap-done .swap-body{ color:#4A3A00; }
+html[data-theme="light"] .swap-done .swap-line{ color:#7A6310; }
+html[data-theme="light"] .swap-badge{ color:var(--sky-600); background:var(--sun-soft); }
+html[data-theme="light"] .verse-label{ color:var(--sky-600); }
+html[data-theme="light"] .swap-badge.done{ color:#17795A; background:var(--good-soft); }
+html[data-theme="light"] .swap-badge.wait{ color:#A5620E; background:#FDF0DC; }
+html[data-theme="light"] .center-alert{ background:rgba(30,30,40,.45); }
+html[data-theme="light"] .profile-drawer{ box-shadow:-8px 0 32px rgba(30,30,40,.18); }
+html[data-theme="light"] .ava,
+html[data-theme="light"] .ava-more{ border-color:#fff; }
+/* ---------- Ícones Verbo ---------- */
+svg.vi{ width:1em; height:1em; vertical-align:-.16em; flex:none; fill:none; stroke:currentColor;
+  stroke-width:2.8; stroke-linecap:round; stroke-linejoin:round; overflow:visible; }
+.btn svg.vi{ width:1.2em; height:1.2em; stroke-width:2.8; }
+.chip svg.vi{ width:1.15em; height:1.15em; stroke-width:3; }
+.empty-emoji{ display:flex; justify-content:center; }
+.empty-emoji svg.vi{ width:64px; height:64px; stroke-width:2.4; }
+.center-alert-ico{ color:#FF7A1A; }
+.center-alert-ico svg.vi{ width:30px; height:30px; }
+.room-ico svg.vi{ stroke-width:2.6; }
+.pick-item svg.vi{ stroke-width:3; }
 
-/* Círculos do fundo */
-.bg-orbs{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-.bg-orbs i{ position:absolute; display:block; border-radius:50%;
-  background:linear-gradient(125deg,var(--orb-a),var(--orb-b));
-  opacity:var(--orb-alpha); filter:blur(var(--orb-blur)); transition:opacity .25s; }
-.bg-orbs .o1{ --d:clamp(300px,112vw,620px); width:var(--d); height:var(--d);
-  left:calc(var(--d) * -.6); top:calc(var(--d) * -.16); }
-.bg-orbs .o2{ --d:clamp(340px,124vw,700px); width:var(--d); height:var(--d);
-  right:calc(var(--d) * -.38); bottom:calc(var(--d) * -.34); }
+/* Fundo orgânico configurável: círculos vetoriais suaves, sem imagem pixelada */
+:root{--user-primary:#2F6FD6;--user-secondary:#55A0F2;}
+body{position:relative;isolation:isolate;overflow-x:hidden;}
+body::before,body::after{content:"";position:fixed;z-index:-1;pointer-events:none;border-radius:50%;
+  background:radial-gradient(circle at 38% 35%,color-mix(in srgb,var(--user-primary) 88%,white 12%) 0%,var(--user-primary) 72%,color-mix(in srgb,var(--user-primary) 92%,black 8%) 100%);
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;}
+body::before{width:clamp(230px,58vw,390px);height:clamp(230px,58vw,390px);left:clamp(-235px,-25vw,-115px);top:clamp(45px,12vh,145px);}
+body::after{width:clamp(190px,48vw,330px);height:clamp(190px,48vw,330px);right:clamp(-205px,-22vw,-100px);bottom:clamp(55px,14vh,170px);}
+html[data-theme="light"] body{background:radial-gradient(900px 500px at 50% -12%,#fff,transparent 72%),#F3F4F6;}
+html[data-theme="dark"] body::before,html[data-theme="dark"] body::after{opacity:.14;filter:saturate(.8);}
+/* A cor secundária controla os detalhes, sem substituir as superfícies do tema escuro */
+.topbar-eyebrow, .tab.is-active, .section-label .link, .today-event, .stat b,
+html[data-theme="light"] .today-event,html[data-theme="light"] .stat b{color:var(--user-secondary)!important;}
+.tab.is-active::before{background:color-mix(in srgb,var(--user-secondary) 16%,transparent)!important;}
+.btn-primary,.fab{background:var(--user-secondary)!important;}
+html[data-theme="light"] .btn-primary,html[data-theme="light"] .fab,html[data-theme="light"] .btn-google{background:var(--user-secondary)!important;}
+html[data-theme="dark"] .btn-primary,html[data-theme="dark"] .fab{color:#101116!important;}
+.today-sun{color:var(--user-secondary)!important;background:color-mix(in srgb,var(--user-secondary) 16%,transparent)!important;}
+.cal-cell.today{background:var(--user-secondary)!important;}
+html[data-theme="light"] .cal-cell.today{background:var(--user-secondary)!important;}
+.cal-cell .pip{background:var(--user-secondary)!important;}
+.theme-color-card{padding:15px;}
+.theme-color-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+.theme-color-row:last-of-type{border-bottom:0;}
+.theme-color-info{min-width:0;}
+.theme-color-info b{display:block;font-size:14px;color:var(--ink);}
+.theme-color-info small{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;}
+.theme-color-input{width:48px;height:38px;padding:3px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;}
+.theme-color-preview{height:58px;border-radius:14px;margin-top:12px;position:relative;overflow:hidden;background:var(--paper);border:1px solid var(--line);}
+.theme-color-preview::before,.theme-color-preview::after{content:"";position:absolute;border-radius:50%;background:var(--user-primary);}
+.theme-color-preview::before{width:90px;height:90px;left:-35px;top:-45px;}
+.theme-color-preview::after{width:75px;height:75px;right:-25px;bottom:-38px;}
+.theme-color-preview span{position:absolute;z-index:1;right:12px;top:18px;background:var(--user-secondary);width:70px;height:22px;border-radius:7px;}
 
-/* Superfícies que antes eram cinza fixo passam a seguir o tema */
-.topbar{ background:linear-gradient(180deg, rgba(var(--s1-rgb),.82), rgba(var(--s3-rgb),.64));
-  -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); }
-.tabbar{ background:rgba(var(--s3-rgb),.88); }
-.today{ background:linear-gradient(135deg,var(--s1),var(--s2)); }
-.field input,.field select,.field textarea{ background:var(--s2); }
-.field input:focus,.field select:focus,.field textarea:focus{ background:var(--s1); }
-.event-photo-prev{ background:var(--s2); }
-.sw{ background:var(--sky-300); }
-.login{ background:radial-gradient(800px 460px at 50% -10%, rgba(var(--s1-rgb),.7), transparent 60%); }
-
-/* Cor de texto sobre a secundária (branco ou escuro, o que ler melhor) */
-.btn-primary{ color:var(--on-accent); box-shadow:0 6px 16px rgba(var(--acc-rgb),.32); }
-.fab{ color:var(--on-accent); }
-.cal-cell.today{ color:var(--on-accent); }
-.cal-cell.today .pip{ background:var(--on-accent); }
-
-/* ---------- Painel "Aparência" (aba Mais) ---------- */
-.th-card{ padding:16px; }
-.th-preview{ position:relative; height:132px; border-radius:16px; overflow:hidden; isolation:isolate;
-  background:var(--paper); border:1px solid var(--line); margin-bottom:14px; }
-.th-preview i{ position:absolute; border-radius:50%; background:linear-gradient(125deg,var(--orb-a),var(--orb-b));
-  opacity:var(--orb-alpha); filter:blur(5px); }
-.th-o1{ width:130px; height:130px; left:-52px; top:-44px; }
-.th-o2{ width:156px; height:156px; right:-58px; bottom:-76px; }
-.th-ui{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:10px; }
-.th-chip{ background:var(--sky-100); color:var(--sun); font:700 12px var(--font-display); padding:6px 12px; border-radius:999px; }
-.th-btn{ background:var(--sky-500); color:var(--on-accent); font:700 13px var(--font-display); padding:9px 16px; border-radius:12px; }
-.th-pip{ width:10px; height:10px; border-radius:50%; background:var(--sky-500); }
-.th-presets{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
-.th-preset{ width:34px; height:34px; border-radius:50%; border:2px solid var(--line); transition:transform .12s, box-shadow .12s; }
-.th-preset.on{ border-color:var(--ink); transform:scale(1.12); box-shadow:0 0 0 3px rgba(var(--acc-rgb),.28); }
-.th-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-top:1px solid var(--line); }
-.th-txt b{ display:block; font-family:var(--font-display); font-weight:600; font-size:14px; color:var(--ink); }
-.th-txt span{ font-size:12px; color:var(--ink-soft); }
-.th-row input[type=color]{ -webkit-appearance:none; appearance:none; width:46px; height:46px; padding:0; border:0;
-  background:none; border-radius:14px; cursor:pointer; flex:none; }
-.th-row input[type=color]::-webkit-color-swatch-wrapper{ padding:0; }
-.th-row input[type=color]::-webkit-color-swatch{ border:2px solid var(--line); border-radius:12px; }
-.th-row input[type=color]::-moz-color-swatch{ border:2px solid var(--line); border-radius:12px; }
-.th-row input[type=range]{ width:46%; accent-color:var(--sky-500); }
-.th-card .btn{ margin-top:6px; }
-.th-hint{ font-size:11.5px; color:var(--ink-faint); line-height:1.5; margin-top:10px; }
 </style>
-
+</head>
 <body>
-
-  <!-- Fundo: círculos da cor primária -->
-  <div class="bg-orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i></div>
 
   <!-- Seção pública: visível para todos, inclusive sem login (SEO / verificação Google) -->
   <div id="publicInfo" style="max-width:520px;margin:0 auto;padding:40px 24px;font-family:system-ui,sans-serif;color:#143B57;">
@@ -1522,16 +1563,52 @@ function cultoColor(weekday, time){
                                           : "#1A4E8F";       // domingo noite — azul escuro
   return "#3D8BF0";                                          // demais cultos — azul padrão
 }
-const EVENT_KINDS={culto:{l:"Culto",i:"⛪"},vigilia:{l:"Vigília",i:"🌙"},batismo:{l:"Batismo",i:"💧"},reuniao:{l:"Reunião",i:"🤝"},treinamento:{l:"Treinamento",i:"🎓"}};
+/* =====================================================================
+   ÍCONES VERBO (VI) — substituem todos os emojis.
+   Linguagem da marca: traço grosso, pontas redondas e um 2º traço colorido
+   sobreposto, como as barras do logo (laranja, rosa, verde, azul, roxo).
+   vi("nome") devolve o <svg>; o traço principal herda a cor do texto.
+   ===================================================================== */
+const VI_COL = {o:"#FF7A1A", p:"#FF2E9A", g:"#2DB46B", b:"#1E90D6", v:"#B21FC8"};
+const VI_ICONS = {
+  igreja:{c:"o", b:'<path d="M5 21V12.5L12 8l7 4.5V21z"/>', a:'<path d="M12 2.5V8M9.4 5h5.2"/>'},
+  lua:{c:"v", b:'<path d="M20 14.2A8.3 8.3 0 1 1 9.8 4a6.6 6.6 0 0 0 10.2 10.2z"/>', a:'<path d="M18.5 3v4.4M16.3 5.2h4.4"/>'},
+  gota:{c:"b", b:'<path d="M12 3.5s6.5 6.4 6.5 11a6.5 6.5 0 0 1-13 0c0-4.6 6.5-11 6.5-11z"/>', a:'<path d="M9 15.2a3.2 3.2 0 0 0 3 3.1"/>'},
+  pessoas:{c:"g", b:'<circle cx="9" cy="8" r="3.3"/><path d="M3.5 20.5c0-3.4 2.4-5.6 5.5-5.6s5.5 2.2 5.5 5.6"/>', a:'<path d="M16.3 4.9a3.2 3.2 0 0 1 0 6.2M18 15.2c1.7.7 2.8 2.4 2.8 5.3"/>'},
+  capelo:{c:"p", b:'<path d="M12 4.5L2.5 9.5 12 14.5l9.5-5z"/>', a:'<path d="M6.5 12.8v4c0 1.5 2.4 3 5.5 3s5.5-1.5 5.5-3v-4M21.5 9.5v6"/>'},
+  faisca:{c:"o", b:'<path d="M11 4.5c.7 4.4 2.1 5.8 6.5 6.5-4.4.7-5.8 2.1-6.5 6.5-.7-4.4-2.1-5.8-6.5-6.5 4.4-.7 5.8-2.1 6.5-6.5z"/>', a:'<path d="M19 2.8v4M17 4.8h4"/>'},
+  livro:{c:"o", b:'<path d="M12 7C10 5.3 7 4.8 3.5 5.2v12.6c3.5-.4 6.5.1 8.5 1.7 2-1.6 5-2.1 8.5-1.7V5.2C17 4.8 14 5.3 12 7z"/>', a:'<path d="M12 7v12.5"/>'},
+  nota:{c:"o", b:'<path d="M6 3.5h8.5L19 8v12.5H6z"/>', a:'<path d="M9.5 12.5h6M9.5 16.5h4"/>'},
+  relogio:{c:"b", b:'<circle cx="12" cy="12" r="9"/>', a:'<path d="M12 7v5.2l3.4 2"/>'},
+  calendario:{c:"p", b:'<rect x="3.5" y="5" width="17" height="15.5" rx="3.2"/>', a:'<path d="M8 2.5v4M16 2.5v4M3.5 10.5h17"/>'},
+  camisa:{c:"b", b:'<path d="M8.5 3.5L3 6.8l2.4 4.4 2.6-1.3v10.6h8V9.9l2.6 1.3L21 6.8l-5.5-3.3"/>', a:'<path d="M8.5 3.5c.6 1.7 1.8 2.6 3.5 2.6s2.9-.9 3.5-2.6"/>'},
+  contato:{c:"g", b:'<rect x="2.5" y="4.5" width="19" height="15" rx="3.2"/>', a:'<circle cx="9" cy="10.3" r="1.9"/><path d="M15.2 10h3.3M15.2 14h2.4"/>'},
+  cadeado:{c:"o", b:'<rect x="4.5" y="10.5" width="15" height="10.5" rx="3"/>', a:'<path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>'},
+  compartilhar:{c:"g", b:'<path d="M5 12.5v6a2.5 2.5 0 0 0 2.5 2.5h9a2.5 2.5 0 0 0 2.5-2.5v-6"/>', a:'<path d="M12 15V3.5M7.6 7.8L12 3.5l4.4 4.3"/>'},
+  alerta:{c:"o", b:'<path d="M12 3.5L21.5 20h-19z"/>', a:'<path d="M12 9.8v4.4M12 17.2v.2"/>'},
+  troca:{c:"p", b:'<path d="M4 8h14M14.2 4l4 4-4 4"/>', a:'<path d="M20 16H6M9.8 12l-4 4 4 4"/>'},
+  check:{c:"g", a:'<path d="M4.5 12.8l5 5 10-11"/>'},
+  estrela:{raw:'<path fill="currentColor" stroke-width="1.6" d="M12 2.8l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.5l-5.9 3.4 1.3-6.6L2.5 9.7l6.6-.8z"/>'},
+  // a própria marca do Verbo: três barras que formam o play
+  play:{raw:'<g stroke-width="3.6"><path stroke="#FF7A1A" d="M5.5 5.2v13.6"/><path stroke="#FF2E9A" d="M6 5.8l13.2 6.2"/><path stroke="#2DB46B" d="M6 18.2l13.2-6.2"/></g><path fill="currentColor" stroke="none" d="M10.2 9.6v4.8l4-2.4z"/>'}
+};
+function vi(name, sz){
+  const d = VI_ICONS[name] || VI_ICONS.faisca;
+  const st = sz ? ` style="width:${sz}em;height:${sz}em"` : "";
+  if(d.raw) return `<svg class="vi" viewBox="0 0 24 24" aria-hidden="true"${st}>${d.raw}</svg>`;
+  const col = VI_COL[d.c] || VI_COL.o;
+  return `<svg class="vi" viewBox="0 0 24 24" aria-hidden="true"${st}>${d.b?`<g>${d.b}</g>`:""}<g stroke="${col}">${d.a||""}</g></svg>`;
+}
+const EVENT_KINDS={culto:{l:"Culto",i:"igreja"},vigilia:{l:"Vigília",i:"lua"},batismo:{l:"Batismo",i:"gota"},reuniao:{l:"Reunião",i:"pessoas"},treinamento:{l:"Treinamento",i:"capelo"}};
 const hm=t=>String(t||"").slice(0,5);
 const isVigil=o=>!!o && o.kind==="vigilia";
-function occIcon(o){ if(o.type==="evento") return (EVENT_KINDS[o.kind]||{i:"🎉"}).i; return "⛪"; }
+function occIcon(o){ if(o.type==="evento") return vi((EVENT_KINDS[o.kind]||{i:"faisca"}).i); return vi("igreja"); }
 function occRange(o){ return o.time ? (hm(o.time)+(o.endTime?" às "+hm(o.endTime):"")) : ""; }
 const toMin=t=>{ const p=String(t||"").split(":"); return (+p[0]||0)*60+(+p[1]||0); };
 const fromMin=m=>{ m=((m%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
 const timeTxt=t=>(t&&(t.from||t.to))?(hm(t.from)+" às "+hm(t.to)):"";
 function vgTime(o,slot,id){ if(!isVigil(o)) return ""; const t=timeTxt((slot.times||{})[id]); return t?` <b style="margin-left:6px;color:var(--sky-600,#2E86D6)">${t}</b>`:""; }
-function obsBox(o){ return (o&&o.obs)?`<div class="card" style="padding:12px;margin-bottom:12px;background:var(--sun-soft,#FFF4E0);border-color:#F3D9A4"><div style="font-size:11.5px;font-weight:700;color:var(--ink-faint);margin-bottom:4px">📝 OBSERVAÇÕES</div><div style="font-size:13.5px;white-space:pre-wrap">${esc(o.obs)}</div></div>`:""; }
+function obsBox(o){ return (o&&o.obs)?`<div class="card" style="padding:12px;margin-bottom:12px;background:var(--sun-soft,#FFF4E0);border-color:#F3D9A4"><div style="font-size:11.5px;font-weight:700;color:var(--ink-faint);margin-bottom:4px">${vi("nota",1.3)} OBSERVAÇÕES</div><div style="font-size:13.5px;white-space:pre-wrap">${esc(o.obs)}</div></div>`:""; }
 function kindLabel(o){ return (o && o.type==="evento" && EVENT_KINDS[o.kind]) ? EVENT_KINDS[o.kind].l+" • " : ""; }
 function occsOnDate(dateStr){
   const d=parseYmd(dateStr), wd=d.getDay(), list=[];
@@ -1705,7 +1782,7 @@ function renderHome(c){
       html += `<div class="today today-mine" style="margin-bottom:14px">
         <div class="today-date"><div class="today-sun today-mine-ico">
           <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
-          <div><div class="today-day">🎬 É o seu dia, ${esc(me.name.split(" ")[0])}!</div>
+          <div><div class="today-day">${vi("play",1.15)} É o seu dia, ${esc(me.name.split(" ")[0])}!</div>
           <div class="today-sub today-mine-sub">Você está escalado hoje</div></div></div>
         ${minhasSalas.map(x=>`<div class="today-event today-mine-ev">${esc(x.occ.title)} • ${esc(x.room?x.room.name:"—")}${x.role?" • "+x.role:""} ${x.occ.time?"• "+x.occ.time:""}</div>`).join("")}
       </div>`;
@@ -1729,7 +1806,7 @@ function renderHome(c){
         <span class="today-sub" style="display:block;font-weight:500">${n? n+" pessoa(s) escalada(s)" : "Sem escala definida — toque para montar"}</span></div>`;
     });
   } else {
-    html += `<div class="today-empty">Sem culto programado para hoje. Aproveite o descanso! 💙</div>`;
+    html += `<div class="today-empty">Sem culto programado para hoje. Aproveite o descanso.</div>`;
   }
   html += `</div>`;
 
@@ -1783,37 +1860,38 @@ const SPOTIFY_PLAYLIST_ID = "7LMVKUhoqRpnLbPUCQkf15";
 const SPOTIFY_PLAYLIST_URL = `https://open.spotify.com/playlist/${SPOTIFY_PLAYLIST_ID}`;
 
 function videosSectionHtml(){
-  return `<div class="section-label" style="margin-top:18px">Vídeos recentes
-      <a class="link" href="${YT_CHANNEL}" target="_blank" rel="noopener">Ver canal</a></div>
-    <div class="yt-wrap">
-      <iframe src="https://www.youtube-nocookie.com/embed/videoseries?list=${YT_UPLOADS}&rel=0&modestbranding=1"
-        title="Vídeos recentes — Verbo Casa Caiada" loading="lazy"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  return `<section class="media-hub" aria-label="Mídia da igreja">
+    <div class="media-hub-head">
+      <div class="media-hub-title">Conteúdos da igreja</div>
+      <a class="media-hub-link" href="${YT_CHANNEL}" target="_blank" rel="noopener">Ver canal ↗</a>
     </div>
-    <div class="section-label" style="margin-top:18px">Música</div>
-    <div class="spotify-card">
-      <div class="spotify-card-top">
-        <svg class="spotify-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="12" fill="#1ED760"/>
-          <path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15 3.55-1.05 9.4-.85 13.1 1.35.45.25.6.85.35 1.3-.25.35-.85.5-1.3.25zm-.1 2.8c-.25.35-.7.5-1.05.25-2.7-1.65-6.8-2.15-9.95-1.15-.4.1-.85-.1-.95-.5-.1-.4.1-.85.5-.95 3.65-1.1 8.15-.55 11.25 1.35.3.15.45.65.2 1zm-1.2 2.75c-.2.3-.55.4-.85.2-2.35-1.45-5.3-1.75-8.8-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.8-.85 7.1-.5 9.7 1.1.35.15.4.55.25.85z" fill="#000"/>
-        </svg>
-        <div>
-          <div class="spotify-card-title">Playlist da Igreja</div>
-          <div class="spotify-card-sub">Verbo Casa Caiada • Spotify</div>
+    <div class="media-grid">
+      <article class="media-tile">
+        <div class="media-tile-head">
+          <svg class="yt-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z"/></svg>
+          <span>YouTube</span>
         </div>
-      </div>
-      <div class="spotify-embed-wrap">
-        <iframe src="https://open.spotify.com/embed/playlist/${SPOTIFY_PLAYLIST_ID}?utm_source=generator&theme=0"
-          width="100%" height="152" frameborder="0"
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          loading="lazy"></iframe>
-      </div>
-      <a class="spotify-open-btn" href="${SPOTIFY_PLAYLIST_URL}" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24"><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15 3.55-1.05 9.4-.85 13.1 1.35.45.25.6.85.35 1.3-.25.35-.85.5-1.3.25zm-.1 2.8c-.25.35-.7.5-1.05.25-2.7-1.65-6.8-2.15-9.95-1.15-.4.1-.85-.1-.95-.5-.1-.4.1-.85.5-.95 3.65-1.1 8.15-.55 11.25 1.35.3.15.45.65.2 1zm-1.2 2.75c-.2.3-.55.4-.85.2-2.35-1.45-5.3-1.75-8.8-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.8-.85 7.1-.5 9.7 1.1.35.15.4.55.25.85z"/></svg>
-        Abrir no Spotify
-      </a>
-    </div>`;
+        <div class="yt-wrap">
+          <iframe src="https://www.youtube-nocookie.com/embed/videoseries?list=${YT_UPLOADS}&rel=0&modestbranding=1"
+            title="Vídeos recentes — Verbo Casa Caiada" loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen referrerpolicy="strict-origin-when-cross-origin" scrolling="no"></iframe>
+        </div>
+      </article>
+      <article class="media-tile">
+        <div class="media-tile-head">
+          <svg class="sp-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="currentColor"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15 3.55-1.05 9.4-.85 13.1 1.35.45.25.6.85.35 1.3-.25.35-.85.5-1.3.25zm-.1 2.8c-.25.35-.7.5-1.05.25-2.7-1.65-6.8-2.15-9.95-1.15-.4.1-.85-.1-.95-.5-.1-.4.1-.85.5-.95 3.65-1.1 8.15-.55 11.25 1.35.3.15.45.65.2 1zm-1.2 2.75c-.2.3-.55.4-.85.2-2.35-1.45-5.3-1.75-8.8-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.8-.85 7.1-.5 9.7 1.1.35.15.4.55.25.85z" fill="#07130b"/></svg>
+          <span>Spotify</span>
+        </div>
+        <div class="spotify-embed-wrap">
+          <iframe src="https://open.spotify.com/embed/playlist/${SPOTIFY_PLAYLIST_ID}?utm_source=generator&theme=0"
+            title="Playlist da Igreja — Verbo Casa Caiada" loading="lazy"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            scrolling="no"></iframe>
+        </div>
+      </article>
+    </div>
+  </section>`;
 }
 
 /* ---------------- Troca de escalas ---------------- */
@@ -1926,7 +2004,7 @@ function renderTrocas(c){
         </button>` : ""}
       </div>
       <div class="swap-body">
-        <b>${a?esc(a.name.split(" ")[0]):"Alguém"}</b>${b?` ↔ <b>${esc(b.name.split(" ")[0])}</b>`:""}
+        <b>${a?esc(a.name.split(" ")[0]):"Alguém"}</b>${b?` ${vi("troca")} <b>${esc(b.name.split(" ")[0])}</b>`:""}
         <div class="swap-line">${swapDesc(s)}</div>
         ${s.note?`<div class="swap-note">"${esc(s.note)}"</div>`:""}
       </div>
@@ -1936,7 +2014,7 @@ function renderTrocas(c){
 }
 function openSwapRequest(occKey, roomId, role){
   const me=getMember(DB.settings.meId);
-  if(!me){ toast("Defina quem é você em Mais → Quem é você","warn"); return; }
+  if(!me){ toast("Defina quem é você em Mais, Quem é você","warn"); return; }
   if(hasMyOpenSwap(occKey, roomId, role)){ toast("Você já pediu troca nesta escala","warn"); return; }
   const occ=resolveOcc(occKey); const room=getRoom(roomId);
   const already=new Set(); DB.rooms.forEach(r=>roomPeopleIds(occKey,r.id).forEach(id=>already.add(id)));
@@ -1977,9 +2055,9 @@ function swapWhatsApp(id){
   const quando = occ?fmtLong(occ.date):""; const papel=s.role==="leader"?"Responsável":"Auxiliar";
   let msg;
   if(s.targetId===myMemberId()){
-    msg=`Oi ${other.name.split(" ")[0]}! Sobre a troca de ${occ?occ.title:"escala"} (${room?room.name:""} • ${papel}) em ${quando} — recebi seu pedido no app. 💙`;
+    msg=`Oi ${other.name.split(" ")[0]}! Sobre a troca de ${occ?occ.title:"escala"} (${room?room.name:""} • ${papel}) em ${quando} — recebi seu pedido no app.`;
   } else {
-    msg=`Oi ${other.name.split(" ")[0]}! Pedi uma troca da escala: ${occ?occ.title:""} • ${room?room.name:""} • ${papel} em ${quando}. Você consegue cobrir? Se puder, é só abrir o app e aceitar 🙏 — ${DB.settings.dept}`;
+    msg=`Oi ${other.name.split(" ")[0]}! Pedi uma troca da escala: ${occ?occ.title:""} • ${room?room.name:""} • ${papel} em ${quando}. Você consegue cobrir? Se puder, é só abrir o app e aceitar. — ${DB.settings.dept}`;
   }
   window.open(`https://wa.me/${cleanPhone(other.phone)}?text=${encodeURIComponent(msg)}`,"_blank");
 }
@@ -2075,7 +2153,7 @@ function scheduleText(occs, rooms, subtitle, ttl){
     const rs=rooms.filter(r=>roomPeopleIds(o.key,r.id).length);
     if(!rs.length) return;
     t+="\n*"+fmtShort(o.date)+(o.time?" "+occRange(o):"")+" — "+o.title+"*\n";
-    if(o.obs) t+="📝 "+o.obs+"\n";
+    if(o.obs) t+="Obs.: "+o.obs+"\n";
     rs.forEach(r=>{
       const slot=roomSlot(o.key,r.id);
       const resp=slot.lider?getMember(slot.lider):null;
@@ -2191,7 +2269,7 @@ function renderVolunteerHome(me, t, todayStr, occs){
   if(occs.length){
     occs.forEach(o=>{ h += `<div class="today-event list-tap" data-action="open-occ" data-key="${o.key}">${esc(o.title)} ${o.time?"• "+o.time:""}</div>`; });
   } else {
-    h += `<div class="today-empty">Sem culto hoje. Bom descanso! 💙</div>`;
+    h += `<div class="today-empty">Sem culto hoje. Bom descanso.</div>`;
   }
   h += `</div>`;
 
@@ -2201,29 +2279,29 @@ function renderVolunteerHome(me, t, todayStr, occs){
     const nx = mine[0];
     h += `<div class="today" style="margin-top:14px">
       <div class="today-date">
-        <div class="today-sun" style="background:rgba(var(--acc-rgb),.16);color:var(--sun)"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg></div>
+        <div class="today-sun" style="background:rgba(61,139,240,.16);color:#6CB2FF"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg></div>
         <div><div class="today-day">Sua próxima escala</div>
         <div class="today-sub">${countdownLabel(nx.date)}</div></div>
       </div>
       <div class="today-event">${esc(nx.occ.title)} • ${esc(nx.room?nx.room.name:"—")}${nx.role?" • "+nx.role:""}
         <span class="today-sub" style="display:block;font-weight:500">${fmtShort(nx.date)} ${nx.occ.time?"• "+nx.occ.time:""}</span></div>
       ${hasMyOpenSwap(nx.occ.key,nx.room?nx.room.id:"",nx.roleKey)
-        ? `<div class="swap-mini">⏳ Troca solicitada</div>`
+        ? `<div class="swap-mini">${vi("relogio")} Troca solicitada</div>`
         : `<button class="btn btn-ghost btn-block swap-ask" data-action="swap-request" data-key="${nx.occ.key}" data-room="${nx.room?nx.room.id:""}" data-role="${nx.roleKey}">Pedir troca</button>`}
     </div>`;
     if(mine.length>1){
       h += `<div class="section-label">Suas próximas escalas</div>`;
       mine.slice(1,8).forEach(x=>{
         h += `<div class="room list-tap" data-action="open-occ" data-key="${x.occ.key}">
-          <div class="room-ico" style="background:${x.room?x.room.bg:'#22262e'};color:${x.room?x.room.fg:'#8A9098'}">${x.room?roomIcon(x.room.emoji):"📅"}</div>
+          <div class="room-ico" style="background:${x.room?x.room.bg:'#22262e'};color:${x.room?x.room.fg:'#8A9098'}">${x.room?roomIcon(x.room.emoji):vi("calendario")}</div>
           <div class="room-info"><div class="room-name">${esc(x.occ.title)}</div>
             <div class="room-age">${fmtShort(x.date)} • ${esc(x.room?x.room.name:"—")}${x.role?" • "+x.role:""}</div></div>
-          <div class="room-count">${hasMyOpenSwap(x.occ.key,x.room?x.room.id:"",x.roleKey)?`<span class="chip muted">troca ⏳</span>`:`<button class="btn btn-ghost sm" data-action="swap-request" data-key="${x.occ.key}" data-room="${x.room?x.room.id:""}" data-role="${x.roleKey}" onclick="event.stopPropagation()">Trocar</button>`}</div>
+          <div class="room-count">${hasMyOpenSwap(x.occ.key,x.room?x.room.id:"",x.roleKey)?`<span class="chip muted">troca ${vi("relogio")}</span>`:`<button class="btn btn-ghost sm" data-action="swap-request" data-key="${x.occ.key}" data-room="${x.room?x.room.id:""}" data-role="${x.roleKey}" onclick="event.stopPropagation()">Trocar</button>`}</div>
         </div>`;
       });
     }
   } else {
-    h += `<div class="today" style="margin-top:14px"><div class="today-empty">Você não tem escalas marcadas no momento. 🙌</div></div>`;
+    h += `<div class="today" style="margin-top:14px"><div class="today-empty">Você não tem escalas marcadas no momento.</div></div>`;
   }
 
   // Próximos cultos (só visualização)
@@ -2329,7 +2407,7 @@ function verseCardHtml(){
   const txt = (verseState&&verseState.text) ? "“"+verseState.text+"”" : "Buscando o versículo de hoje…";
   const ref = (verseState&&verseState.ref) ? verseState.ref : "";
   return `<div class="verse-card" id="verseCard">
-    <div class="verse-label">✨ Versículo do dia</div>
+    <div class="verse-label">${vi("livro",1.3)} Versículo do dia</div>
     <div class="verse-text">${esc(txt)}</div>
     <div class="verse-ref">${esc(ref)}</div>
   </div>`;
@@ -2393,7 +2471,7 @@ function renderEscala(c){
   const occs = occsInMonth(escYear, escMonth);
 
   if(!occs.length){
-    html += emptyState("📅","Nenhum culto neste mês",
+    html += emptyState(vi("calendario"),"Nenhum culto neste mês",
       leader?"Cadastre cultos da semana e eventos na aba Agenda. Eles aparecem aqui automaticamente.":"O líder ainda não cadastrou cultos para este mês.",
       leader?`<button class="btn btn-primary" data-action="goto" data-view="calendario">Ir para Agenda</button>`:"");
     c.innerHTML = html; return;
@@ -2569,7 +2647,7 @@ function renderMembros(c){
   if(memberFilter!=="all") list = list.filter(m=>m.roomIds.includes(memberFilter));
 
   if(!list.length){
-    html += emptyState("👥","Nenhuma pessoa aqui",
+    html += emptyState(vi("pessoas"),"Nenhuma pessoa aqui",
       isLeader()?"Cadastre os voluntários do ministério para começar a montar as escalas.":"A equipe ainda não foi cadastrada.",
       isLeader()?`<button class="btn btn-primary" data-action="new-member">Cadastrar pessoa</button>`:"");
     c.innerHTML = html; return;
@@ -2580,7 +2658,7 @@ function renderMembros(c){
     html += `<div class="person list-tap" data-action="open-member" data-id="${m.id}">
       ${ava(m.name,m.id,m.active?"":"opacity:.45")}
       <div class="person-info">
-        <div class="person-name">${esc(m.name)} ${!m.active?`<span class="chip muted">inativo</span>`:""}${m.training?`<span class="chip sun">🎓 treinamento</span>`:""}</div>
+        <div class="person-name">${esc(m.name)} ${!m.active?`<span class="chip muted">inativo</span>`:""}${m.training?`<span class="chip sun">${vi("capelo")} treinamento</span>`:""}</div>
         <div class="person-meta">${esc(m.role||"Voluntário")} ${roomNames?"• "+roomNames:""}</div>
       </div>
       ${m.phone?`<button class="icon-btn sm" data-action="wa-member" data-id="${m.id}" aria-label="WhatsApp" style="color:var(--good)">
@@ -2594,46 +2672,62 @@ function renderMembros(c){
 /* =====================================================================
    VIEW: CONFIG / MAIS
    ===================================================================== */
+function getUserColorStorageKey(){
+  const uid = Auth.memberId || DB.settings.meId || "guest";
+  return "escala-midia-colors:" + uid;
+}
+function getUserColors(){
+  const defaults={primary:"#2F6FD6",secondary:"#55A0F2"};
+  try{ return {...defaults,...JSON.parse(localStorage.getItem(getUserColorStorageKey())||"{}")} }catch(_){ return defaults; }
+}
+function applyUserColors(){
+  const c=getUserColors(), root=document.documentElement;
+  root.style.setProperty("--user-primary",c.primary);
+  root.style.setProperty("--user-secondary",c.secondary);
+}
+function saveUserColor(which,value){
+  const c=getUserColors(); c[which]=value;
+  try{localStorage.setItem(getUserColorStorageKey(),JSON.stringify(c));}catch(_){}
+  applyUserColors();
+}
+applyUserColors();
 
-/* ---------- Aparência (tema personalizável) ---------- */
-function themeSectionHtml(){
-  const t=Theme.get();
-  const same=(p)=>p.p.toLowerCase()===t.p.toLowerCase() && p.s.toLowerCase()===t.s.toLowerCase();
-  const presets=Theme.PRESETS.map((p,i)=>`<button type="button" class="th-preset${same(p)?" on":""}" data-th="${i}" aria-label="Paleta ${esc(p.n)}" title="${esc(p.n)}" style="background:linear-gradient(135deg,${p.p} 50%,${p.s} 50%)"></button>`).join("");
-  return `<div class="section-label">Aparência</div>
-    <div class="card th-card">
-      <div class="th-preview" aria-hidden="true"><i class="th-o1"></i><i class="th-o2"></i>
-        <div class="th-ui"><span class="th-chip">Escala</span><span class="th-btn">Botão</span><span class="th-pip"></span></div></div>
-      <div class="th-presets">${presets}</div>
-      <div class="th-row"><div class="th-txt"><b>Cor primária</b><span>Círculos do fundo</span></div>
-        <input type="color" id="thP" value="${t.p}" aria-label="Cor primária"></div>
-      <div class="th-row"><div class="th-txt"><b>Cor secundária</b><span>Botões, abas e detalhes</span></div>
-        <input type="color" id="thS" value="${t.s}" aria-label="Cor secundária"></div>
-      <div class="th-row"><div class="th-txt"><b>Intensidade do fundo</b><span id="thIv">${t.i}%</span></div>
-        <input type="range" id="thI" min="0" max="100" value="${t.i}" aria-label="Intensidade do fundo"></div>
-      <button type="button" class="btn btn-soft btn-block" id="thReset">Restaurar padrão</button>
-      <div class="th-hint">Salvo só neste aparelho. O app ajusta o brilho das cores sozinho para o texto continuar legível no tema escuro.</div>
-    </div>`;
-}
-function wireTheme(c){
-  const P=c.querySelector("#thP"), S=c.querySelector("#thS"), I=c.querySelector("#thI"), IV=c.querySelector("#thIv");
-  if(!P||!S||!I) return;
-  const marks=()=>{ const t=Theme.get();
-    c.querySelectorAll(".th-preset").forEach((b,i)=>{ const p=Theme.PRESETS[i];
-      b.classList.toggle("on", p.p.toLowerCase()===t.p.toLowerCase() && p.s.toLowerCase()===t.s.toLowerCase()); }); };
-  const fill=()=>{ const t=Theme.get(); P.value=t.p; S.value=t.s; I.value=t.i; IV.textContent=t.i+"%"; marks(); };
-  P.addEventListener("input",()=>{ Theme.set({p:P.value}); marks(); });
-  S.addEventListener("input",()=>{ Theme.set({s:S.value}); marks(); });
-  I.addEventListener("input",()=>{ Theme.set({i:+I.value}); IV.textContent=I.value+"%"; });
-  c.querySelectorAll(".th-preset").forEach(b=>b.addEventListener("click",()=>{
-    const p=Theme.PRESETS[+b.dataset.th]; Theme.set({p:p.p,s:p.s}); fill(); }));
-  c.querySelector("#thReset").addEventListener("click",()=>{ Theme.reset(); fill(); toast("Visual restaurado","good"); });
-}
+document.addEventListener("input",e=>{
+  const input=e.target.closest("[data-color-pref]");
+  if(!input)return;
+  saveUserColor(input.dataset.colorPref,input.value);
+});
 
 function renderConfig(c){
   const me = DB.settings.meId ? getMember(DB.settings.meId) : null;
   const leader = isAdmin();
   let html = "";
+
+  // Aparência (tema claro / escuro)
+  const curTheme = document.documentElement.getAttribute("data-theme")==="light" ? "light" : "dark";
+  html += `<div class="section-label">Aparência</div>
+    <div class="theme-seg" role="radiogroup" aria-label="Tema do app">
+      <button class="theme-opt ${curTheme==="light"?"on":""}" data-action="set-theme" data-theme="light" role="radio" aria-checked="${curTheme==="light"}">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg> Claro</button>
+      <button class="theme-opt ${curTheme==="dark"?"on":""}" data-action="set-theme" data-theme="dark" role="radio" aria-checked="${curTheme==="dark"}">
+        <svg viewBox="0 0 24 24"><path d="M21 13.2A8.5 8.5 0 1 1 10.8 3a6.7 6.7 0 0 0 10.2 10.2z"/></svg> Escuro</button>
+    </div>`;
+
+  const colors = getUserColors();
+  html += `<div class="section-label">Personalizar cores</div>
+    <div class="card theme-color-card">
+      <div class="theme-color-row">
+        <div class="theme-color-info"><b>Cor primária</b><small>Cor dos círculos decorativos do fundo.</small></div>
+        <input class="theme-color-input" type="color" aria-label="Escolher cor primária" data-color-pref="primary" value="${colors.primary}">
+      </div>
+      <div class="theme-color-row">
+        <div class="theme-color-info"><b>Cor secundária</b><small>Botões, ícones ativos, destaques e detalhes do app.</small></div>
+        <input class="theme-color-input" type="color" aria-label="Escolher cor secundária" data-color-pref="secondary" value="${colors.secondary}">
+      </div>
+      <div class="theme-color-preview" aria-label="Prévia das cores escolhidas"><span></span></div>
+      <div class="hint" style="margin-top:10px">As cores são aplicadas sem alterar o fundo, os cartões ou o contraste do tema escuro. Cada conta salva suas próprias escolhas neste dispositivo.</div>
+      <button class="btn btn-soft btn-block" style="margin-top:12px" data-action="reset-user-colors">Restaurar cores padrão</button>
+    </div>`;
 
   // Identidade
   html += `<div class="section-label">Departamento</div>
@@ -2641,9 +2735,6 @@ function renderConfig(c){
       <div class="field"><label>Igreja</label><input id="cfgChurch" value="${esc(DB.settings.church)}" ${leader?"":"disabled"}></div>
       <div class="field" style="margin-bottom:0"><label>Departamento</label><input id="cfgDept" value="${esc(DB.settings.dept)}" ${leader?"":"disabled"}></div>
     </div>`;
-
-  // Aparência (todos os usuários)
-  html += themeSectionHtml();
 
   // Lembretes
   html += `<div class="section-label">Lembretes</div>
@@ -2666,9 +2757,9 @@ function renderConfig(c){
   if(isLeader()){
     html += `<div class="section-label">Mensagem aos escalados</div>
       <div class="card" style="padding:16px">
-        <div class="field"><label>⏰ Horário de chegada</label>
+        <div class="field"><label>${vi("relogio")} Horário de chegada</label>
           <input id="cfgArrival" value="${esc(DB.settings.msgArrival||"")}" placeholder="Ex.: Chegar uma hora antes do culto"></div>
-        <div class="field" style="margin-bottom:0"><label>👕 Vestimenta</label>
+        <div class="field" style="margin-bottom:0"><label>${vi("camisa")} Vestimenta</label>
           <input id="cfgDress" value="${esc(DB.settings.msgDress||"")}" placeholder="Ex.: Devidamente padronizado, ou all black"></div>
         <div class="hint" style="margin-top:8px">Essas linhas entram na mensagem enviada aos escalados pelo WhatsApp. Deixe em branco para não incluir.</div>
       </div>`;
@@ -2690,7 +2781,7 @@ function renderConfig(c){
   DB.services.forEach(s=>{
     const sc=cultoColor(s.weekday,s.time);
     html += `<div class="room list-tap" data-action="edit-service" data-id="${s.id}">
-      <div class="room-ico" style="background:${sc}22;color:${sc}">⛪</div>
+      <div class="room-ico" style="background:${sc}22;color:${sc}">${vi("igreja")}</div>
       <div class="room-info"><div class="room-name">${esc(s.name)}</div><div class="room-age">Todo ${WD[s.weekday].toLowerCase()} • ${s.time}</div></div>
       <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--ink-faint);stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 18l6-6-6-6"/></svg>
     </div>`;
@@ -2725,7 +2816,6 @@ function renderConfig(c){
     <div class="spacer"></div>`;
 
   c.innerHTML = html;
-  wireTheme(c);
 
   // autosave da identidade
   ["cfgChurch","cfgDept"].forEach(id=>{
@@ -2771,6 +2861,19 @@ document.addEventListener("click", e=>{
   if(LEADER_ANY.includes(a) && !isLeader()){ toast("Apenas líderes podem fazer isso","warn"); return; }
 
   switch(a){
+    case "reset-user-colors": {
+      try{localStorage.removeItem(getUserColorStorageKey());}catch(_){}
+      applyUserColors(); go("config"); toast("Cores restauradas","good");
+      break;
+    }
+    case "set-theme": {
+      const t = el.dataset.theme==="light" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", t);
+      try{ localStorage.setItem("escala-midia-theme", t); }catch(_){}
+      const m=document.getElementById("metaTheme"); if(m) m.setAttribute("content", t==="light"?"#F4F2EE":"#0D0D0F");
+      go("config");
+      break;
+    }
     case "goto": go(el.dataset.view); break;
     case "open-area": openAreaPage(el.dataset.roomId); break;
     case "open-occ": openSchedule(key); break;
@@ -2872,13 +2975,13 @@ function editMember(mid){
       <div class="field"><label>WhatsApp</label><input id="mPhone" value="${esc(m.phone)}" placeholder="81 99999-0000" inputmode="tel"></div>
       <div class="field"><label>Função</label><input id="mRole" value="${esc(m.role)}" placeholder="Operador, Editor..."></div>
     </div>
-    ${canPickContacts?`<button type="button" class="btn btn-ghost btn-block" id="mFromContacts" style="margin:-4px 0 4px;font-size:13.5px">📇 Buscar número na agenda do celular</button>`:""}
+    ${canPickContacts?`<button type="button" class="btn btn-ghost btn-block" id="mFromContacts" style="margin:-4px 0 4px;font-size:13.5px">${vi("contato")} Buscar número na agenda do celular</button>`:""}
     <div class="field"><label>Áreas que pode atender</label>
       <div class="pick" id="mRooms">${DB.rooms.map(r=>`<span class="pick-item ${m.roomIds.includes(r.id)?"on":""}" data-room="${r.id}" style="${m.roomIds.includes(r.id)?`background:${r.fg}`:""}"><span class="pk-dot" style="background:${r.fg}"></span>${esc(r.name)}</span>`).join("")}</div>
     </div>
     <div class="field"><label>Observações</label><textarea id="mNotes" placeholder="Restrições de horário, preferências...">${esc(m.notes)}</textarea></div>
     <div class="toggle"><span class="toggle-label">Ativo na equipe</span><div class="sw ${m.active?"on":""}" id="mActive"></div></div>
-    <div class="toggle"><span class="toggle-label">🎓 Em treinamento</span><div class="sw ${m.training?"on":""}" id="mTraining"></div></div>
+    <div class="toggle"><span class="toggle-label">${vi("capelo")} Em treinamento</span><div class="sw ${m.training?"on":""}" id="mTraining"></div></div>
     <div id="mAccessWrap"></div>
   `;
   const foot = `<button class="btn btn-primary btn-block" id="mSave">${mid?"Salvar alterações":"Cadastrar"}</button>
@@ -3018,7 +3121,7 @@ function openMember(mid){
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
       <div class="ava" style="width:60px;height:60px;font-size:22px;${m.photo?`background-image:url('${m.photo}');background-size:cover;background-position:center`:`background:${avaColor(m.id)}`}">${m.photo?"":esc(initials(m.name))}</div>
       <div><div style="font-family:var(--font-display);font-weight:700;font-size:20px">${esc(m.name)}</div>
-      <div class="muted-txt">${esc(m.role||"Voluntário")} ${m.active?"":"• inativo"}${m.training?` • <span style="color:var(--sun)">🎓 em treinamento</span>`:""}</div></div>
+      <div class="muted-txt">${esc(m.role||"Voluntário")} ${m.active?"":"• inativo"}${m.training?` • <span style="color:var(--sun)">${vi("capelo")} em treinamento</span>`:""}</div></div>
     </div>
     <div class="divider"></div>
     <div class="field" style="margin-bottom:10px"><label>Histórico de escalas</label>
@@ -3052,7 +3155,7 @@ function openMember(mid){
 /* ---------- Modal: Sala ---------- */
 // Ícones SVG profissionais (substituem os emojis). Cada sala guarda apenas a      // DEUS SEJA
 // CHAVE (ex.: "antena") em r.emoji; roomIcon(key) devolve o markup do ícone.
-const ROOM_ICON_STYLE = "width:1em;height:1em;vertical-align:-.15em;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round";
+const ROOM_ICON_STYLE = "width:1em;height:1em;vertical-align:-.15em;flex:none;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;overflow:visible";
 const ROOM_ICONS = {
   antena: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><circle cx="12" cy="12" r="2"/><path d="M4.9 19.1a10 10 0 0 1 0-14.2"/><path d="M7.8 16.2a6 6 0 0 1 0-8.4"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4"/><path d="M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>`,
   projetor: `<svg viewBox="0 0 24 24" style="${ROOM_ICON_STYLE}"><rect x="2" y="8" width="10" height="7" rx="2"/><circle cx="7" cy="11.5" r="1.8"/><path d="M12 10.3 17.5 8v7l-5.5-2.3Z"/><rect x="18.5" y="9" width="3.5" height="5" rx=".8"/></svg>`,
@@ -3150,7 +3253,7 @@ function editService(sid){
 /* ---------- Modal: Evento pontual ---------- */
 function pickEventKind(date){
   const body = `<p class="muted-txt" style="margin:0 0 12px">Qual o tipo do evento?</p>` +
-    Object.keys(EVENT_KINDS).map(k=>`<button type="button" class="btn btn-soft btn-block" data-kind="${k}" style="margin-bottom:8px;justify-content:flex-start;gap:10px;font-size:15px"><span style="font-size:20px">${EVENT_KINDS[k].i}</span> ${EVENT_KINDS[k].l}</button>`).join("");
+    Object.keys(EVENT_KINDS).map(k=>`<button type="button" class="btn btn-soft btn-block" data-kind="${k}" style="margin-bottom:8px;justify-content:flex-start;gap:10px;font-size:15px"><span style="font-size:22px;display:inline-flex">${vi(EVENT_KINDS[k].i)}</span> ${EVENT_KINDS[k].l}</button>`).join("");
   openModal("Novo evento", body, "");
   document.getElementById("modalBody").querySelectorAll("[data-kind]").forEach(b=>{
     b.addEventListener("click",()=>{ const k=b.dataset.kind; closeModal(); setTimeout(()=>editEvent(null,date,k),200); });
@@ -3170,7 +3273,7 @@ function editEvent(eid, presetDate, presetKind){
       </div>
       <input type="file" id="ePhotoInput" accept="image/*" hidden>
     </div>
-    <div class="field"><label>Tipo de evento</label><select id="eKind">${(ev.kind?"":'<option value="" selected>Outro</option>')+Object.keys(EVENT_KINDS).map(k=>`<option value="${k}" ${ev.kind===k?"selected":""}>${EVENT_KINDS[k].i} ${EVENT_KINDS[k].l}</option>`).join("")}</select></div>
+    <div class="field"><label>Tipo de evento</label><select id="eKind">${(ev.kind?"":'<option value="" selected>Outro</option>')+Object.keys(EVENT_KINDS).map(k=>`<option value="${k}" ${ev.kind===k?"selected":""}>${EVENT_KINDS[k].l}</option>`).join("")}</select></div>
     <div class="field"><label>Nome do evento</label><input id="eTitle" value="${esc(ev.title)}" placeholder="Ex.: Ensaio, Conferência, Gravação"></div>
     <div class="row2">
       <div class="field"><label>Data</label><input id="eDate" type="date" value="${ev.date}"></div>
@@ -3283,8 +3386,8 @@ function openSchedule(key){
   function vigRows(r,slot){
     if(!vig) return "";
     const ids=[slot.lider,...slot.monitores].filter(Boolean); if(!ids.length) return "";
-    return `<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:14px 0 4px">🕒 Horário de cada pessoa</div>`+ids.map(id=>{ const m=getMember(id); if(!m) return ""; const t=slot.times[id]||{};
-      return `<div style="display:flex;align-items:center;gap:6px;margin-top:6px"><span style="flex:1;font-size:13px;font-weight:600">${id===slot.lider?"★ ":""}${esc(m.name.split(" ")[0])}</span>
+    return `<div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:14px 0 4px">${vi("relogio",1.25)} Horário de cada pessoa</div>`+ids.map(id=>{ const m=getMember(id); if(!m) return ""; const t=slot.times[id]||{};
+      return `<div style="display:flex;align-items:center;gap:6px;margin-top:6px"><span style="flex:1;font-size:13px;font-weight:600">${id===slot.lider?vi("estrela")+" ":""}${esc(m.name.split(" ")[0])}</span>
         <input type="time" class="vg-time" data-room="${r.id}" data-mid="${id}" data-k="from" value="${hm(t.from)}" style="width:auto;flex:none"><span style="font-size:12px">às</span>
         <input type="time" class="vg-time" data-room="${r.id}" data-mid="${id}" data-k="to" value="${hm(t.to)}" style="width:auto;flex:none"></div>`; }).join("");
   }
@@ -3300,15 +3403,15 @@ function openSchedule(key){
       const header=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
           <div class="room-ico" style="width:38px;height:38px;border-radius:11px;font-size:18px;background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
           <div style="flex:1"><div class="room-name" style="font-size:14.5px">${esc(r.name)}</div>
-            <div class="room-age">${isEv?count+" escalado(s)":count+"/3 "+(count===3?"✓":"")}${editable?"":' • <span style="color:var(--ink-faint)">🔒 outra área</span>'}</div></div>
+            <div class="room-age">${isEv?count+" escalado(s)":count+"/3 "+(count===3?vi("check"):"")}${editable?"":' • <span style="color:var(--ink-faint)">'+vi("cadeado")+' outra área</span>'}</div></div>
         </div>`;
       if(!editable){
         const nm=id=>{ const m=getMember(id); return m?shortName(m):""; };
-        const liderRO = slot.lider?`<span class="pick-item on" style="background:${r.fg}">★ ${nm(slot.lider)}${vgTime(occ,slot,slot.lider)}</span>`:'<span class="muted-txt">—</span>';
+        const liderRO = slot.lider?`<span class="pick-item on" style="background:${r.fg}">${vi("estrela")} ${nm(slot.lider)}${vgTime(occ,slot,slot.lider)}</span>`:'<span class="muted-txt">—</span>';
         const monRO = slot.monitores.length?slot.monitores.map(id=>`<span class="pick-item on" style="background:${r.fg}">${nm(id)}${vgTime(occ,slot,id)}</span>`).join(""):'<span class="muted-txt">—</span>';
         return `<div class="card" style="padding:13px;margin-bottom:11px;opacity:.7">
           ${header}
-          <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">★</span> Responsável</div>
+          <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">${vi("estrela")}</span> Responsável</div>
           <div class="pick">${liderRO}</div>
           <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:12px 0 6px">Auxiliares</div>
           <div class="pick">${monRO}</div>
@@ -3316,14 +3419,14 @@ function openSchedule(key){
       }
       const avail=availFor(r);
       const liderG = avail.length ? avail.map(m=>{ const on=slot.lider===m.id;
-          return `<span class="pick-item ${on?"on":""}" data-mid="${m.id}" style="${on?`background:${r.fg}`:""}">${on?"★ ":""}${shortName(m)}</span>`; }).join("")
+          return `<span class="pick-item ${on?"on":""}" data-mid="${m.id}" style="${on?`background:${r.fg}`:""}">${on?vi("estrela")+" ":""}${shortName(m)}</span>`; }).join("")
         : '<span class="muted-txt">Ninguém apto a esta área</span>';
       const monG = avail.length ? avail.map(m=>{ const on=slot.monitores.includes(m.id);
           return `<span class="pick-item ${on?"on":""}" data-mid="${m.id}" style="${on?`background:${r.fg}`:""}">${shortName(m)}</span>`; }).join("")
         : '<span class="muted-txt">Ninguém apto a esta área</span>';
       return `<div class="card" style="padding:13px;margin-bottom:11px">
         ${header}
-        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">★</span> Responsável</div>
+        <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:8px 0 6px"><span style="color:var(--sun)">${vi("estrela")}</span> Responsável</div>
         <div class="pick" data-grp="lider" data-room="${r.id}">${liderG}</div>
         <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin:12px 0 6px">Auxiliares ${isEv?"":'<span style="font-weight:500">(até 2)</span>'}</div>
         <div class="pick" data-grp="monitor" data-room="${r.id}">${monG}</div>
@@ -3348,13 +3451,13 @@ function openSchedule(key){
     </div>`:""}`;
 
   const evTools = isEv ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <button type="button" class="btn btn-soft" id="evAll" style="padding:9px 13px;font-size:13px;flex:1">👥 Escalar todos</button>
+      <button type="button" class="btn btn-soft" id="evAll" style="padding:9px 13px;font-size:13px;flex:1">${vi("pessoas")} Escalar todos</button>
       <button type="button" class="btn btn-soft" id="evClear" style="padding:9px 13px;font-size:13px;flex:1">Limpar</button>
-      ${vig?`<button type="button" class="btn btn-soft" id="evSplit" style="padding:9px 13px;font-size:13px;flex-basis:100%">🕒 Dividir horários igualmente</button>`:""}</div>` : "";
+      ${vig?`<button type="button" class="btn btn-soft" id="evSplit" style="padding:9px 13px;font-size:13px;flex-basis:100%">${vi("relogio")} Dividir horários igualmente</button>`:""}</div>` : "";
   openModal(isEv?"Escala do evento":"Escala do culto", head + obsBox(occ) + evTools + `<div id="schedRooms">${renderBody()}</div>`,
     `<button class="btn btn-wa btn-block btn-attn" id="schedWa" style="margin-bottom:10px">
        <svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.2-5.3A8.5 8.5 0 1 1 21 11.5z"/></svg> Avisar escalados no WhatsApp</button>
-     ${isEv?`<button class="btn btn-ghost btn-block" id="schedShare" style="margin-bottom:10px">📤 Compartilhar escala do evento</button>`:""}
+     ${isEv?`<button class="btn btn-ghost btn-block" id="schedShare" style="margin-bottom:10px">${vi("compartilhar")} Compartilhar escala do evento</button>`:""}
      <button class="btn btn-primary btn-block" id="schedSave">Salvar escala</button>`);
 
   const wrap=document.getElementById("schedRooms");
@@ -3496,7 +3599,7 @@ function openScheduleReadOnly(key, occ){
     const slot=roomSlot(key,r.id);
     const mineHere = me && roomPeopleIds(key,r.id).includes(me.id);
     const chip=(id,isLeader)=>{ const p=getMember(id); if(!p) return "";
-      return `<span class="chip ${me&&id===me.id?"good":""}" style="margin:2px 4px 2px 0">${ava(p.name,p.id,"width:22px;height:22px;font-size:10px;margin-right:4px")}${isLeader?"★ ":""}${esc(p.name)}${vgTime(occ,slot,id)}</span>`; };
+      return `<span class="chip ${me&&id===me.id?"good":""}" style="margin:2px 4px 2px 0">${ava(p.name,p.id,"width:22px;height:22px;font-size:10px;margin-right:4px")}${isLeader?vi("estrela")+" ":""}${esc(p.name)}${vgTime(occ,slot,id)}</span>`; };
     body += `<div class="card" style="padding:13px;margin-bottom:11px${mineHere?";border-color:#BFE9D7;background:var(--good-soft)":""}">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         <div class="room-ico" style="width:34px;height:34px;border-radius:10px;font-size:16px;background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)}</div>
@@ -3508,7 +3611,7 @@ function openScheduleReadOnly(key, occ){
       <div>${slot.monitores.length?slot.monitores.map(id=>chip(id,false)).join(""):'<span class="muted-txt" style="font-size:12.5px">—</span>'}</div>
       ${mineHere?(()=>{ const rk=slot.lider===me.id?"leader":"monitor";
         return hasMyOpenSwap(key,r.id,rk)
-          ? `<div class="swap-mini" style="margin-top:10px">⏳ Você pediu troca nesta escala</div>`
+          ? `<div class="swap-mini" style="margin-top:10px">${vi("relogio")} Você pediu troca nesta escala</div>`
           : `<button class="btn btn-ghost btn-block" style="margin-top:10px" data-action="swap-request" data-key="${key}" data-room="${r.id}" data-role="${rk}">Pedir troca</button>`; })():""}
     </div>`;
   });
@@ -3531,7 +3634,7 @@ function resolveOcc(key){
 function waMember(mid){
   const m=getMember(mid); if(!m) return;
   if(!m.phone){ toast("Esta pessoa não tem WhatsApp cadastrado","warn"); return; }
-  const msg = `Oi ${m.name.split(" ")[0]}! Tudo bem? Mensagem do ${DB.settings.dept} da ${DB.settings.church}. 💙`;
+  const msg = `Oi ${m.name.split(" ")[0]}! Tudo bem? Mensagem do ${DB.settings.dept} da ${DB.settings.church}.`;
   window.open(`https://wa.me/${cleanPhone(m.phone)}?text=${encodeURIComponent(msg)}`,"_blank");
 }
 function waSchedule(key, occ){
@@ -3556,11 +3659,11 @@ function waSchedule(key, occ){
       const m=getMember(btn.dataset.waOne); const r=getRoom(btn.dataset.room);
       const role=(m.role||"").trim() || memberRoleInRoom(key, btn.dataset.room, btn.dataset.waOne) || "Voluntário";
       const arrival=(DB.settings.msgArrival||"").trim(), dress=(DB.settings.msgDress||"").trim();
-      const extras=[]; if(arrival) extras.push("⏰ "+arrival); if(dress) extras.push("👕 "+dress);
+      const extras=[]; if(arrival) extras.push(arrival); if(dress) extras.push("Vestimenta: "+dress);
       const extra = extras.length ? "\n\n"+extras.join("\n") : "";
       const tt = isVigil(occ) ? timeTxt((roomSlot(key,btn.dataset.room).times||{})[m.id]) : "";
-      const myT = tt ? "\n🕒 Seu horário: "+tt : "", obsT = occ.obs ? "\n📝 "+occ.obs : "";
-      const msg = `Oi ${m.name.split(" ")[0]}! 💙 Lembrete da escala do ${DB.settings.dept}:\n\n📅 ${fmtLong(occ.date)}\n${occIcon(occ)} ${occ.title}${occ.time?" às "+occRange(occ).replace(/^(\d\d:\d\d) às /,"$1 até "):""}\n📍 Área: ${r.name}\n🙋 Função: ${role}${myT}${obsT}${extra}\n\nConto com você! Deus abençoe.`;
+      const myT = tt ? "\nSeu horário: "+tt : "", obsT = occ.obs ? "\nObs.: "+occ.obs : "";
+      const msg = `Oi ${m.name.split(" ")[0]}! Lembrete da escala do ${DB.settings.dept}:\n\n${fmtLong(occ.date)}\n${occ.title}${occ.time?" às "+occRange(occ).replace(/^(\d\d:\d\d) às /,"$1 até "):""}\nÁrea: ${r.name}\nFunção: ${role}${myT}${obsT}${extra}\n\nConto com você! Deus abençoe.`;
       window.open(`https://wa.me/${cleanPhone(m.phone)}?text=${encodeURIComponent(msg)}`,"_blank");
     });
   });
@@ -3595,7 +3698,7 @@ function icsForMember(mid, days=60){
       `DTSTAMP:${stamp}`, `DTSTART:${start}`, `DTEND:${end}`,
       `SUMMARY:${icsEsc("Escala Mídia — "+partes)}`,
       `DESCRIPTION:${icsEsc(o.title+(o.time?" às "+o.time:"")+" • "+partes+" • "+DB.settings.church)}`,
-      "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:Hoje você está escalado na Mídia 💙","TRIGGER:-PT2H","END:VALARM",
+      "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:Hoje você está escalado na Mídia","TRIGGER:-PT2H","END:VALARM",
       "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:Lembrete: você está escalado na Mídia","TRIGGER:-PT15H","END:VALARM",
       "END:VEVENT");
   });
@@ -3700,7 +3803,7 @@ async function checkTodayReminder(force){
   if(!mine.length) return;
   const flag = "notif-midia-"+ymd(today());
   if(!force && localStorage.getItem(flag)) return;
-  const title = "Você está escalado hoje! 💙";
+  const title = "Você está escalado hoje!";
   const opts  = { body: mine.join("\n"), icon:"icon-192.png", badge:"icon-192.png", tag:flag, renotify:true };
   let shown=false;
   const reg = await swReady();
@@ -3765,7 +3868,7 @@ function centerAlert(title, msg){
   let ov=document.getElementById("centerAlert");
   if(!ov){ ov=document.createElement("div"); ov.id="centerAlert"; ov.className="center-alert"; document.body.appendChild(ov); }
   ov.innerHTML=`<div class="center-alert-card">
-    <div class="center-alert-ico">⚠️</div>
+    <div class="center-alert-ico">${vi("alerta")}</div>
     <div class="center-alert-title">${title}</div>
     <div class="center-alert-msg">${msg}</div>
     <button class="btn btn-primary btn-block" id="caOk">Entendi</button>
@@ -3982,7 +4085,7 @@ function openProfileDrawer(){
       </div>` : ""}
       <div class="profile-info-row">
         <span class="profile-info-label">Status</span>
-        <span>${me.active ? '<span class="chip good">Ativo</span>' : '<span class="chip muted">Inativo</span>'}${me.training ? ' <span class="chip" style="background:rgba(255,178,61,.15);color:#FFB23D">🎓 Treinamento</span>' : ""}</span>
+        <span>${me.active ? '<span class="chip good">Ativo</span>' : '<span class="chip muted">Inativo</span>'}${me.training ? ' <span class="chip" style="background:rgba(255,178,61,.15);color:#FFB23D">'+vi("capelo")+' Treinamento</span>' : ""}</span>
       </div>
     </div>
   `;
@@ -4005,7 +4108,7 @@ function openProfileDrawer(){
         const updated = {...me, photo};
         try{
           await saveMemberPhoto(me.id, photo);
-toast("Foto atualizada! ✅","good");
+toast("Foto atualizada!","good");
 const profileBtn = document.querySelector(".profile-btn div");
 if(profileBtn){ profileBtn.style.backgroundImage=`url('${photo}')`; profileBtn.style.backgroundSize="cover"; profileBtn.textContent=""; }
 openProfileDrawer(); // re-renderiza
