@@ -972,6 +972,61 @@ body::before{width:clamp(230px,58vw,390px);height:clamp(230px,58vw,390px);left:c
 body::after{width:clamp(190px,48vw,330px);height:clamp(190px,48vw,330px);right:clamp(-205px,-22vw,-100px);bottom:clamp(55px,14vh,170px);}
 html[data-theme="light"] body{background:radial-gradient(900px 500px at 50% -12%,#fff,transparent 72%),#F3F4F6;}
 html[data-theme="dark"] body::before,html[data-theme="dark"] body::after{opacity:.14;filter:saturate(.8);}
+
+/* Faixas diagonais animadas: usam a cor secundária escolhida pelo usuário */
+.bg-ribbons{
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  overflow:hidden;
+  pointer-events:none;
+  contain:layout paint;
+}
+.bg-ribbons::before,
+.bg-ribbons::after{
+  content:"";
+  position:absolute;
+  left:-35vw;
+  width:170vw;
+  height:clamp(9px,1.35vw,15px);
+  border-radius:999px;
+  background:linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb,var(--user-secondary) 12%,transparent) 12%,
+    color-mix(in srgb,var(--user-secondary) 78%,transparent) 48%,
+    color-mix(in srgb,var(--user-secondary) 24%,transparent) 82%,
+    transparent 100%);
+  box-shadow:
+    0 0 12px color-mix(in srgb,var(--user-secondary) 28%,transparent),
+    0 0 30px color-mix(in srgb,var(--user-secondary) 14%,transparent);
+  will-change:transform;
+  transform:translate3d(0,0,0) rotate(-27deg);
+}
+.bg-ribbons::before{
+  top:44%;
+  animation:ribbon-forward 3.8s linear infinite;
+}
+.bg-ribbons::after{
+  top:53%;
+  animation:ribbon-reverse 4.4s linear infinite;
+  opacity:.78;
+}
+@keyframes ribbon-forward{
+  from{transform:translate3d(-23vw,0,0) rotate(-27deg);}
+  to{transform:translate3d(23vw,0,0) rotate(-27deg);}
+}
+@keyframes ribbon-reverse{
+  from{transform:translate3d(23vw,0,0) rotate(-27deg);}
+  to{transform:translate3d(-23vw,0,0) rotate(-27deg);}
+}
+html[data-theme="light"] .bg-ribbons::before,
+html[data-theme="light"] .bg-ribbons::after{opacity:.72;}
+html[data-theme="dark"] .bg-ribbons::before,
+html[data-theme="dark"] .bg-ribbons::after{opacity:.22;}
+@media (prefers-reduced-motion:reduce){
+  .bg-ribbons::before,.bg-ribbons::after{animation:none;opacity:.18;}
+}
+
 /* A cor secundária controla os detalhes, sem substituir as superfícies do tema escuro */
 .topbar-eyebrow, .tab.is-active, .section-label .link, .today-event, .stat b,
 html[data-theme="light"] .today-event,html[data-theme="light"] .stat b{color:var(--user-secondary)!important;}
@@ -999,6 +1054,7 @@ html[data-theme="light"] .cal-cell.today{background:var(--user-secondary)!import
 </style>
 </head>
 <body>
+  <div class="bg-ribbons" aria-hidden="true"></div>
 
   <!-- Seção pública: visível para todos, inclusive sem login (SEO / verificação Google) -->
   <div id="publicInfo" style="max-width:520px;margin:0 auto;padding:40px 24px;font-family:system-ui,sans-serif;color:#143B57;">
