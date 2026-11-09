@@ -670,15 +670,17 @@ body{ background: radial-gradient(1000px 460px at 50% -10%, #1d1d24, transparent
 .media-hub-title{font:700 14px var(--font-display);letter-spacing:.045em;text-transform:uppercase;color:var(--ink);}
 .media-hub-link{font-size:12px;font-weight:700;color:var(--sun);text-decoration:none;white-space:nowrap;}
 .media-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch;}
-.media-tile{min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:linear-gradient(160deg,#202027,#151519);box-shadow:var(--shadow-sm);padding:9px;}
-.media-tile-head{display:flex;align-items:center;gap:6px;min-height:28px;margin-bottom:8px;font-size:11px;font-weight:800;letter-spacing:.035em;color:var(--ink);}
+/* YouTube e Spotify seguem o mesmo padrão visual dos demais cards. */
+.media-tile{min-width:0;overflow:hidden;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-sm);padding:12px;}
+.media-tile-head{display:flex;align-items:center;gap:7px;min-height:28px;margin-bottom:10px;font-size:11px;font-weight:800;letter-spacing:.035em;color:var(--ink);}
 .media-tile-head svg{width:17px;height:17px;flex:none;}
-.media-tile-head .yt-mark{color:#ff4545;}
+/* A identidade de cada plataforma fica somente no ícone. */
+.media-tile-head .yt-mark{color:#ff0000;}
 .media-tile-head .sp-mark{color:#1ed760;}
-.yt-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000;}
+.yt-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line);background:#000;}
 .yt-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
-.spotify-embed-wrap{width:100%;height:152px;border-radius:10px;overflow:hidden;background:#121212;}
-.spotify-embed-wrap iframe{display:block;width:100%;height:152px;border:0;border-radius:10px;}
+.spotify-embed-wrap{width:100%;height:152px;border-radius:var(--r-sm);overflow:hidden;background:#121212;}
+.spotify-embed-wrap iframe{display:block;width:100%;height:152px;border:0;border-radius:var(--r-sm);}
 @media(max-width:360px){.media-grid{gap:12px}.media-tile{padding:8px}.media-tile-head{font-size:11px}.spotify-embed-wrap,.spotify-embed-wrap iframe{height:152px;}}
 
 /* ---------- Troca de escalas ---------- */
