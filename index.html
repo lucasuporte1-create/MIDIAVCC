@@ -1585,6 +1585,11 @@ html[data-theme="light"] .sk::after{
 .chat-top{display:flex;gap:8px}
 .chat-top input{flex:1}
 .chat-item.press{filter:brightness(.92)}
+.chat-notif{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:10px;border:1px solid var(--line);border-left:4px solid var(--sky-600);border-radius:var(--r-md);background:var(--card)}
+.chat-notif .chat-ico{width:24px;height:24px;color:var(--sky-600);flex:none}
+.chat-notif div{flex:1;min-width:0;font-size:13px;color:var(--ink-soft);line-height:1.35}
+.chat-notif div b{display:block;font:700 14px var(--font-display);color:var(--ink)}
+.chat-notif button{flex:none;border:0;border-radius:10px;background:var(--sky-600);color:#fff;font:700 13px var(--font-display);padding:9px 14px;cursor:pointer}
 .chat-pin{display:inline-flex;line-height:1}
 @media (pointer:coarse){.chat-item[data-cid]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .chat-item{display:flex;gap:12px;align-items:center;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);cursor:pointer;width:100%;text-align:left;font:inherit;color:var(--ink)}
@@ -5412,7 +5417,8 @@ const Chat={
     users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
     plus:'<path d="M12 5v14M5 12h14"/>',
     ban:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
-    back:'<polyline points="15 18 9 12 15 6"/>'
+    back:'<polyline points="15 18 9 12 15 6"/>',
+    bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'
   },
   ico(n,cls){return `<svg class="chat-ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${this.ICONS[n]||""}</svg>`;},
   async start(){
@@ -5427,6 +5433,13 @@ const Chat={
       .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},p=>this.onMsg(p.new))
       .on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages"},p=>this.onUpd(p.new))
       .subscribe();
+    this.ensurePush();
+    if(!this.swBound&&"serviceWorker" in navigator){
+      this.swBound=true;
+      navigator.serviceWorker.addEventListener("message",e=>{ if(e.data&&e.data.type==="open-chat") Chat.openFromPush(e.data.conversation_id); });
+    }
+    const qc=new URLSearchParams(location.search).get("chat");
+    if(qc){ history.replaceState(null,"",location.pathname+location.hash); this.openFromPush(qc); }
   },
   async load(){
     const me=this.me;
@@ -5458,6 +5471,52 @@ const Chat={
   badge(){
     const n=this.convs.reduce((s,c)=>s+c.unread,0), b=document.getElementById("chatBadge");
     if(b){b.hidden=!n;b.textContent=n>9?"9+":n;}
+    try{ if(navigator.setAppBadge){ n?navigator.setAppBadge(n):navigator.clearAppBadge(); } }catch(e){}
+  },
+  /* ---------- notificações push das mensagens ---------- */
+  pushState(){
+    if(!("Notification" in window)||!("serviceWorker" in navigator)||!("PushManager" in window)){
+      const ios=/iPad|iPhone|iPod/.test(navigator.userAgent), standalone=window.navigator.standalone||matchMedia("(display-mode: standalone)").matches;
+      return (ios&&!standalone)?"ios-install":"unsupported";
+    }
+    return Notification.permission;   // default | granted | denied
+  },
+  async ensurePush(){
+    try{
+      if(this.pushState()!=="granted") return;
+      const reg=await navigator.serviceWorker.ready;
+      let sub=await reg.pushManager.getSubscription();
+      if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+      const token=JSON.stringify(sub);
+      if(localStorage.getItem("push_token")!==token){
+        const {error}=await sb.from("profiles").update({push_token:token}).eq("id",this.me);
+        if(!error) localStorage.setItem("push_token",token);
+      }
+    }catch(e){console.warn("push:",e.message);}
+  },
+  async enablePush(){
+    try{
+      const perm=await Notification.requestPermission();
+      if(perm!=="granted"){toast("Permissão de notificação negada no navegador","warn");this.refreshList();return;}
+      localStorage.removeItem("push_token");
+      await this.ensurePush();
+      toast("Notificações de mensagens ativadas","good");
+    }catch(e){toast("Não foi possível ativar as notificações","error");}
+    this.refreshList();
+  },
+  notifyBanner(){
+    const st=this.pushState(), ic=this.ico("bell");
+    if(st==="default") return `<div class="chat-notif">${ic}<div><b>Receba avisos de mensagens</b>Ative as notificações para saber quando alguém escrever.</div><button type="button" id="chatPushOn">Ativar</button></div>`;
+    if(st==="denied") return `<div class="chat-notif">${ic}<div><b>Notificações bloqueadas</b>Libere nas configurações do navegador para este site e volte aqui.</div></div>`;
+    if(st==="ios-install") return `<div class="chat-notif">${ic}<div><b>Instale o app para receber avisos</b>No iPhone: toque em Compartilhar e depois em “Adicionar à Tela de Início”.</div></div>`;
+    return "";
+  },
+  /* toque na notificação → abre a conversa */
+  async openFromPush(cid){
+    if(!cid) return;
+    if(currentView!=="chat") go("chat");
+    if(!this.convs.find(c=>String(c.id)===String(cid))) await this.load();
+    const c=this.convs.find(x=>String(x.id)===String(cid)); if(c) this.openThread(c.id,c.title,c.uid,c.group,c.members,c.avatar);
   },
   async onMsg(msg){
     if(this.seen.has(msg.id)) return; this.seen.add(msg.id);
@@ -5892,7 +5951,9 @@ function renderChat(content){
     <div class="chat-meta">${c.last?Chat.hm(c.last.created_at):""}${Chat.pins.has(String(c.id))?'<span class="chat-pin">${Chat.ico("pin")}</span>':""}${c.unread?`<em>${c.unread}</em>`:""}</div></button>`).join("");
   content.innerHTML=`<div class="chat-wrap">
     <div class="chat-top"><button class="btn btn-primary" id="chatNew" style="flex:1">${Chat.ico("plus","btn-ico")} Nova conversa</button><button class="btn" id="chatNewGroup" style="flex:1">${Chat.ico("users","btn-ico")} Novo grupo</button></div>
+    ${Chat.notifyBanner()}
     ${list||'<div class="chat-empty">Nenhuma conversa ainda.<br>Toque em “Nova conversa” ou “Novo grupo” para começar.</div>'}</div>`;
+  const pushBtn=content.querySelector("#chatPushOn"); if(pushBtn) pushBtn.onclick=()=>Chat.enablePush();
   /* segurar (toque) ou botão direito (mouse) numa conversa → menu, sem entrar nela */
   let lt=null,lsx=0,lsy=0,lfired=false;
   const lstop=()=>{clearTimeout(lt);lt=null;};
