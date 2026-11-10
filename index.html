@@ -1388,6 +1388,92 @@ html[data-theme="light"] .toast.del{ color:#fff; }
   .tr-lid,.toast.del .toast-icon,.toast.del .toast-icon::after{ animation:none!important; }
   .fb-out{ animation-duration:.01ms!important; }
 }
+
+/* ===========================================================
+   Transição entre abas + skeleton de carregamento
+   =========================================================== */
+
+/* ---- indicador que desliza entre as abas (herda a cor secundária do usuário) ---- */
+.tab.is-active::before{ display:none; }
+.tab-ind{
+  position:absolute; top:8px; left:0; width:32px; height:32px; border-radius:50%;
+  pointer-events:none; opacity:0;
+  background:rgba(85,160,242,.16);
+  background:color-mix(in srgb,var(--user-secondary,#55A0F2) 16%,transparent);
+  transition:transform .46s cubic-bezier(.34,1.45,.5,1), opacity .2s ease;
+}
+.tab-ind.on{ opacity:1; }
+.tab.is-active svg{ animation:tabBounce .5s cubic-bezier(.3,1.5,.5,1); }
+@keyframes tabBounce{
+  0%{ transform:translateY(0) scale(1) }
+  40%{ transform:translateY(-5px) scale(1.2) }
+  100%{ transform:translateY(-1px) scale(1.06) }
+}
+
+/* ---- entrada do conteúdo: desliza na direção da navegação, cards em sequência ---- */
+.view-in > *{
+  animation:viewKid .46s cubic-bezier(.2,.8,.2,1) backwards;
+  animation-delay:calc(var(--i,0) * 40ms);
+}
+@keyframes viewKid{
+  from{ opacity:0; transform:translate3d(var(--dx,0px),8px,0) }
+  to{ opacity:1; transform:none }
+}
+
+/* ---- skeleton ---- */
+.sk{
+  position:relative; overflow:hidden; display:block;
+  background:var(--sky-200); border-radius:8px;
+  animation:skShow .25s .15s both;   /* só aparece se a espera passar de ~150ms: evita piscar */
+}
+.sk::after{
+  content:""; position:absolute; inset:0; transform:translateX(-100%);
+  background:linear-gradient(100deg,transparent 15%,rgba(255,255,255,.09) 50%,transparent 85%);
+  animation:skSweep 1.3s ease-in-out infinite;
+}
+html[data-theme="light"] .sk::after{
+  background:linear-gradient(100deg,transparent 15%,rgba(255,255,255,.7) 50%,transparent 85%);
+}
+@keyframes skShow{ from{ opacity:0 } to{ opacity:1 } }
+@keyframes skSweep{ to{ transform:translateX(100%) } }
+.sk-ln{ height:14px; margin:6px 0; border-radius:7px; }
+.sk-ln.sm{ height:11px; } .sk-ln.xs{ height:10px; }
+.sk-ref{ display:inline-block; width:92px; height:11px; margin:0; border-radius:6px; }
+.sk-wrap .sk{ animation-delay:0s; }
+.sk-card{
+  display:flex; align-items:center; gap:12px; background:var(--card);
+  border:1px solid var(--line); border-radius:var(--r-md); padding:14px;
+  margin-bottom:11px; box-shadow:var(--shadow-sm);
+}
+.sk-verse{ display:block; border-left:3px solid var(--sky-300); padding:16px 16px 12px; }
+.sk-ava{ width:44px; height:44px; border-radius:50%; flex:none; }
+.sk-lines{ flex:1; min-width:0; }
+.sk-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0 18px; }
+.sk-stats .sk{ height:70px; border-radius:var(--r-md); }
+.sk-label{ width:90px; height:12px; margin:4px 2px 12px; }
+#app.is-loading{ pointer-events:none; }
+#app.is-loading .tabbar{ opacity:.6; }
+
+/* versículo: do skeleton para o texto com uma revelação suave */
+.verse-card.reveal .verse-text{ animation:verseIn .6s ease both; }
+.verse-card.reveal .verse-ref{ animation:verseIn .6s .12s ease both; }
+@keyframes verseIn{
+  from{ opacity:0; transform:translateY(6px); filter:blur(3px) }
+  to{ opacity:1; transform:none; filter:none }
+}
+
+/* fotos que chegam em segundo plano entram com fade, sem "pulo" */
+.ph-in .ava-photo,.ph-in .event-thumb,.ph-in .room-ico img{ animation:phIn .5s ease both; }
+@keyframes phIn{
+  from{ opacity:0; transform:scale(.92); filter:blur(4px) }
+  to{ opacity:1; transform:none; filter:none }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .sk::after{ display:none; }
+  .view-in > *,.tab.is-active svg,.verse-card.reveal .verse-text,.verse-card.reveal .verse-ref,.ph-in .ava-photo,.ph-in .event-thumb,.ph-in .room-ico img{ animation:none!important; }
+  .tab-ind{ transition:opacity .2s; }
+}
 </style>
 </head>
 <body>
@@ -1642,7 +1728,7 @@ const Data = {
     // fotos por ocorrência (carrega em segundo plano; não bloqueia)
     sb.from("occ_photos").select("occ_key,photo").then(({data})=>{
       if(data){ const map={}; data.forEach(r=>{ if(r.photo) map[r.occ_key]=r.photo; }); DB.occPhotos=map;
-        if(typeof currentView!=="undefined" && currentView) try{ go(currentView); }catch(e){} }
+        if(typeof currentView!=="undefined" && currentView) try{ go(currentView,{keepScroll:true,photos:true}); }catch(e){} }
     }).catch(()=>{});
     // configurações compartilhadas (frases da mensagem)
     sb.from("app_settings").select("key,value").then(({data})=>{
@@ -1667,7 +1753,7 @@ const Data = {
       if(changed){
         const ap=document.getElementById("app");
         const modalOpen = !document.getElementById("modalBackdrop").hidden;
-        if(ap && !ap.hidden && !modalOpen) go(currentView);   // mostra as fotos quando chegarem
+        if(ap && !ap.hidden && !modalOpen) go(currentView,{keepScroll:true,photos:true});   // mostra as fotos quando chegarem
       }
     }catch(_){}
   },
@@ -2123,7 +2209,19 @@ const VIEWS = {
 };
 let currentView = "home";
 
-function go(view){
+/* Direção da navegação: só as trocas de aba animam; re-renders (salvar, excluir...) não */
+var NAV_DIR = null;
+const TAB_ORDER = ["home","escala","calendario","membros","config"];
+function navTo(view){
+  if(view===currentView){ go(view); return; }
+  const a=TAB_ORDER.indexOf(currentView), b=TAB_ORDER.indexOf(view);
+  NAV_DIR = (a<0 || b<0) ? (b<0 ? 1 : -1) : (b>a ? 1 : -1);
+  go(view);
+}
+/* opts.keepScroll: re-render em segundo plano sem pular pro topo; opts.photos: fotos entram com fade */
+function go(view, opts){
+  const dir = NAV_DIR; NAV_DIR = null;
+  const keep = !!(opts && opts.keepScroll); const sy = keep ? window.scrollY : 0;
   currentView = view;
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("is-active", t.dataset.view===view));
   document.getElementById("topTitle").textContent = VIEWS[view].title;
@@ -2131,12 +2229,52 @@ function go(view){
   document.getElementById("topActions").innerHTML = "";
   content.innerHTML = "";
   VIEWS[view].render(content);
-  content.scrollTop = 0; window.scrollTo(0,0);
+  if(keep){ window.scrollTo(0,sy); } else { content.scrollTop = 0; window.scrollTo(0,0); }
   addProfileBtn();
+  placeTabInd();
+  if(dir!==null) viewEnter(content, dir);
+  if(opts && opts.photos){
+    content.classList.add("ph-in"); clearTimeout(content._pt);
+    content._pt=setTimeout(()=>content.classList.remove("ph-in"), 900);
+  }
 }
+/* Conteúdo entra deslizando na direção da navegação, com os cards em sequência */
+function viewEnter(c, dir){
+  if(typeof fbReduced==="function" && fbReduced()) return;
+  c.classList.remove("view-in");
+  c.style.setProperty("--dx", (dir>0 ? 22 : dir<0 ? -22 : 0)+"px");
+  [...c.children].forEach((n,i)=>n.style.setProperty("--i", Math.min(i,7)));
+  void c.offsetWidth;
+  c.classList.add("view-in");
+  clearTimeout(c._vt);
+  c._vt=setTimeout(()=>{ c.classList.remove("view-in"); [...c.children].forEach(n=>n.style.removeProperty("--i")); }, 800);
+}
+/* Pílula que desliza até a aba ativa (some quando a tela não é uma aba, ex.: Trocas) */
+function placeTabInd(instant){
+  const bar=document.getElementById("tabbar"); if(!bar) return;
+  let ind=bar.querySelector(".tab-ind");
+  if(!ind){
+    ind=document.createElement("span"); ind.className="tab-ind"; ind.setAttribute("aria-hidden","true");
+    bar.insertBefore(ind, bar.firstChild);
+  }
+  const act=bar.querySelector(".tab.is-active");
+  if(!act || !act.offsetWidth){ ind.classList.remove("on"); return; }
+  const x = act.offsetLeft + act.offsetWidth/2 - 16;
+  if(instant || !ind.classList.contains("on")){
+    ind.style.transition="none"; ind.style.transform="translateX("+x+"px)";
+    void ind.offsetWidth; ind.style.transition=""; ind.classList.add("on");
+  }else{
+    ind.style.transform="translateX("+x+"px)";
+  }
+}
+(function(){
+  const bar=document.getElementById("tabbar");
+  if(bar && window.ResizeObserver) new ResizeObserver(()=>placeTabInd(true)).observe(bar);
+  window.addEventListener("resize", ()=>placeTabInd(true));
+})();
 
 document.getElementById("tabbar").addEventListener("click", e=>{
-  const b=e.target.closest(".tab"); if(b) go(b.dataset.view);
+  const b=e.target.closest(".tab"); if(b) navTo(b.dataset.view);
 });
 
 /* =====================================================================
@@ -2797,8 +2935,16 @@ let verseState = null;
 function dayOfYear(){ const t=today(); const s=new Date(t.getFullYear(),0,0); return Math.floor((t-s)/86400000); }
 function verseCardHtml(){
   if(verseState===null){ try{ const v=JSON.parse(localStorage.getItem("verse-midia")||"null"); if(v) verseState=v; }catch(e){} }
-  const txt = (verseState&&verseState.text) ? "“"+verseState.text+"”" : "Buscando o versículo de hoje…";
-  const ref = (verseState&&verseState.ref) ? verseState.ref : "";
+  if(!(verseState && verseState.text)){
+    // ainda buscando: skeleton no lugar do texto (some sozinho quando o versículo chega)
+    return `<div class="verse-card is-loading" id="verseCard" aria-busy="true">
+    <div class="verse-label">${vi("livro",1.3)} Versículo do dia</div>
+    <div class="verse-text"><span class="sk sk-ln" style="width:96%"></span><span class="sk sk-ln" style="width:86%"></span><span class="sk sk-ln" style="width:54%"></span></div>
+    <div class="verse-ref"><span class="sk sk-ref"></span></div>
+  </div>`;
+  }
+  const txt = "“"+verseState.text+"”";
+  const ref = verseState.ref ? verseState.ref : "";
   return `<div class="verse-card" id="verseCard">
     <div class="verse-label">${vi("livro",1.3)} Versículo do dia</div>
     <div class="verse-text">${esc(txt)}</div>
@@ -2808,15 +2954,24 @@ function verseCardHtml(){
 function paintVerse(){
   const el=document.getElementById("verseCard"); if(!el||!verseState) return;
   const tEl=el.querySelector(".verse-text"), rEl=el.querySelector(".verse-ref");
-  if(tEl) tEl.textContent = "“"+verseState.text+"”";
+  const newTxt = "“"+verseState.text+"”";
+  const changed = el.classList.contains("is-loading") || (tEl && tEl.textContent!==newTxt);
+  if(tEl) tEl.textContent = newTxt;
   if(rEl) rEl.textContent = verseState.ref;
+  el.classList.remove("is-loading"); el.removeAttribute("aria-busy");
+  if(changed && !fbReduced()){ el.classList.remove("reveal"); void el.offsetWidth; el.classList.add("reveal"); }
 }
 async function ensureVerseOfDay(){
   const todayS = ymd(today());
   if(verseState && verseState.date===todayS && verseState.text){ paintVerse(); return; }
   const ref = VERSE_REFS[ dayOfYear() % VERSE_REFS.length ];
   try{
-    const res = await fetch("https://bible-api.com/"+encodeURIComponent(ref.q)+"?translation=almeida");
+    // com timeout: internet fraca não deixa o skeleton piscando para sempre (cai na reserva embutida)
+    const ctrl = (typeof AbortController!=="undefined") ? new AbortController() : null;
+    const to = setTimeout(()=>{ try{ if(ctrl) ctrl.abort(); }catch(_){} }, 6000);
+    let res;
+    try{ res = await fetch("https://bible-api.com/"+encodeURIComponent(ref.q)+"?translation=almeida", ctrl?{signal:ctrl.signal}:undefined); }
+    finally{ clearTimeout(to); }
     if(res && res.ok){
       const data = await res.json();
       const text = (data && data.text ? data.text : "").replace(/\s+/g," ").trim();
@@ -3317,7 +3472,7 @@ document.addEventListener("click", e=>{
       themeDrop(t, hasPt ? e.clientX : rect.left + rect.width/2, hasPt ? e.clientY : rect.top + rect.height/2);
       break;
     }
-    case "goto": go(el.dataset.view); break;
+    case "goto": navTo(el.dataset.view); break;
     case "open-area": openAreaPage(el.dataset.roomId); break;
     case "open-occ": openSchedule(key); break;
     case "new-schedule": pickOccForSchedule(); break;
@@ -4445,8 +4600,30 @@ function hideLogin(){
   const lg=document.getElementById("login"), ap=document.getElementById("app"), pub=document.getElementById("publicInfo");
   if(lg) lg.hidden=true; if(ap) ap.hidden=false; if(pub) pub.hidden=true;
 }
-function startApp(){ go("home"); checkTodayReminder(false); }
-async function enterApp(){
+function startApp(){
+  const ap=document.getElementById("app"); if(ap) ap.classList.remove("is-loading");
+  NAV_DIR=0;                      // entrada da home: cards sobem em sequência
+  go("home"); checkTodayReminder(false);
+}
+/* Skeleton do início: aparece só quando a internet está lenta e os dados demoram */
+function skeletonHome(){
+  const row='<div class="sk-card"><span class="sk sk-ava"></span><div class="sk-lines"><span class="sk sk-ln" style="width:62%"></span><span class="sk sk-ln sm" style="width:38%"></span></div></div>';
+  return '<div class="sk-wrap" aria-busy="true" aria-label="Carregando">'
+    +'<div class="sk-card sk-verse"><div class="sk-lines"><span class="sk sk-ln xs" style="width:34%"></span><span class="sk sk-ln" style="width:96%"></span><span class="sk sk-ln" style="width:84%"></span><span class="sk sk-ln" style="width:52%"></span></div></div>'
+    +'<div class="sk-stats"><span class="sk"></span><span class="sk"></span><span class="sk"></span></div>'
+    +'<span class="sk sk-label"></span>'+row+row+row+'</div>';
+}
+function showShellSkeleton(){
+  hideLogin();
+  const ap=document.getElementById("app"); if(ap) ap.classList.add("is-loading");
+  const t=document.getElementById("topTitle"); if(t) t.textContent="Início";
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("is-active", x.dataset.view==="home"));
+  const c=document.getElementById("content");
+  if(c){ c.innerHTML=skeletonHome(); viewEnter(c,0); }
+  placeTabInd(true);
+}
+var __bootShown = false;
+async function enterApp(beforeShow){
   if(CLOUD){
     try{ await Data.loadAll(); }
     catch(e){
@@ -4454,6 +4631,8 @@ async function enterApp(){
       toast("Não consegui carregar do Supabase ("+e.message+"). Conferir o supabase-schema.sql.","warn");
     }
   }
+  if(beforeShow) await beforeShow();   // segura o skeleton por um tempo mínimo (evita piscar)
+  __bootShown = true;
   hideLogin();
   // vínculo automático: se a conta está amarrada a um voluntário, define "quem é você"
   if(Auth.memberId && getMember(Auth.memberId)){ DB.settings.meId = Auth.memberId; save(); }
@@ -4468,10 +4647,24 @@ async function doLogout(){
 
 async function enterAppAnimated(){
   showEnterSplash();
+  __bootShown = false;
   const minWait = new Promise(r=>setTimeout(r, 850)); // logo girando, mais rápido
-  try{ await enterApp(); }catch(e){}
+  let slow=false, skAt=0, splashGone=false;
+  const hold = async ()=>{
+    if(!slow) return;
+    const left = 500-(performance.now()-skAt);
+    if(left>0) await new Promise(r=>setTimeout(r,left));
+  };
+  const run = enterApp(hold).catch(()=>{});
   await minWait;
-  hideEnterSplash();
+  if(!__bootShown){
+    // dados ainda chegando: em vez de segurar só a logo, mostra o app com skeleton
+    slow=true; skAt=performance.now();
+    showShellSkeleton(); hideEnterSplash(); splashGone=true;
+  }
+  await run;
+  const ap=document.getElementById("app"); if(ap) ap.classList.remove("is-loading");
+  if(!splashGone) hideEnterSplash();
 }
 async function gateEnter(){
   if(USE_SUPABASE && Auth.mustChange){ showChangePassword(); return; }
