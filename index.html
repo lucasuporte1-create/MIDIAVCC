@@ -1584,6 +1584,9 @@ html[data-theme="light"] .sk::after{
 .chat-wrap{display:flex;flex-direction:column;gap:10px}
 .chat-top{display:flex;gap:8px}
 .chat-top input{flex:1}
+.chat-item.press{filter:brightness(.92)}
+.chat-pin{font-size:11px;line-height:1}
+@media (pointer:coarse){.chat-item[data-cid]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .chat-item{display:flex;gap:12px;align-items:center;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);cursor:pointer;width:100%;text-align:left;font:inherit;color:var(--ink)}
 .chat-av{width:44px;height:44px;border-radius:50%;background:var(--sky-600);color:#fff;display:grid;place-items:center;font:700 17px var(--font-display);flex:none}
 .chat-mid{flex:1;min-width:0}
@@ -1632,10 +1635,11 @@ html[data-theme="light"] .sk::after{
 @keyframes cflash{0%,60%{box-shadow:0 0 0 3px var(--sky-500)}100%{box-shadow:none}}
 @media (pointer:coarse){.cb{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 
-.cmenu{position:fixed;inset:0;z-index:90;display:flex;align-items:flex-end;justify-content:center}
+.cmenu{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
 .cmenu-bg{position:absolute;inset:0;background:rgba(0,0,0,.45)}
-.cmenu-sheet{position:relative;width:min(480px,100%);max-height:75vh;overflow-y:auto;background:var(--card);color:var(--ink);border-radius:18px 18px 0 0;padding:8px 8px calc(10px + env(safe-area-inset-bottom,0px));animation:cup .18s ease-out}
-@keyframes cup{from{transform:translateY(30px);opacity:0}}
+.cmenu-sheet{position:relative;width:min(320px,100%);max-height:min(70vh,520px);overflow-y:auto;background:var(--card);color:var(--ink);border-radius:16px;padding:8px;box-shadow:0 12px 40px rgba(0,0,0,.35);animation:cup .16s ease-out}
+.cmenu.at .cmenu-sheet{position:absolute;margin:0}
+@keyframes cup{from{transform:scale(.92);opacity:0}}
 .cmenu-title{padding:8px 12px 10px;font-size:13px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line);margin-bottom:4px}
 .cmenu-it{display:flex;align-items:center;gap:14px;width:100%;padding:13px 12px;border:0;background:none;font:inherit;font-size:16px;font-weight:500;color:var(--ink);cursor:pointer;border-radius:10px;text-align:left}
 .cmenu-it:active{background:var(--paper)}
@@ -5383,12 +5387,14 @@ document.addEventListener("DOMContentLoaded", () => {
 /* ================= CHAT (Supabase Realtime) ================= */
 const Chat={
   me:null,ch:null,convs:[],contacts:[],people:{},openId:null,seen:new Set(),
-  msgs:{},ctx:null,pending:null,sending:false,hidden:new Set(),
+  msgs:{},ctx:null,pending:null,sending:false,hidden:new Set(),pins:new Set(),clr:{},
   PHOTO:"📷 Foto",DEL:"Mensagem apagada",
   async start(){
     if(!USE_SUPABASE||!Auth.user||this.me===Auth.user.id) return;
     this.me=Auth.user.id;
     try{this.hidden=new Set(JSON.parse(localStorage.getItem("chat_hidden_"+this.me)||"[]"));}catch(e){this.hidden=new Set();}
+    try{this.pins=new Set(JSON.parse(localStorage.getItem("chat_pins_"+this.me)||"[]"));}catch(e){this.pins=new Set();}
+    try{this.clr=JSON.parse(localStorage.getItem("chat_clr_"+this.me)||"{}")||{};}catch(e){this.clr={};}
     if(this.ch) sb.removeChannel(this.ch);
     await this.load();
     this.ch=sb.channel("chat-msgs")
@@ -5409,14 +5415,20 @@ const Chat={
       sb.from("messages").select("*").in("conversation_id",ids).order("created_at",{ascending:false}).limit(300)]);
     this.convs=mine.map(x=>{
       const cv=x.conversations||{}, other=(m.data||[]).find(y=>y.conversation_id===cv.id&&y.user_id!==me);
-      const msgs=(g.data||[]).filter(y=>y.conversation_id===cv.id&&!this.hidden.has(String(y.id)));
+      const msgs=(g.data||[]).filter(y=>y.conversation_id===cv.id&&!this.hidden.has(String(y.id))&&!this.isCleared(cv.id,y.created_at));
       const unread=msgs.filter(y=>y.sender_id!==me&&y.created_at>x.last_read_at).length;
       const group=cv.type!=="direct";
       const others=(m.data||[]).filter(y=>y.conversation_id===cv.id&&y.user_id!==me).map(y=>y.user_id);
       return {id:cv.id,group,members:others,uid:group?null:(other&&other.user_id),title:group?(cv.name||"Grupo"):this.nameOf(other&&other.user_id),avatar:group?(cv.avatar_url||""):"",last:msgs[0],unread};
-    }).sort((p,q)=>((q.last&&q.last.created_at)||"").localeCompare((p.last&&p.last.created_at)||""));
+    }).filter(c=>!(this.clr[String(c.id)]&&!c.last)).sort((p,q)=>this.cmp(p,q));
     this.badge();
   },
+  cmp(p,q){
+    const pin=(this.pins.has(String(q.id))?1:0)-(this.pins.has(String(p.id))?1:0);
+    return pin||((q.last&&q.last.created_at)||"").localeCompare((p.last&&p.last.created_at)||"");
+  },
+  isCleared(cid,t){const c=this.clr[String(cid)]; return !!c&&Date.parse(t)<=Date.parse(c);},
+  refreshList(){ if(currentView==="chat"&&!this.openId) renderChat(document.getElementById("content")); },
   badge(){
     const n=this.convs.reduce((s,c)=>s+c.unread,0), b=document.getElementById("chatBadge");
     if(b){b.hidden=!n;b.textContent=n>9?"9+":n;}
@@ -5435,7 +5447,7 @@ const Chat={
     else{ await this.load(); if(currentView==="chat"&&!this.openId) renderChat(document.getElementById("content")); }
   },
   markRead(id){
-    sb.from("conversation_members").update({last_read_at:new Date().toISOString()}).eq("conversation_id",id).eq("user_id",this.me).then(()=>{
+    return sb.from("conversation_members").update({last_read_at:new Date().toISOString()}).eq("conversation_id",id).eq("user_id",this.me).then(()=>{
       const c=this.convs.find(x=>x.id===id); if(c){c.unread=0;this.badge();}
     });
   },
@@ -5502,8 +5514,18 @@ const Chat={
   },
 
   /* ---------- menu (sheet) ---------- */
-  closeSheet(){const s=document.getElementById("chatMenu"); if(s) s.remove(); document.querySelectorAll(".cm.press").forEach(x=>x.classList.remove("press"));},
-  showSheet(title,items){
+  closeSheet(){const s=document.getElementById("chatMenu"); if(s) s.remove(); document.querySelectorAll(".cm.press,.chat-item.press").forEach(x=>x.classList.remove("press"));},
+  /* pt={x,y}: abre perto de onde a pessoa tocou (sempre dentro da tela); sem pt, abre no centro */
+  placeSheet(sh,pt){
+    const m=10, vw=window.innerWidth, vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+    const r=sh.getBoundingClientRect(), w=r.width, h=r.height;
+    let x=Math.min(Math.max(pt.x-w/2,m),Math.max(m,vw-w-m)), y;
+    if(pt.y+8+h<=vh-m) y=pt.y+8;
+    else if(pt.y-8-h>=m) y=pt.y-8-h;
+    else y=Math.max(m,(vh-h)/2);
+    sh.style.left=x+"px"; sh.style.top=y+"px";
+  },
+  showSheet(title,items,pt){
     this.closeSheet();
     const el=document.createElement("div"); el.className="cmenu"; el.id="chatMenu";
     el.innerHTML=`<div class="cmenu-bg"></div><div class="cmenu-sheet">${title?`<div class="cmenu-title">${esc(title)}</div>`:""}
@@ -5516,26 +5538,27 @@ const Chat={
       const it=items[+b.dataset.i]; this.closeSheet(); if(it&&it.fn) it.fn();
     });
     document.body.appendChild(el);
+    if(pt&&isFinite(pt.x)&&isFinite(pt.y)){ el.classList.add("at"); this.placeSheet(el.querySelector(".cmenu-sheet"),pt); }
   },
-  openMenu(id){
+  openMenu(id,pt){
     const m=this.msgs[id]; if(!m) return;
     const mine=m.sender_id===this.me, cm=document.querySelector(`#chatMsgs .cm[data-id="${CSS.escape(String(id))}"]`);
     if(cm) cm.classList.add("press");
     const items=[];
     if(!m.deleted_at){
       items.push({icon:"↩",label:"Responder",fn:()=>this.reply(id)});
-      items.push({icon:"↪",label:"Encaminhar",fn:()=>this.fwdPick(id)});
+      items.push({icon:"↪",label:"Encaminhar",fn:()=>this.fwdPick(id,pt)});
       const hasText=m.body&&!(m.image_url&&m.body===this.PHOTO);
       if(mine&&hasText) items.push({icon:"✎",label:"Editar",fn:()=>this.edit(id)});
     }
-    items.push({icon:"🗑",label:"Excluir",danger:true,fn:()=>this.delMenu(id)});
-    this.showSheet(this.preview(m),items);
+    items.push({icon:"🗑",label:"Excluir",danger:true,fn:()=>this.delMenu(id,pt)});
+    this.showSheet(this.preview(m),items,pt);
   },
-  delMenu(id){
+  delMenu(id,pt){
     const m=this.msgs[id], mine=m.sender_id===this.me, items=[];
     if(mine&&!m.deleted_at) items.push({icon:"🗑",label:"Excluir para todos",danger:true,fn:()=>this.delAll(id)});
     items.push({icon:"🙈",label:"Excluir só para mim",danger:true,fn:()=>this.delMe(id)});
-    this.showSheet("Excluir mensagem?",items);
+    this.showSheet("Excluir mensagem?",items,pt);
   },
   async delAll(id){
     const m=this.msgs[id];
@@ -5556,6 +5579,35 @@ const Chat={
       const k="/chat-images/", i=url&&url.indexOf(k); if(!url||i<0) return;
       sb.storage.from("chat-images").remove([decodeURIComponent(url.slice(i+k.length).split("?")[0])]);
     }catch(e){}
+  },
+
+  /* ---------- menu da lista (segurar numa conversa/pessoa/grupo) ---------- */
+  openConvMenu(cid,pt){
+    const c=this.convs.find(x=>String(x.id)===String(cid)); if(!c||document.getElementById("chatMenu")) return;
+    const row=document.querySelector(`.chat-item[data-cid="${CSS.escape(String(cid))}"]`); if(row) row.classList.add("press");
+    const pinned=this.pins.has(String(cid)), ph=c.group?c.avatar:this.pic(c.uid), items=[];
+    items.push({icon:"💬",label:"Abrir conversa",fn:()=>this.openThread(c.id,c.title,c.uid,c.group,c.members,c.avatar)});
+    if(ph) items.push({icon:"🖼",label:"Ver foto",fn:()=>this.viewer(ph)});
+    if(c.unread) items.push({icon:"✓",label:"Marcar como lida",fn:async()=>{await this.markRead(c.id); this.refreshList();}});
+    items.push({icon:"📌",label:pinned?"Desafixar":"Fixar no topo",fn:()=>this.togglePin(c.id)});
+    items.push({icon:"🙈",label:"Ocultar conversa",danger:true,fn:()=>this.clearMenu(c,pt)});
+    this.showSheet(c.title,items,pt);
+  },
+  togglePin(cid){
+    const k=String(cid); this.pins.has(k)?this.pins.delete(k):this.pins.add(k);
+    try{localStorage.setItem("chat_pins_"+this.me,JSON.stringify([...this.pins]));}catch(e){}
+    this.convs.sort((p,q)=>this.cmp(p,q)); this.refreshList();
+  },
+  clearMenu(c,pt){
+    this.showSheet("Ocultar só neste aparelho?",[
+      {icon:"🙈",label:"Ocultar conversa",danger:true,fn:()=>this.clearConv(c.id)}],pt);
+  },
+  clearConv(cid){
+    const c=this.convs.find(x=>String(x.id)===String(cid));
+    this.clr[String(cid)]=(c&&c.last&&c.last.created_at)||new Date().toISOString();
+    try{localStorage.setItem("chat_clr_"+this.me,JSON.stringify(this.clr));}catch(e){}
+    this.convs=this.convs.filter(x=>String(x.id)!==String(cid));
+    this.badge(); this.refreshList(); toast("Conversa ocultada");
   },
 
   /* ---------- responder / editar ---------- */
@@ -5583,12 +5635,12 @@ const Chat={
   grow(){const i=document.getElementById("chatIn"); if(!i) return; i.style.height="auto"; i.style.height=Math.min(i.scrollHeight,110)+"px";},
 
   /* ---------- encaminhar ---------- */
-  fwdPick(id){
+  fwdPick(id,pt){
     const people=this.contacts.slice().sort((a,b)=>this.nameOf(a.user_id).localeCompare(this.nameOf(b.user_id),"pt-BR"));
     if(!people.length){toast("Ninguém disponível","error");return;}
     this.showSheet("Encaminhar para…",people.map(p=>({
       html:`<span style="display:flex;align-items:center;gap:10px">${this.av(p.user_id)}<span>${esc(this.nameOf(p.user_id))}</span></span>`,
-      fn:()=>this.forward(id,p.user_id)})));
+      fn:()=>this.forward(id,p.user_id)})),pt);
   },
   async forward(id,uid){
     const m=this.msgs[id]; if(!m) return;
@@ -5744,7 +5796,7 @@ const Chat={
     const box=o.querySelector("#chatMsgs"), inp=o.querySelector("#chatIn"), file=o.querySelector("#chatFile");
 
     const {data}=await sb.from("messages").select("*").eq("conversation_id",id).order("created_at",{ascending:false}).limit(200);
-    const rows=(data||[]).reverse(); rows.forEach(m=>{this.msgs[m.id]=m;});
+    const rows=(data||[]).reverse().filter(m=>!this.isCleared(id,m.created_at)); rows.forEach(m=>{this.msgs[m.id]=m;});
     rows.forEach(m=>{this.seen.add(m.id);this.addBubble(m);});
     this.markRead(id);
 
@@ -5770,7 +5822,7 @@ const Chat={
       sx=e.clientX; sy=e.clientY; fired=false; stop();
       timer=setTimeout(()=>{
         fired=true; if(navigator.vibrate) try{navigator.vibrate(15);}catch(_){}
-        this.openMenu(cm.dataset.id);
+        this.openMenu(cm.dataset.id,{x:sx,y:sy});
       },450);
     });
     box.addEventListener("pointermove",e=>{ if(timer&&Math.hypot(e.clientX-sx,e.clientY-sy)>10) stop(); });
@@ -5778,7 +5830,7 @@ const Chat={
     box.addEventListener("scroll",stop,{passive:true});
     box.addEventListener("contextmenu",e=>{
       const cm=e.target.closest(".cm"); if(!cm) return;
-      e.preventDefault(); if(!document.getElementById("chatMenu")) this.openMenu(cm.dataset.id);
+      e.preventDefault(); if(!document.getElementById("chatMenu")) this.openMenu(cm.dataset.id,{x:e.clientX,y:e.clientY});
     });
     box.addEventListener("click",e=>{
       if(fired){fired=false;e.preventDefault();return;}
@@ -5811,12 +5863,32 @@ function renderChat(content){
   const list=Chat.convs.map(c=>`<button class="chat-item" data-cid="${esc(String(c.id))}">
     ${Chat.av(c.uid,c.title,c.group,c.avatar)}
     <div class="chat-mid"><b>${esc(c.title)}</b><span>${c.last?esc((c.group&&c.last.sender_id!==Chat.me?Chat.who(c.last.sender_id).split(" ")[0]+": ":"")+Chat.preview(c.last)):"Sem mensagens"}</span></div>
-    <div class="chat-meta">${c.last?Chat.hm(c.last.created_at):""}${c.unread?`<em>${c.unread}</em>`:""}</div></button>`).join("");
+    <div class="chat-meta">${c.last?Chat.hm(c.last.created_at):""}${Chat.pins.has(String(c.id))?'<span class="chat-pin">📌</span>':""}${c.unread?`<em>${c.unread}</em>`:""}</div></button>`).join("");
   content.innerHTML=`<div class="chat-wrap">
     <div class="chat-top"><button class="btn btn-primary" id="chatNew" style="flex:1">+ Nova conversa</button><button class="btn" id="chatNewGroup" style="flex:1">👥 Novo grupo</button></div>
     ${list||'<div class="chat-empty">Nenhuma conversa ainda.<br>Toque em “Nova conversa” ou “Novo grupo” para começar.</div>'}</div>`;
-  content.querySelectorAll(".chat-item").forEach(b=>b.onclick=()=>{
-    const c=Chat.convs.find(x=>String(x.id)===b.dataset.cid); if(c) Chat.openThread(c.id,c.title,c.uid,c.group,c.members,c.avatar);
+  /* segurar (toque) ou botão direito (mouse) numa conversa → menu, sem entrar nela */
+  let lt=null,lsx=0,lsy=0,lfired=false;
+  const lstop=()=>{clearTimeout(lt);lt=null;};
+  content.querySelectorAll(".chat-item[data-cid]").forEach(b=>{
+    b.addEventListener("pointerdown",e=>{
+      lfired=false; lstop(); if(e.pointerType==="mouse") return;
+      lsx=e.clientX; lsy=e.clientY;
+      lt=setTimeout(()=>{
+        lfired=true; if(navigator.vibrate) try{navigator.vibrate(15);}catch(_){}
+        Chat.openConvMenu(b.dataset.cid,{x:lsx,y:lsy});
+      },450);
+    });
+    b.addEventListener("pointermove",e=>{ if(lt&&Math.hypot(e.clientX-lsx,e.clientY-lsy)>10) lstop(); });
+    ["pointerup","pointercancel","pointerleave"].forEach(ev=>b.addEventListener(ev,lstop));
+    b.addEventListener("contextmenu",e=>{
+      e.preventDefault(); lstop();
+      if(!document.getElementById("chatMenu")) Chat.openConvMenu(b.dataset.cid,{x:e.clientX,y:e.clientY});
+    });
+    b.onclick=e=>{
+      if(lfired){lfired=false;e.preventDefault();return;}
+      const c=Chat.convs.find(x=>String(x.id)===b.dataset.cid); if(c) Chat.openThread(c.id,c.title,c.uid,c.group,c.members,c.avatar);
+    };
   });
   const sorted=()=>Chat.contacts.slice().sort((a,b)=>Chat.nameOf(a.user_id).localeCompare(Chat.nameOf(b.user_id),"pt-BR"));
   content.querySelector("#chatNew").onclick=()=>{
