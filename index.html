@@ -1002,72 +1002,35 @@ svg.vi{ width:1em; height:1em; vertical-align:-.16em; flex:none; fill:none; stro
 /* Fundo orgânico configurável: círculos vetoriais suaves, sem imagem pixelada */
 :root{--user-primary:#2F6FD6;--user-secondary:#55A0F2;}
 body{position:relative;isolation:isolate;overflow-x:hidden;}
-body::before,body::after{content:"";position:fixed;z-index:-1;pointer-events:none;border-radius:50%;
-  background:radial-gradient(circle at 38% 35%,color-mix(in srgb,var(--user-primary) 88%,white 12%) 0%,var(--user-primary) 72%,color-mix(in srgb,var(--user-primary) 92%,black 8%) 100%);
-  -webkit-backface-visibility:hidden;backface-visibility:hidden;}
-body::before{width:clamp(230px,58vw,390px);height:clamp(230px,58vw,390px);left:clamp(-235px,-25vw,-115px);top:clamp(45px,12vh,145px);}
-body::after{width:clamp(190px,48vw,330px);height:clamp(190px,48vw,330px);right:clamp(-205px,-22vw,-100px);bottom:clamp(55px,14vh,170px);}
 html[data-theme="light"] body{background:radial-gradient(900px 500px at 50% -12%,#fff,transparent 72%),#F3F4F6;}
-html[data-theme="dark"] body::before,html[data-theme="dark"] body::after{opacity:.14;filter:saturate(.8);}
 
-/* Faixas paralelas em trajetória sinuosa (S), usando a cor secundária */
-.bg-ribbons{
-  position:fixed;
-  inset:0;
-  z-index:-1;
-  overflow:hidden;
-  pointer-events:none;
-  contain:layout paint;
-}
-.bg-ribbons::before,
-.bg-ribbons::after{
-  content:"";
-  position:absolute;
-  left:-42vw;
-  width:184vw;
-  height:clamp(8px,1.15vw,14px);
-  border-radius:999px;
-  background:linear-gradient(90deg,
-    transparent 0%,
-    color-mix(in srgb,var(--user-secondary) 10%,transparent) 10%,
-    color-mix(in srgb,var(--user-secondary) 76%,transparent) 48%,
-    color-mix(in srgb,var(--user-secondary) 22%,transparent) 88%,
-    transparent 100%);
-  box-shadow:
-    0 0 12px color-mix(in srgb,var(--user-secondary) 25%,transparent),
-    0 0 28px color-mix(in srgb,var(--user-secondary) 12%,transparent);
-  will-change:transform;
-}
-.bg-ribbons::before{
-  top:43%;
-  animation:ribbon-s-up 5.2s ease-in-out infinite alternate;
-}
-.bg-ribbons::after{
-  top:51%;
-  opacity:.78;
-  animation:ribbon-s-down 5.2s ease-in-out infinite alternate;
-}
-@keyframes ribbon-s-up{
-  0%{transform:translate3d(-17vw,-7vh,0) rotate(-20deg);}
-  25%{transform:translate3d(-7vw,5vh,0) rotate(-12deg);}
-  50%{transform:translate3d(3vw,10vh,0) rotate(-5deg);}
-  75%{transform:translate3d(14vw,1vh,0) rotate(-14deg);}
-  100%{transform:translate3d(25vw,-8vh,0) rotate(-23deg);}
-}
-@keyframes ribbon-s-down{
-  0%{transform:translate3d(25vw,8vh,0) rotate(-23deg);}
-  25%{transform:translate3d(14vw,-1vh,0) rotate(-14deg);}
-  50%{transform:translate3d(3vw,-10vh,0) rotate(-5deg);}
-  75%{transform:translate3d(-7vw,-5vh,0) rotate(-12deg);}
-  100%{transform:translate3d(-17vw,7vh,0) rotate(-20deg);}
-}
-html[data-theme="light"] .bg-ribbons::before,
-html[data-theme="light"] .bg-ribbons::after{opacity:.72;}
-html[data-theme="dark"] .bg-ribbons::before,
-html[data-theme="dark"] .bg-ribbons::after{opacity:.22;}
-@media (prefers-reduced-motion:reduce){
-  .bg-ribbons::before,.bg-ribbons::after{animation:none;opacity:.18;}
-}
+/* ===== Fundo "seda líquida": formas orgânicas sobrepostas, degradê entre as 2 cores do usuário ===== */
+.bg-ribbons{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;contain:layout paint;
+  --silk-dark:color-mix(in srgb,var(--user-primary) 38%,#000);
+  --silk-mid:color-mix(in srgb,var(--user-primary) 55%,var(--user-secondary));
+  --silk-lite:color-mix(in srgb,var(--user-secondary) 62%,#fff);}
+.bg-ribbons svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.bg-ribbons .s-pri{stop-color:var(--user-primary)}
+.bg-ribbons .s-sec{stop-color:var(--user-secondary)}
+.bg-ribbons .s-mid{stop-color:var(--silk-mid)}
+.bg-ribbons .s-dark{stop-color:var(--silk-dark)}
+.bg-ribbons .s-lite{stop-color:var(--silk-lite)}
+.bg-ribbons .sk-fold{transform-box:fill-box;transform-origin:center;will-change:transform}
+.bg-ribbons .f1{animation:silk1 22s ease-in-out infinite alternate}
+.bg-ribbons .f2{animation:silk2 27s ease-in-out infinite alternate}
+.bg-ribbons .f3{animation:silk3 31s ease-in-out infinite alternate}
+.bg-ribbons .f4{animation:silk4 25s ease-in-out infinite alternate}
+.bg-ribbons .f5{animation:silk5 34s ease-in-out infinite alternate}
+@keyframes silk1{from{transform:translate3d(-14px,0,0) rotate(-1.5deg) scale(1.06)}to{transform:translate3d(16px,22px,0) rotate(2deg) scale(1.12)}}
+@keyframes silk2{from{transform:translate3d(18px,10px,0) rotate(1.5deg) scale(1.06)}to{transform:translate3d(-20px,-18px,0) rotate(-2.5deg) scale(1.12)}}
+@keyframes silk3{from{transform:translate3d(-12px,16px,0) rotate(-1deg) scale(1.05)}to{transform:translate3d(14px,-14px,0) rotate(2deg) scale(1.1)}}
+@keyframes silk4{from{transform:translate3d(20px,-8px,0) rotate(2deg) scale(1.04)}to{transform:translate3d(-22px,14px,0) rotate(-2deg) scale(1.1)}}
+@keyframes silk5{from{transform:translate3d(-10px,12px,0) rotate(-2deg) scale(1.02)}to{transform:translate3d(18px,-10px,0) rotate(2deg) scale(1.1)}}
+/* véu: mantém texto e cards legíveis sobre o fundo colorido */
+.bg-ribbons::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,9,12,.14),rgba(8,9,12,.34));}
+html[data-theme="light"] .bg-ribbons::after{background:linear-gradient(180deg,rgba(244,242,238,.18),rgba(244,242,238,.38));}
+@media (prefers-reduced-motion:reduce){.bg-ribbons .sk-fold{animation:none}}
 
 /* A cor secundária controla os detalhes, sem substituir as superfícies do tema escuro */
 .topbar-eyebrow, .tab.is-active, .section-label .link, .today-event, .stat b,
@@ -1087,11 +1050,10 @@ html[data-theme="light"] .cal-cell.today{background:var(--user-secondary)!import
 .theme-color-info b{display:block;font-size:14px;color:var(--ink);}
 .theme-color-info small{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4;}
 .theme-color-input{width:48px;height:38px;padding:3px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;}
-.theme-color-preview{height:58px;border-radius:14px;margin-top:12px;position:relative;overflow:hidden;background:var(--paper);border:1px solid var(--line);}
-.theme-color-preview::before,.theme-color-preview::after{content:"";position:absolute;border-radius:50%;background:var(--user-primary);}
-.theme-color-preview::before{width:90px;height:90px;left:-35px;top:-45px;}
-.theme-color-preview::after{width:75px;height:75px;right:-25px;bottom:-38px;}
-.theme-color-preview span{position:absolute;z-index:1;right:12px;top:18px;background:var(--user-secondary);width:70px;height:22px;border-radius:7px;}
+.theme-color-preview{height:58px;border-radius:14px;margin-top:12px;position:relative;overflow:hidden;border:1px solid var(--line);
+  background:linear-gradient(135deg,var(--user-secondary) 0%,color-mix(in srgb,var(--user-primary) 55%,var(--user-secondary)) 38%,var(--user-primary) 68%,color-mix(in srgb,var(--user-primary) 38%,#000) 100%);}
+.theme-color-preview::before{content:"";position:absolute;left:-30px;top:-30px;width:150px;height:90px;border-radius:50%;border:2px solid rgba(255,255,255,.35);transform:rotate(-12deg)}
+.theme-color-preview span{position:absolute;z-index:1;right:12px;top:18px;background:var(--user-secondary);border:2px solid #fff;box-sizing:border-box;width:70px;height:22px;border-radius:7px;}
 
 
 /* ---------- Carrossel horizontal de filtros das áreas (Membros) ---------- */
@@ -1477,7 +1439,25 @@ html[data-theme="light"] .sk::after{
 </style>
 </head>
 <body>
-  <div class="bg-ribbons" aria-hidden="true"></div>
+  <div class="bg-ribbons" aria-hidden="true">
+    <svg viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" focusable="false">
+      <defs>
+        <linearGradient id="skBase" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s-dark"/><stop offset=".55" class="s-pri"/><stop offset="1" class="s-dark"/></linearGradient>
+        <linearGradient id="skA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="s-sec"/><stop offset=".5" class="s-mid"/><stop offset="1" class="s-pri"/></linearGradient>
+        <linearGradient id="skB" x1="1" y1="0" x2="0" y2="1"><stop offset="0" class="s-mid"/><stop offset=".55" class="s-pri"/><stop offset="1" class="s-dark"/></linearGradient>
+        <linearGradient id="skC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="s-pri"/><stop offset=".6" class="s-mid"/><stop offset="1" class="s-sec"/></linearGradient>
+        <linearGradient id="skD" x1="0" y1="1" x2="1" y2="0"><stop offset="0" class="s-sec"/><stop offset="1" class="s-lite"/></linearGradient>
+        <linearGradient id="skE" x1="1" y1="0" x2="0" y2="1"><stop offset="0" class="s-lite"/><stop offset="1" class="s-mid"/></linearGradient>
+        <linearGradient id="skEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity=".45"/></linearGradient>
+      </defs>
+      <rect x="-60" y="-60" width="520" height="920" fill="url(#skBase)"/>
+      <g class="sk-fold f3"><path d="M-80 500C60 440 150 560 270 530C360 508 430 440 480 450L480 880L-80 880Z" fill="url(#skC)" opacity=".92"/><path d="M-80 500C60 440 150 560 270 530C360 508 430 440 480 450" fill="none" stroke="url(#skEdge)" stroke-width="2"/></g>
+      <g class="sk-fold f2"><path d="M-80 260C40 200 130 330 250 300C350 275 420 190 480 210L480 470C380 430 300 520 190 540C90 560 20 480 -80 520Z" fill="url(#skB)" opacity=".95"/><path d="M-80 260C40 200 130 330 250 300C350 275 420 190 480 210" fill="none" stroke="url(#skEdge)" stroke-width="2.2"/></g>
+      <g class="sk-fold f4"><path d="M-80 640C80 560 180 700 300 650C380 616 440 580 480 590L480 700C420 690 360 740 280 760C160 790 60 700 -80 760Z" fill="url(#skD)" opacity=".85"/><path d="M-80 640C80 560 180 700 300 650C380 616 440 580 480 590" fill="none" stroke="url(#skEdge)" stroke-width="2"/></g>
+      <g class="sk-fold f1"><path d="M-80 -60L480 -60L480 170C360 250 250 130 150 230C60 320 -10 300 -80 360Z" fill="url(#skA)"/><path d="M480 170C360 250 250 130 150 230C60 320 -10 300 -80 360" fill="none" stroke="url(#skEdge)" stroke-width="2.4"/></g>
+      <g class="sk-fold f5"><path d="M480 40C380 120 300 60 220 140C160 200 200 300 480 280Z" fill="url(#skE)" opacity=".55"/><path d="M480 40C380 120 300 60 220 140C160 200 200 300 480 280" fill="none" stroke="url(#skEdge)" stroke-width="1.6" opacity=".8"/></g>
+    </svg>
+  </div>
 
   <!-- Seção pública: visível para todos, inclusive sem login (SEO / verificação Google) -->
   <div id="publicInfo" style="max-width:520px;margin:0 auto;padding:40px 24px;font-family:system-ui,sans-serif;color:#143B57;">
@@ -3267,11 +3247,11 @@ function renderConfig(c){
   html += `<div class="section-label">Personalizar cores</div>
     <div class="card theme-color-card">
       <div class="theme-color-row">
-        <div class="theme-color-info"><b>Cor primária</b><small>Cor dos círculos decorativos do fundo.</small></div>
+        <div class="theme-color-info"><b>Cor primária</b><small>Cor base do fundo (corpo das ondas de seda).</small></div>
         <input class="theme-color-input" type="color" aria-label="Escolher cor primária" data-color-pref="primary" value="${colors.primary}">
       </div>
       <div class="theme-color-row">
-        <div class="theme-color-info"><b>Cor secundária</b><small>Botões, ícones ativos, destaques e detalhes do app.</small></div>
+        <div class="theme-color-info"><b>Cor secundária</b><small>Brilho das ondas, botões, ícones ativos e destaques do app.</small></div>
         <input class="theme-color-input" type="color" aria-label="Escolher cor secundária" data-color-pref="secondary" value="${colors.secondary}">
       </div>
       <div class="theme-color-preview" aria-label="Prévia das cores escolhidas"><span></span></div>
