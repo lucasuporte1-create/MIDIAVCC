@@ -5500,9 +5500,11 @@ const Chat={
       let sub=await reg.pushManager.getSubscription();
       if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
       const token=JSON.stringify(sub);
-      if(localStorage.getItem("push_token")!==token){
+      /* regrava uma vez por abertura do app: o servidor apaga o token quando o aparelho some,
+         e comparar só com o localStorage deixava o banco sem token para sempre */
+      if(!this.pushSaved||localStorage.getItem("push_token")!==token){
         const {error}=await sb.from("profiles").update({push_token:token}).eq("id",this.me);
-        if(!error) localStorage.setItem("push_token",token);
+        if(!error){ localStorage.setItem("push_token",token); this.pushSaved=true; }
       }
     }catch(e){console.warn("push:",e.message);}
   },
