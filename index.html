@@ -1617,37 +1617,129 @@ html[data-theme="light"] #topGear.is-on{background:var(--sky-500);color:#fff}
 .chat-head .chat-av{width:36px;height:36px;font-size:14px}
 
 /* ============================================================
-   CORREÇÃO — FUNDO PRISMA
-   Remove completamente as camadas do fundo antigo quando
-   o usuário seleciona Prisma, evitando sobreposição visual.
+   FUNDO ÚNICO — GRADIENTE ORGÂNICO
+   Apenas as cores primária e secundária controlam o fundo.
+   Inspirado no efeito da referência: formas fluidas, diagonais,
+   sobreposições translúcidas e cobertura total da tela.
    ============================================================ */
-html[data-background-style="prism"] body::before,
-html[data-background-style="prism"] body::after{
-  display:none !important;
-  content:none !important;
-  background:none !important;
-  box-shadow:none !important;
-  filter:none !important;
-}
 
-html[data-background-style="prism"] .bg-ribbons{
-  /* O fundo antigo não participa mais da composição Prisma. */
-  background:transparent !important;
-  box-shadow:none !important;
-  opacity:1 !important;
-}
-
-/* O Prisma passa a ser a única camada gráfica do plano de fundo. */
-html[data-background-style="prism"] .bg-ribbons::before,
-html[data-background-style="prism"] .bg-ribbons::after{
-  display:block !important;
-}
-
-/* Evita que qualquer regra antiga do tema volte a aparecer por
-   baixo/por cima do Prisma durante a troca de estilo. */
-html[data-background-style="prism"] body{
+html body{
+  position:relative !important;
+  isolation:isolate !important;
+  min-height:100svh !important;
   background:
-    linear-gradient(145deg,#090713 0%,#10091b 48%,#080914 100%) !important;
+    radial-gradient(ellipse 85% 70% at 8% 8%,
+      color-mix(in srgb,var(--user-primary) 94%,white 6%) 0%,
+      color-mix(in srgb,var(--user-primary) 62%,transparent) 34%,
+      transparent 70%),
+    radial-gradient(ellipse 80% 75% at 94% 92%,
+      color-mix(in srgb,var(--user-secondary) 92%,white 8%) 0%,
+      color-mix(in srgb,var(--user-secondary) 58%,transparent) 38%,
+      transparent 72%),
+    linear-gradient(145deg,
+      color-mix(in srgb,var(--user-primary) 74%,#071018 26%) 0%,
+      color-mix(in srgb,var(--user-primary) 38%,#101018 62%) 42%,
+      color-mix(in srgb,var(--user-secondary) 42%,#080912 58%) 100%) !important;
+  overflow-x:hidden !important;
+}
+
+/* Remove totalmente o sistema antigo de ribbons/camadas duplicadas. */
+html .bg-ribbons{
+  display:none !important;
+}
+
+/* Uma composição visual única, ocupando toda a viewport. */
+html body::before{
+  content:"" !important;
+  position:fixed !important;
+  inset:0 !important;
+  z-index:-1 !important;
+  pointer-events:none !important;
+  border-radius:0 !important;
+  opacity:1 !important;
+  filter:none !important;
+  background:
+    linear-gradient(148deg,
+      transparent 0%,
+      transparent 12%,
+      color-mix(in srgb,var(--user-secondary) 34%,transparent) 13%,
+      color-mix(in srgb,var(--user-secondary) 18%,transparent) 28%,
+      transparent 29%,
+      transparent 38%,
+      color-mix(in srgb,var(--user-primary) 42%,transparent) 39%,
+      color-mix(in srgb,var(--user-primary) 22%,transparent) 54%,
+      transparent 55%,
+      transparent 69%,
+      color-mix(in srgb,var(--user-secondary) 30%,transparent) 70%,
+      color-mix(in srgb,var(--user-secondary) 12%,transparent) 86%,
+      transparent 87%),
+    linear-gradient(25deg,
+      transparent 0%,
+      transparent 22%,
+      color-mix(in srgb,var(--user-primary) 28%,transparent) 23%,
+      color-mix(in srgb,var(--user-primary) 12%,transparent) 43%,
+      transparent 44%,
+      transparent 57%,
+      color-mix(in srgb,var(--user-secondary) 26%,transparent) 58%,
+      color-mix(in srgb,var(--user-secondary) 10%,transparent) 78%,
+      transparent 79%);
+  clip-path:polygon(
+    0 0, 100% 0, 100% 100%, 0 100%
+  );
+}
+
+html body::after{
+  content:"" !important;
+  position:fixed !important;
+  inset:-12% !important;
+  z-index:-1 !important;
+  pointer-events:none !important;
+  border-radius:0 !important;
+  opacity:.82 !important;
+  filter:blur(34px) saturate(1.08) !important;
+  background:
+    radial-gradient(ellipse 42% 32% at 18% 18%,
+      color-mix(in srgb,var(--user-primary) 48%,transparent),
+      transparent 72%),
+    radial-gradient(ellipse 44% 34% at 82% 78%,
+      color-mix(in srgb,var(--user-secondary) 46%,transparent),
+      transparent 72%),
+    linear-gradient(132deg,
+      transparent 18%,
+      color-mix(in srgb,var(--user-secondary) 13%,transparent) 34%,
+      transparent 48%,
+      color-mix(in srgb,var(--user-primary) 15%,transparent) 66%,
+      transparent 82%);
+}
+
+/* No modo claro, mantém o mesmo fundo, apenas com mais luminosidade. */
+html[data-theme="light"] body::after{
+  opacity:.72 !important;
+  filter:blur(30px) saturate(1.05) brightness(1.08) !important;
+}
+
+html[data-theme="light"] body{
+  background:
+    radial-gradient(ellipse 85% 70% at 8% 8%,
+      color-mix(in srgb,var(--user-primary) 82%,white 18%) 0%,
+      color-mix(in srgb,var(--user-primary) 52%,transparent) 38%,
+      transparent 72%),
+    radial-gradient(ellipse 80% 75% at 94% 92%,
+      color-mix(in srgb,var(--user-secondary) 80%,white 20%) 0%,
+      color-mix(in srgb,var(--user-secondary) 48%,transparent) 40%,
+      transparent 74%),
+    linear-gradient(145deg,
+      color-mix(in srgb,var(--user-primary) 68%,white 32%) 0%,
+      color-mix(in srgb,var(--user-primary) 28%,white 72%) 45%,
+      color-mix(in srgb,var(--user-secondary) 42%,white 58%) 100%) !important;
+}
+
+/* Garante que o fundo continue preenchendo telas altas/baixas no celular. */
+@media (max-width:700px){
+  html body{
+    min-height:100svh !important;
+    background-attachment:fixed !important;
+  }
 }
 
 </style>
@@ -3416,17 +3508,12 @@ function applyUserColors(){
   root.style.setProperty("--user-secondary",c.secondary);
 }
 function getUserBackgroundStyle(){
-  const uid = Auth.memberId || DB.settings.meId || "guest";
-  try{return localStorage.getItem("escala-midia-background:"+uid)==="prism"?"prism":"organic";}
-  catch(_){return "organic";}
+  return "gradient";
 }
 function applyUserBackgroundStyle(){
   document.documentElement.setAttribute("data-background-style",getUserBackgroundStyle());
 }
 function saveUserBackgroundStyle(style){
-  const uid = Auth.memberId || DB.settings.meId || "guest";
-  const value = style==="prism"?"prism":"organic";
-  try{localStorage.setItem("escala-midia-background:"+uid,value);}catch(_){}
   applyUserBackgroundStyle();
 }
 function saveUserColor(which,value){
@@ -3457,19 +3544,14 @@ function renderConfig(c){
       <button class="theme-opt ${curTheme==="dark"?"on":""}" data-action="set-theme" data-theme="dark" role="radio" aria-checked="${curTheme==="dark"}">
         <svg viewBox="0 0 24 24"><path d="M21 13.2A8.5 8.5 0 1 1 10.8 3a6.7 6.7 0 0 0 10.2 10.2z"/></svg> Escuro</button>
     </div>`;
-
   const colors = getUserColors();
-  const bgStyle = getUserBackgroundStyle();
-  html += `<div class="section-label">Estilo do fundo</div>
-    <div class="theme-seg" role="radiogroup" aria-label="Estilo do plano de fundo">
-      <button class="theme-opt ${bgStyle==="organic"?"on":""}" data-action="set-background-style" data-style="organic" role="radio" aria-checked="${bgStyle==="organic"}">
-        <svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="5"/><circle cx="17" cy="16" r="5"/></svg> Orgânico</button>
-      <button class="theme-opt ${bgStyle==="prism"?"on":""}" data-action="set-background-style" data-style="prism" role="radio" aria-checked="${bgStyle==="prism"}">
-        <svg viewBox="0 0 24 24"><path d="M3 7 10 3l11 5-7 4L3 7Z"/><path d="m3 7 0 9 11 5v-9M14 12l7-4v9l-7 5"/></svg> Prisma</button>
-    </div>
-    <div class="section-label">Personalizar cores</div>
+  html += `<div class="section-label">Personalizar fundo</div>
     <div class="card theme-color-card">
-      <div class="theme-color-row">
+      <div class="hint" style="margin-bottom:12px">
+        O fundo usa um único degradê fluido em toda a tela. Escolha apenas a cor primária e a cor secundária para personalizar o visual.
+      </div>
+
+    <div class="theme-color-row">
         <div class="theme-color-info"><b>Cor primária</b><small>Cor principal das formas e camadas do fundo.</small></div>
         <input class="theme-color-input" type="color" aria-label="Escolher cor primária" data-color-pref="primary" value="${colors.primary}">
       </div>
@@ -3477,8 +3559,8 @@ function renderConfig(c){
         <div class="theme-color-info"><b>Cor secundária</b><small>Segunda cor do fundo, botões, ícones e destaques.</small></div>
         <input class="theme-color-input" type="color" aria-label="Escolher cor secundária" data-color-pref="secondary" value="${colors.secondary}">
       </div>
-      <div class="theme-color-preview ${bgStyle==="prism"?"prism-preview":""}" aria-label="Prévia das cores escolhidas"><span></span></div>
-      <div class="hint" style="margin-top:10px">As duas cores personalizam as formas do fundo. Os cartões preservam o contraste e a leitura nos temas claro e escuro. Cada conta salva suas escolhas neste dispositivo.</div>
+      <div class="theme-color-preview" aria-label="Prévia das cores escolhidas"><span></span></div>
+      <div class="hint" style="margin-top:10px">As duas cores personalizam o degradê e as formas fluidas do fundo. Os cartões preservam o contraste e a leitura nos temas claro e escuro. Cada conta salva suas escolhas neste dispositivo.</div>
       <button class="btn btn-soft btn-block" style="margin-top:12px" data-action="reset-user-colors">Restaurar cores padrão</button>
     </div>`;
 
@@ -3660,12 +3742,6 @@ document.addEventListener("click", e=>{
   if(LEADER_ANY.includes(a) && !isLeader()){ toast("Apenas líderes podem fazer isso","warn"); return; }
 
   switch(a){
-    case "set-background-style": {
-      saveUserBackgroundStyle(el.dataset.style);
-      go("config");
-      toast(el.dataset.style==="prism"?"Fundo Prisma aplicado":"Fundo orgânico aplicado","good");
-      break;
-    }
     case "reset-user-colors": {
       try{localStorage.removeItem(getUserColorStorageKey());}catch(_){}
       applyUserColors(); go("config"); toast("Cores restauradas","good");
