@@ -5412,6 +5412,7 @@ const Chat={
     check:'<polyline points="20 6 9 17 4 12"/>',
     pin:'<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3v2H7v-2l3-3Z"/>',
     unpin:'<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3v2H7v-2l3-3Z"/><path d="M3 3l18 18"/>',
+    leave:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
     x:'<path d="M18 6L6 18M6 6l12 12"/>',
     send:'<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4Z"/>',
     users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
@@ -5444,7 +5445,8 @@ const Chat={
   async load(){
     const me=this.me;
     const q=cols=>sb.from("conversation_members").select("conversation_id,last_read_at,conversations("+cols+")").eq("user_id",me);
-    let [a,c]=await Promise.all([q("id,type,name,avatar_url"),sb.rpc("chat_contacts")]);
+    let [a,c]=await Promise.all([q("id,type,name,avatar_url,created_by"),sb.rpc("chat_contacts")]);
+    if(a.error) a=await q("id,type,name,avatar_url");   // coluna created_by ainda não criada no banco
     if(a.error) a=await q("id,type,name");   // coluna avatar_url ainda não criada no banco
     this.contacts=c.data||[]; this.people={}; this.contacts.forEach(x=>this.people[x.user_id]=x);
     const mine=a.data||[], ids=mine.map(x=>x.conversation_id);
@@ -5458,7 +5460,7 @@ const Chat={
       const unread=msgs.filter(y=>y.sender_id!==me&&y.created_at>x.last_read_at).length;
       const group=cv.type!=="direct";
       const others=(m.data||[]).filter(y=>y.conversation_id===cv.id&&y.user_id!==me).map(y=>y.user_id);
-      return {id:cv.id,group,members:others,uid:group?null:(other&&other.user_id),title:group?(cv.name||"Grupo"):this.nameOf(other&&other.user_id),avatar:group?(cv.avatar_url||""):"",last:msgs[0],unread};
+      return {id:cv.id,group,owner:cv.created_by||null,members:others,uid:group?null:(other&&other.user_id),title:group?(cv.name||"Grupo"):this.nameOf(other&&other.user_id),avatar:group?(cv.avatar_url||""):"",last:msgs[0],unread};
     }).filter(c=>!(this.clr[String(c.id)]&&!c.last)).sort((p,q)=>this.cmp(p,q));
     this.badge();
   },
@@ -5676,6 +5678,13 @@ const Chat={
     if(c.unread) items.push({icon:"check",label:"Marcar como lida",fn:async()=>{await this.markRead(c.id); this.refreshList();}});
     items.push({icon:pinned?"unpin":"pin",label:pinned?"Desafixar":"Fixar no topo",fn:()=>this.togglePin(c.id)});
     items.push({icon:"hide",label:"Ocultar conversa",danger:true,fn:()=>this.clearMenu(c,pt)});
+    if(c.group){
+      items.push({icon:"leave",label:"Sair do grupo",danger:true,fn:()=>this.confirmSheet("Sair do grupo “"+c.title+"”?","Sair do grupo",()=>this.leaveGroup(c),pt)});
+      if(isAdmin()||(c.owner&&c.owner===this.me))
+        items.push({icon:"trash",label:"Apagar grupo",danger:true,fn:()=>this.confirmSheet("Apagar o grupo “"+c.title+"” para todos? As mensagens serão perdidas.","Apagar grupo",()=>this.deleteConv(c,true),pt)});
+    }else{
+      items.push({icon:"trash",label:"Apagar conversa",danger:true,fn:()=>this.confirmSheet("Apagar a conversa com "+c.title+"? As mensagens serão apagadas para os dois.","Apagar conversa",()=>this.deleteConv(c,false),pt)});
+    }
     this.showSheet(c.title,items,pt);
   },
   togglePin(cid){
@@ -5686,6 +5695,27 @@ const Chat={
   clearMenu(c,pt){
     this.showSheet("Ocultar só neste aparelho?",[
       {icon:"hide",label:"Ocultar conversa",danger:true,fn:()=>this.clearConv(c.id)}],pt);
+  },
+  confirmSheet(title,label,fn,pt){
+    this.showSheet(title,[{icon:"trash",label,danger:true,fn}],pt);
+  },
+  dropLocal(cid){
+    const k=String(cid);
+    this.convs=this.convs.filter(x=>String(x.id)!==k);
+    this.pins.delete(k); delete this.clr[k];
+    try{localStorage.setItem("chat_pins_"+this.me,JSON.stringify([...this.pins]));}catch(e){}
+    try{localStorage.setItem("chat_clr_"+this.me,JSON.stringify(this.clr));}catch(e){}
+    this.badge(); this.refreshList();
+  },
+  async leaveGroup(c){
+    const {error}=await sb.rpc("leave_group_chat",{conv_id:c.id});
+    if(error){console.error(error);toast("Não foi possível sair do grupo","error");return;}
+    this.dropLocal(c.id); toast("Você saiu do grupo");
+  },
+  async deleteConv(c,group){
+    const {error}=await sb.rpc(group?"delete_group_chat":"delete_direct_chat",{conv_id:c.id});
+    if(error){console.error(error);toast(group?"Não foi possível apagar o grupo":"Não foi possível apagar a conversa","error");return;}
+    this.dropLocal(c.id); toast(group?"Grupo apagado":"Conversa apagada");
   },
   clearConv(cid){
     const c=this.convs.find(x=>String(x.id)===String(cid));
