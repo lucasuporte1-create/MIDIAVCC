@@ -1591,7 +1591,10 @@ html[data-theme="light"] .sk::after{
 .chat-notif div b{display:block;font:700 14px var(--font-display);color:var(--ink)}
 .chat-notif button{flex:none;border:0;border-radius:10px;background:var(--sky-600);color:#fff;font:700 13px var(--font-display);padding:9px 14px;cursor:pointer}
 .chat-pin{display:inline-flex;line-height:1}
-@media (pointer:coarse){.chat-item[data-cid]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
+/* segurar não pode selecionar a página: vale para a linha e para tudo dentro dela (Safari não herda user-select) */
+.chat-item,.chat-item *,.cm,.cm *,.cmenu,.cmenu *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.chat-item img,.cm img{-webkit-user-drag:none;user-drag:none}
+.chat-ctx *,#chatIn{-webkit-user-select:text;user-select:text}
 .chat-item{display:flex;gap:12px;align-items:center;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);cursor:pointer;width:100%;text-align:left;font:inherit;color:var(--ink)}
 .chat-av{width:44px;height:44px;border-radius:50%;background:var(--sky-600);color:#fff;display:grid;place-items:center;font:700 17px var(--font-display);flex:none}
 .chat-mid{flex:1;min-width:0}
@@ -1638,7 +1641,7 @@ html[data-theme="light"] .sk::after{
 .cm.press .cb{filter:brightness(.9)}
 .cm.flash .cb{animation:cflash 1.2s}
 @keyframes cflash{0%,60%{box-shadow:0 0 0 3px var(--sky-500)}100%{box-shadow:none}}
-@media (pointer:coarse){.cb{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
+
 
 .cmenu{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
 .cmenu-bg{position:absolute;inset:0;background:rgba(0,0,0,.45)}
@@ -5396,6 +5399,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
+/* Evita que o toque longo selecione a página inteira (fica azul) nas conversas e mensagens */
+document.addEventListener("selectstart",e=>{
+  const el=e.target&&(e.target.nodeType===1?e.target:e.target.parentElement);
+  if(el&&el.closest&&el.closest(".chat-item,.cm,.cmenu")) e.preventDefault();
+},true);
+function clearSel(){ try{ const s=window.getSelection&&window.getSelection(); if(s&&s.removeAllRanges) s.removeAllRanges(); }catch(_){} }
+
 /* ================= CHAT (Supabase Realtime) ================= */
 const Chat={
   me:null,ch:null,convs:[],contacts:[],people:{},openId:null,seen:new Set(),
@@ -5613,7 +5623,7 @@ const Chat={
     sh.style.left=x+"px"; sh.style.top=y+"px";
   },
   showSheet(title,items,pt){
-    this.closeSheet();
+    this.closeSheet(); clearSel();
     const el=document.createElement("div"); el.className="cmenu"; el.id="chatMenu";
     el.innerHTML=`<div class="cmenu-bg"></div><div class="cmenu-sheet">${title?`<div class="cmenu-title">${esc(title)}</div>`:""}
       ${items.map((it,i)=>`<button class="cmenu-it${it.danger?" danger":""}" data-i="${i}"><span class="ic">${Chat.ico(it.icon)}</span><span>${it.html||esc(it.label)}</span></button>`).join("")}
