@@ -1289,6 +1289,105 @@ html[data-theme="light"] .toast.warn{ background:var(--warn); color:#fff; }
   .toast.warn.show,.toast.warn .toast-icon,.toast.info .toast-icon{ animation:none!important; }
   .toast.good .toast-icon path,.fb-core path,.btn-check path{ animation:none!important; stroke-dashoffset:0; }
 }
+
+/* ===========================================================
+   Feedback de EXCLUSÃO — mesma família do salvar, em tom danger.
+   Salvar expande e acende; excluir recolhe e se desfaz.
+   =========================================================== */
+:root{ --fb-del-on:#2d0a0a; }
+html[data-theme="light"]{ --fb-del-on:#fff; }
+.tr-lid{ transform-origin:4px 7px; }
+@keyframes fbLid{
+  0%{ transform:rotate(0) translateY(0) }
+  28%,58%{ transform:rotate(-26deg) translateY(-1.6px) }
+  82%{ transform:rotate(3deg) translateY(.4px) }
+  100%{ transform:rotate(0) translateY(0) }
+}
+@keyframes fbRingIn{ 0%{ transform:scale(1.9); opacity:0 } 30%{ opacity:.7 } 100%{ transform:scale(.9); opacity:0 } }
+
+/* toast de exclusão */
+.toast.del,html[data-theme="light"] .toast.del{ background:var(--danger); }
+.toast.del{ color:var(--fb-del-on); }
+html[data-theme="light"] .toast.del{ color:#fff; }
+.toast.del .toast-icon{
+  color:var(--fb-del-on); background:rgba(45,10,10,.14);
+  background:color-mix(in srgb,var(--fb-del-on) 14%,transparent);
+  animation:fbDelIcon .42s cubic-bezier(.2,1.2,.3,1) both;
+}
+.toast.del .toast-icon svg{ stroke-width:2.2; }
+.toast.del .toast-icon::after{
+  content:""; position:absolute; inset:-5px; border:1.5px solid var(--fb-del-on);
+  border-radius:50%; opacity:0; animation:fbRingIn .6s .05s ease-in both;
+}
+.toast.del .tr-lid{ animation:fbLid .6s .22s ease both; }
+@keyframes fbDelIcon{ 0%{ transform:scale(.6) rotate(10deg); opacity:.3 } 100%{ transform:scale(1); opacity:1 } }
+.fx.fall i{ background:var(--fb-del-on); animation:fbFall .7s .5s cubic-bezier(.4,0,.9,.6) both; }
+@keyframes fbFall{
+  0%{ opacity:0; transform:translate(var(--x),-4px) scale(1) }
+  15%{ opacity:.85 }
+  100%{ opacity:0; transform:translate(calc(var(--x) * 1.5),17px) scale(.3) }
+}
+
+/* carimbo de exclusão: a lixeira abre, fecha e some; cacos caem */
+.fb-stamp.is-del{ animation-duration:1.5s; }
+.fb-stamp.is-del::before{
+  background:radial-gradient(circle,rgba(235,107,107,.3),transparent 68%);
+  background:radial-gradient(circle,color-mix(in srgb,var(--danger) 32%,transparent),transparent 68%);
+  animation-duration:1.15s;
+}
+.fb-stamp.is-del .fb-core{
+  background:var(--danger); color:var(--fb-del-on);
+  box-shadow:0 14px 36px rgba(0,0,0,.28), 0 0 0 6px rgba(235,107,107,.22);
+  box-shadow:0 14px 36px rgba(0,0,0,.28), 0 0 0 6px color-mix(in srgb,var(--danger) 22%,transparent);
+  animation:fbDelCore 1.15s cubic-bezier(.3,0,.3,1) both;
+}
+.fb-stamp.is-del .fb-core svg{ stroke-width:2.4; }
+.fb-stamp.is-del .tr-lid{ animation:fbLid .62s .3s ease both; }
+@keyframes fbDelCore{
+  0%{ transform:scale(.3); opacity:0 }
+  22%{ transform:scale(1.08); opacity:1 }
+  36%,68%{ transform:scale(1); opacity:1 }
+  100%{ transform:scale(.15) rotate(-10deg); opacity:0 }
+}
+.fb-stamp.is-del .fb-ring{ border-color:var(--danger); animation:fbRingIn .8s .05s ease-in both; }
+.fb-stamp.is-del .fb-ring.r2{ border-color:var(--ink-faint); animation-delay:.22s; }
+.fb-stamp.is-del .fb-burst i{
+  background:var(--danger); opacity:0;
+  animation:fbCrumb .85s var(--dl,.6s) cubic-bezier(.4,0,.9,.6) both;
+}
+.fb-stamp.is-del .fb-burst i:nth-child(3n+2){ background:var(--ink-faint); }
+@keyframes fbCrumb{
+  0%{ opacity:0; transform:translate(var(--px),var(--py)) rotate(0) scale(1) }
+  15%{ opacity:1 }
+  100%{ opacity:0; transform:translate(calc(var(--px) * 1.25),calc(var(--py) + 78px)) rotate(var(--rot)) scale(.4) }
+}
+
+/* botão que vira "Excluído" */
+.btn.is-gone{
+  background:#ef4444!important; color:#fff!important; border:none;
+  box-shadow:0 8px 22px rgba(239,68,68,.38)!important;
+  pointer-events:none; animation:fbBtnGone .45s cubic-bezier(.2,1.2,.3,1) both;
+}
+.btn .btn-trash{ width:19px; height:19px; stroke-width:2.3; }
+.btn-trash .tr-lid{ animation:fbLid .55s .08s ease both; }
+@keyframes fbBtnGone{ 0%{ transform:scale(1) } 28%{ transform:scale(.94) } 62%{ transform:scale(1.025) } 100%{ transform:scale(1) } }
+
+/* o item some da lista: encolhe, desliza e desfoca */
+.fb-out{
+  overflow:hidden; pointer-events:none;
+  animation:fbOut .36s cubic-bezier(.55,0,.8,.4) forwards;
+}
+@keyframes fbOut{
+  0%{ opacity:1; transform:none; max-height:var(--h,80px); filter:none }
+  35%{ opacity:.9; transform:translateX(5px) scale(.985) }
+  100%{ opacity:0; transform:translateX(-28px) scale(.9); max-height:0;
+        margin-top:0; margin-bottom:0; padding-top:0; padding-bottom:0; border-width:0; filter:blur(3px) }
+}
+@media(prefers-reduced-motion:reduce){
+  .fb-stamp.is-del .fb-burst,.fb-stamp.is-del .fb-ring,.fx.fall{ display:none!important; }
+  .tr-lid,.toast.del .toast-icon,.toast.del .toast-icon::after{ animation:none!important; }
+  .fb-out{ animation-duration:.01ms!important; }
+}
 </style>
 </head>
 <body>
@@ -3228,8 +3327,8 @@ document.addEventListener("click", e=>{
     case "wa-member": waMember(id); break;
     case "swap-request": openSwapRequest(el.dataset.key, el.dataset.room, el.dataset.role); break;
     case "swap-accept": (async()=>{ try{ await Data.acceptSwap(id); toast("Troca confirmada! Você assumiu a escala.","good","stamp"); go(currentView); }catch(e){ toast("Não deu — "+e.message,"warn"); } })(); break;
-    case "swap-decline": (async()=>{ try{ await Data.setSwapStatus(id,"declined"); toast("Pedido recusado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
-    case "swap-cancel": (async()=>{ try{ await Data.setSwapStatus(id,"cancelled"); toast("Pedido cancelado.","good"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
+    case "swap-decline": (async()=>{ try{ await Data.setSwapStatus(id,"declined"); await fxOut(el.closest(".swap-card")); toast("Pedido recusado.","del"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
+    case "swap-cancel": (async()=>{ try{ await Data.setSwapStatus(id,"cancelled"); await fxOut(el.closest(".swap-card")); toast("Pedido cancelado.","del"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
     case "swap-wa": swapWhatsApp(id); break;
     case "swap-dismiss": {
       if(!Array.isArray(DB.settings.dismissedSwaps)) DB.settings.dismissedSwaps=[];
@@ -3290,9 +3389,12 @@ function confirmModal(message, onConfirm){
   `;
   openModal("Confirmar exclusão", body, foot);
   document.getElementById("confirmCancel").addEventListener("click", closeModal);
-  document.getElementById("confirmOk").addEventListener("click", ()=>{
-    closeModal();
-    onConfirm();
+  document.getElementById("confirmOk").addEventListener("click", async ()=>{
+    const ok=document.getElementById("confirmOk"); const o=ok.textContent;
+    ok.disabled=true; ok.textContent="Excluindo...";
+    // o modal só fecha quando a exclusão dá certo (delFx); se falhar, o botão volta
+    try{ await onConfirm(); }catch(_){}
+    if(ok.isConnected && !ok.classList.contains("is-gone")){ ok.disabled=false; ok.textContent=o; }
   });
 }
 
@@ -3447,7 +3549,7 @@ function editMember(mid){
   const mDelBtn = document.getElementById("mDelete");
   if(mid && mDelBtn) mDelBtn.addEventListener("click", async ()=>{
   confirmModal("Excluir esta pessoa? Ela sairá das escalas futuras.", async ()=>{
-    try{ await Data.deleteMember(mid); closeModal(); go("membros"); toast("Pessoa removida","good"); }
+    try{ await Data.deleteMember(mid); await delFx({btn:document.getElementById("confirmOk"), out:'.person[data-action="open-member"][data-id="'+mid+'"]'}); go("membros"); toast("Pessoa removida","del","stamp"); }
     catch(e){ toast("Não removeu — "+e.message,"warn"); }
   });
 }) ;
@@ -3558,8 +3660,9 @@ function editRoom(rid){
   });
   if(rid) document.getElementById("rDelete").addEventListener("click", async ()=>{
     if(!confirm("Excluir esta área? Ela sairá das escalas.")) return;
-    try{ await Data.deleteRoom(rid); closeModal(); go("config"); toast("Área removida","good"); }
-    catch(e){ toast("Não removeu — "+e.message,"warn"); }
+    const db=document.getElementById("rDelete"), o=db.textContent; db.disabled=true; db.textContent="Excluindo...";
+    try{ await Data.deleteRoom(rid); await delFx({btn:db, out:'[data-action="edit-room"][data-id="'+rid+'"],[data-action="open-area"][data-room-id="'+rid+'"]'}); go("config"); toast("Área removida","del","stamp"); }
+    catch(e){ db.disabled=false; db.textContent=o; toast("Não removeu — "+e.message,"warn"); }
   });
 }
 
@@ -3589,8 +3692,9 @@ function editService(sid){
   });
   if(sid) document.getElementById("sDelete").addEventListener("click", async ()=>{
     if(!confirm("Excluir este culto recorrente?")) return;
-    try{ await Data.deleteService(sid); closeModal(); go("config"); toast("Removido","good"); }
-    catch(e){ toast("Não removeu — "+e.message,"warn"); }
+    const db=document.getElementById("sDelete"), o=db.textContent; db.disabled=true; db.textContent="Excluindo...";
+    try{ await Data.deleteService(sid); await delFx({btn:db, out:'[data-action="edit-service"][data-id="'+sid+'"]'}); go("config"); toast("Culto removido","del","stamp"); }
+    catch(e){ db.disabled=false; db.textContent=o; toast("Não removeu — "+e.message,"warn"); }
   });
 }
 
@@ -3694,7 +3798,7 @@ function editEvent(eid, presetDate, presetKind){
   });
   if(eid) document.getElementById("eDelete").addEventListener("click", async ()=>{
   confirmModal("Excluir este evento?", async ()=>{
-    try{ await Data.deleteEvent(eid); closeModal(); go("calendario"); toast("Evento removido","good"); }
+    try{ await Data.deleteEvent(eid); await delFx({btn:document.getElementById("confirmOk"), out:'[data-action="edit-event"][data-id="'+eid+'"]', up:".event-line"}); go("calendario"); toast("Evento removido","del","stamp"); }
     catch(e){ toast("Não removeu — "+e.message,"warn"); }
   });
 });
@@ -4187,7 +4291,7 @@ function handleImportFile(e){
 function confirmReset(){
   if(!confirm("Isso apaga TODOS os dados (equipe, salas, escalas). Tem certeza?")) return;
   if(!confirm("Confirma mesmo? Não dá para desfazer.")) return;
-  localStorage.removeItem(STORE_KEY); DB=seed(); save(); go("home"); toast("Tudo recomeçado","good");
+  localStorage.removeItem(STORE_KEY); DB=seed(); save(); go("home"); toast("Tudo recomeçado","del","stamp");
 }
 
 /* =====================================================================
@@ -4202,9 +4306,10 @@ function emptyState(emoji,title,text,btn){
    ===================================================================== */
 const FB_REDUCED = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
 const fbReduced = ()=> !!(FB_REDUCED && FB_REDUCED.matches);
+const FB_TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true"><g class="tr-lid"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></g><path d="M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-12"/><path d="M10 11v5M14 11v5"/></svg>';
 const FB_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="m5 12.5 4.2 4.2L19 7"/></svg>';
 function fbBuzz(kind){
-  try{ if(navigator.vibrate && !fbReduced()) navigator.vibrate(kind==="warn" ? [18,50,18] : 14); }catch(_){}
+  try{ if(navigator.vibrate && !fbReduced()) navigator.vibrate(kind==="warn" ? [18,50,18] : (kind==="del" ? [10,40,22] : 14)); }catch(_){}
 }
 
 let toastT, toastHideT;
@@ -4213,10 +4318,12 @@ function toast(msg,type,opt){
   const el=document.getElementById("toast");
   if(!el) return;
   clearTimeout(toastT); clearTimeout(toastHideT);
-  const kind = type==="good" ? "good" : (type==="warn" ? "warn" : "info");
+  const kind = type==="good" ? "good" : (type==="warn" ? "warn" : (type==="del" ? "del" : "info"));
   const icon = kind==="good"
     ? FB_CHECK
-    : kind==="warn"
+    : kind==="del"
+      ? FB_TRASH
+      : kind==="warn"
       ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5m0 3h.01"/><path d="M10.3 3.9 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3l-7.5-13.1a2 2 0 0 0-3.4 0Z"/></svg>'
       : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v-4m0-4h.01"/><circle cx="12" cy="12" r="9"/></svg>';
   el.className="toast "+kind;
@@ -4234,6 +4341,12 @@ function toast(msg,type,opt){
     for(let i=0;i<8;i++){ const d=document.createElement("i"); d.style.setProperty("--a",(i*45)+"deg"); fx.appendChild(d); }
     iconWrap.appendChild(fx);
   }
+  if(kind==="del"){
+    const fx=document.createElement("span");
+    fx.className="fx fall"; fx.setAttribute("aria-hidden","true");
+    [-9,-4,0,5,9,-6].forEach((x,k)=>{ const d=document.createElement("i"); d.style.setProperty("--x",x+"px"); d.style.animationDelay=(.5+k*.04)+"s"; fx.appendChild(d); });
+    iconWrap.appendChild(fx);
+  }
   const progress=document.createElement("span");
   progress.className="toast-progress";
   el.replaceChildren(iconWrap,message,progress);
@@ -4243,7 +4356,7 @@ function toast(msg,type,opt){
   void el.offsetWidth;
   requestAnimationFrame(()=>el.classList.add("show"));
   fbBuzz(kind);
-  if(kind==="good" && opt==="stamp") stamp();
+  if((kind==="good" || kind==="del") && opt==="stamp") stamp(kind);
   toastT=setTimeout(()=>{
     el.classList.remove("show");
     toastHideT=setTimeout(()=>{el.hidden=true;},240);
@@ -4252,22 +4365,52 @@ function toast(msg,type,opt){
 
 /* Carimbo central: círculo com check desenhado, ondas e confete discreto */
 let stampT;
-function stamp(){
+function stamp(kind){
+  const del = kind==="del";
   clearTimeout(stampT);
   document.querySelectorAll(".fb-stamp").forEach(n=>n.remove());
-  const n=12; let dots="";
+  const n = del ? 10 : 12; let dots="";
   for(let i=0;i<n;i++){
-    const a=Math.round(i*(360/n)+(i%2?9:-5));
-    const d=54+((i*17)%22);
-    dots+='<i style="--a:'+a+'deg;--d:'+d+'px"></i>';
+    if(del){
+      // cacos que se soltam da lixeira e caem
+      const a=(i*(360/n)+(i%2?10:-8))*Math.PI/180;
+      const px=Math.round(Math.cos(a)*30), py=Math.round(Math.sin(a)*30);
+      const rot=(i%2?1:-1)*(120+i*28);
+      const dl=(0.6+((i*7)%5)*0.05).toFixed(2);
+      dots+='<i style="--px:'+px+'px;--py:'+py+'px;--rot:'+rot+'deg;--dl:'+dl+'s"></i>';
+    }else{
+      const a=Math.round(i*(360/n)+(i%2?9:-5));
+      const d=54+((i*17)%22);
+      dots+='<i style="--a:'+a+'deg;--d:'+d+'px"></i>';
+    }
   }
   const el=document.createElement("div");
-  el.className="fb-stamp"; el.setAttribute("aria-hidden","true");
+  el.className="fb-stamp"+(del?" is-del":""); el.setAttribute("aria-hidden","true");
   el.innerHTML='<span class="fb-ring"></span><span class="fb-ring r2"></span>'
-    +'<span class="fb-core">'+FB_CHECK+'</span><span class="fb-burst">'+dots+'</span>';
+    +'<span class="fb-core">'+(del?FB_TRASH:FB_CHECK)+'</span><span class="fb-burst">'+dots+'</span>';
   document.body.appendChild(el);
-  stampT=setTimeout(()=>el.remove(), fbReduced()?900:1600);
+  stampT=setTimeout(()=>el.remove(), fbReduced()?900:(del?1700:1600));
 }
+
+/* Botão de excluir vira "Excluído" com a tampa da lixeira abrindo e fechando */
+function btnGone(btn,label){
+  if(!btn) return Promise.resolve();
+  btn.disabled=true;
+  btn.classList.remove("is-done"); btn.classList.add("is-gone");
+  btn.innerHTML=FB_TRASH.replace("<svg ",'<svg class="btn-trash" ')+'<span>'+(label||"Excluído")+'</span>';
+  return new Promise(r=>setTimeout(r, fbReduced()?80:420));
+}
+/* O item some da lista: sel = seletor ou elemento; up = ancestral a animar (opcional) */
+function fxOut(sel, up){
+  const nodes = typeof sel==="string" ? [...document.querySelectorAll(sel)] : (sel ? [sel] : []);
+  const out=[];
+  nodes.forEach(n=>{ const t = up ? n.closest(up) : n; if(t && !out.includes(t) && t.offsetHeight>0) out.push(t); });
+  if(!out.length || fbReduced()) return Promise.resolve();
+  out.forEach(t=>{ t.style.setProperty("--h", t.offsetHeight+"px"); t.classList.add("fb-out"); });
+  return new Promise(r=>setTimeout(r,360));
+}
+/* Sequência completa: botão vira "Excluído" → modal fecha → item some da lista */
+async function delFx(o){ await btnGone(o.btn, o.label); closeModal(); await fxOut(o.out, o.up); }
 
 /* Botão principal vira "Salvo ✓" por um instante antes de fechar o modal */
 function btnDone(btn,label){
@@ -4538,7 +4681,7 @@ openProfileDrawer(); // re-renderiza
     const updated = {...me, photo:""};
     try{
       await saveMemberPhoto(me.id, "");
-toast("Foto removida","good");
+toast("Foto removida","del");
 const profileBtn = document.querySelector(".profile-btn div");
 if(profileBtn){ profileBtn.style.backgroundImage=""; profileBtn.textContent=initials(me.name); }
 openProfileDrawer();
