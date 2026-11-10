@@ -1585,7 +1585,7 @@ html[data-theme="light"] .sk::after{
 .chat-top{display:flex;gap:8px}
 .chat-top input{flex:1}
 .chat-item.press{filter:brightness(.92)}
-.chat-pin{font-size:11px;line-height:1}
+.chat-pin{display:inline-flex;line-height:1}
 @media (pointer:coarse){.chat-item[data-cid]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
 .chat-item{display:flex;gap:12px;align-items:center;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);cursor:pointer;width:100%;text-align:left;font:inherit;color:var(--ink)}
 .chat-av{width:44px;height:44px;border-radius:50%;background:var(--sky-600);color:#fff;display:grid;place-items:center;font:700 17px var(--font-display);flex:none}
@@ -1598,7 +1598,7 @@ html[data-theme="light"] .sk::after{
 .chat-thread{position:fixed;inset:0;z-index:60;background:var(--paper);display:flex;flex-direction:column}
 .chat-head{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;border-bottom:1px solid var(--line);background:var(--card)}
 .chat-head b{font:700 16px var(--font-display);color:var(--ink)}
-.chat-head button{border:0;background:none;font-size:24px;color:var(--ink);cursor:pointer;padding:0 6px}
+.chat-head button{border:0;background:none;display:grid;place-items:center;font-size:24px;color:var(--ink);cursor:pointer;padding:0 6px}
 .chat-msgs{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:6px}
 .cm{display:flex}.cm.me{justify-content:flex-end}
 .cb{max-width:80%;padding:8px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);color:var(--ink);font-size:14.5px;line-height:1.35;white-space:pre-wrap;word-break:break-word}
@@ -1620,7 +1620,7 @@ html[data-theme="light"] .sk::after{
 .chat-ctx-body{flex:1;min-width:0;border-left:3px solid var(--sky-600);padding:2px 0 2px 10px}
 .chat-ctx-body b{display:block;font:700 12px var(--font-display);color:var(--sky-600)}
 .chat-ctx-body span{display:block;font-size:13px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat-ctx button{border:0;background:none;font-size:20px;color:var(--ink-soft);cursor:pointer;width:32px;height:32px;flex:none}
+.chat-ctx button{border:0;background:none;display:grid;place-items:center;font-size:20px;color:var(--ink-soft);cursor:pointer;width:32px;height:32px;flex:none}
 
 .cb-quote{border-left:3px solid var(--sky-600);background:rgba(127,127,127,.14);border-radius:8px;padding:4px 8px;margin-bottom:5px;cursor:pointer;font-size:13px}
 .cm.me .cb-quote{border-left-color:rgba(255,255,255,.85);background:rgba(0,0,0,.18)}
@@ -1643,14 +1643,21 @@ html[data-theme="light"] .sk::after{
 .cmenu-title{padding:8px 12px 10px;font-size:13px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line);margin-bottom:4px}
 .cmenu-it{display:flex;align-items:center;gap:14px;width:100%;padding:13px 12px;border:0;background:none;font:inherit;font-size:16px;font-weight:500;color:var(--ink);cursor:pointer;border-radius:10px;text-align:left}
 .cmenu-it:active{background:var(--paper)}
-.cmenu-it .ic{width:22px;text-align:center;flex:none}
+.cmenu-it .ic{width:22px;height:22px;flex:none;display:grid;place-items:center;color:var(--sky-600)}
+.cmenu-it .ic svg,.chat-ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
+.cmenu-it.danger .ic,.cmenu-it.cancel .ic{color:inherit}
+.chat-ico.sm{width:14px;height:14px;display:inline-block;vertical-align:-2px;margin-right:4px}
+.chat-ico.btn-ico{width:18px;height:18px;display:inline-block}
+.chat-head button svg,.chat-ctx button svg,.cview button svg{width:22px;height:22px}
+.chat-send #chatGo svg{width:21px;height:21px;margin:0 auto;transform:translateX(-1px)}
+.chat-pin .chat-ico{width:13px;height:13px;color:var(--ink-soft)}
 .cmenu-it.danger{color:var(--danger)}
 .cmenu-it.cancel{color:var(--ink-soft);margin-top:4px}
 .cmenu-it .chat-av{width:36px;height:36px;font-size:14px}
 
 .cview{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.92);display:grid;place-items:center;cursor:zoom-out}
 .cview img{max-width:100%;max-height:100%;object-fit:contain}
-.cview button{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:14px;border:0;background:rgba(255,255,255,.18);color:#fff;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer}
+.cview button{display:grid;place-items:center;position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:14px;border:0;background:rgba(255,255,255,.18);color:#fff;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer}
 
 /* --- chat: grupos --- */
 .chat-av.grp{background:linear-gradient(135deg,#2f9e6e,#1f87c8)}
@@ -5388,7 +5395,26 @@ document.addEventListener("DOMContentLoaded", () => {
 const Chat={
   me:null,ch:null,convs:[],contacts:[],people:{},openId:null,seen:new Set(),
   msgs:{},ctx:null,pending:null,sending:false,hidden:new Set(),pins:new Set(),clr:{},
-  PHOTO:"📷 Foto",DEL:"Mensagem apagada",
+  PHOTO:"📷 Foto",DEL:"Mensagem apagada",   /* PHOTO é marcador gravado no banco: não alterar */
+  ICONS:{
+    reply:'<polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
+    forward:'<polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>',
+    edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
+    hide:'<path d="M17.9 17.9A10.1 10.1 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5.1-5.9"/><path d="M9.9 4.2A9.7 9.7 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2"/><path d="M14.1 14.1a3 3 0 0 1-4.2-4.2"/><path d="M1 1l22 22"/>',
+    chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12Z"/>',
+    image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+    check:'<polyline points="20 6 9 17 4 12"/>',
+    pin:'<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3v2H7v-2l3-3Z"/>',
+    unpin:'<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3v2H7v-2l3-3Z"/><path d="M3 3l18 18"/>',
+    x:'<path d="M18 6L6 18M6 6l12 12"/>',
+    send:'<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4Z"/>',
+    users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    ban:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+    back:'<polyline points="15 18 9 12 15 6"/>'
+  },
+  ico(n,cls){return `<svg class="chat-ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${this.ICONS[n]||""}</svg>`;},
   async start(){
     if(!USE_SUPABASE||!Auth.user||this.me===Auth.user.id) return;
     this.me=Auth.user.id;
@@ -5476,18 +5502,18 @@ const Chat={
   /* ---------- texto de prévia (lista, resposta, menu) ---------- */
   preview(m){
     if(!m) return "Sem mensagens";
-    if(m.deleted_at) return "🚫 "+this.DEL;
-    if(m.image_url&&(!m.body||m.body===this.PHOTO)) return this.PHOTO;
+    if(m.deleted_at) return this.DEL;
+    if(m.image_url&&(!m.body||m.body===this.PHOTO)) return "Foto";
     return m.body||"";
   },
 
   /* ---------- bolhas ---------- */
   html(m){
     const time=this.hm(m.created_at);
-    if(m.deleted_at) return `<div class="cb cb-del">🚫 ${this.DEL}<small>${time}</small></div>`;
+    if(m.deleted_at) return `<div class="cb cb-del">${Chat.ico("ban","sm")}${this.DEL}<small>${time}</small></div>`;
     let h="";
     if(this.isGroup&&m.sender_id!==this.me) h+=`<div class="cb-who" style="color:${this.color(m.sender_id)}">${esc(this.who(m.sender_id))}</div>`;
-    if(m.forwarded) h+=`<div class="cb-fwd">↪ Encaminhada</div>`;
+    if(m.forwarded) h+=`<div class="cb-fwd">${Chat.ico("forward","sm")}Encaminhada</div>`;
     if(m.reply_to){
       const r=this.msgs[m.reply_to];
       h+=`<div class="cb-quote" data-q="${esc(String(m.reply_to))}"><b>${r?esc(r.sender_id===this.me?"Você":this.nameOf(r.sender_id)):"Mensagem"}</b><span>${r?esc(this.preview(r)):"Mensagem indisponível"}</span></div>`;
@@ -5529,8 +5555,8 @@ const Chat={
     this.closeSheet();
     const el=document.createElement("div"); el.className="cmenu"; el.id="chatMenu";
     el.innerHTML=`<div class="cmenu-bg"></div><div class="cmenu-sheet">${title?`<div class="cmenu-title">${esc(title)}</div>`:""}
-      ${items.map((it,i)=>`<button class="cmenu-it${it.danger?" danger":""}" data-i="${i}"><span class="ic">${it.icon||""}</span><span>${it.html||esc(it.label)}</span></button>`).join("")}
-      <button class="cmenu-it cancel" data-x="1"><span class="ic">✕</span><span>Cancelar</span></button></div>`;
+      ${items.map((it,i)=>`<button class="cmenu-it${it.danger?" danger":""}" data-i="${i}"><span class="ic">${Chat.ico(it.icon)}</span><span>${it.html||esc(it.label)}</span></button>`).join("")}
+      <button class="cmenu-it cancel" data-x="1"><span class="ic">${Chat.ico("x")}</span><span>Cancelar</span></button></div>`;
     el.addEventListener("click",e=>{
       if(e.target.classList.contains("cmenu-bg")){this.closeSheet();return;}
       const b=e.target.closest("button"); if(!b) return;
@@ -5546,18 +5572,18 @@ const Chat={
     if(cm) cm.classList.add("press");
     const items=[];
     if(!m.deleted_at){
-      items.push({icon:"↩",label:"Responder",fn:()=>this.reply(id)});
-      items.push({icon:"↪",label:"Encaminhar",fn:()=>this.fwdPick(id,pt)});
+      items.push({icon:"reply",label:"Responder",fn:()=>this.reply(id)});
+      items.push({icon:"forward",label:"Encaminhar",fn:()=>this.fwdPick(id,pt)});
       const hasText=m.body&&!(m.image_url&&m.body===this.PHOTO);
-      if(mine&&hasText) items.push({icon:"✎",label:"Editar",fn:()=>this.edit(id)});
+      if(mine&&hasText) items.push({icon:"edit",label:"Editar",fn:()=>this.edit(id)});
     }
-    items.push({icon:"🗑",label:"Excluir",danger:true,fn:()=>this.delMenu(id,pt)});
+    items.push({icon:"trash",label:"Excluir",danger:true,fn:()=>this.delMenu(id,pt)});
     this.showSheet(this.preview(m),items,pt);
   },
   delMenu(id,pt){
     const m=this.msgs[id], mine=m.sender_id===this.me, items=[];
-    if(mine&&!m.deleted_at) items.push({icon:"🗑",label:"Excluir para todos",danger:true,fn:()=>this.delAll(id)});
-    items.push({icon:"🙈",label:"Excluir só para mim",danger:true,fn:()=>this.delMe(id)});
+    if(mine&&!m.deleted_at) items.push({icon:"trash",label:"Excluir para todos",danger:true,fn:()=>this.delAll(id)});
+    items.push({icon:"hide",label:"Excluir só para mim",danger:true,fn:()=>this.delMe(id)});
     this.showSheet("Excluir mensagem?",items,pt);
   },
   async delAll(id){
@@ -5586,11 +5612,11 @@ const Chat={
     const c=this.convs.find(x=>String(x.id)===String(cid)); if(!c||document.getElementById("chatMenu")) return;
     const row=document.querySelector(`.chat-item[data-cid="${CSS.escape(String(cid))}"]`); if(row) row.classList.add("press");
     const pinned=this.pins.has(String(cid)), ph=c.group?c.avatar:this.pic(c.uid), items=[];
-    items.push({icon:"💬",label:"Abrir conversa",fn:()=>this.openThread(c.id,c.title,c.uid,c.group,c.members,c.avatar)});
-    if(ph) items.push({icon:"🖼",label:"Ver foto",fn:()=>this.viewer(ph)});
-    if(c.unread) items.push({icon:"✓",label:"Marcar como lida",fn:async()=>{await this.markRead(c.id); this.refreshList();}});
-    items.push({icon:"📌",label:pinned?"Desafixar":"Fixar no topo",fn:()=>this.togglePin(c.id)});
-    items.push({icon:"🙈",label:"Ocultar conversa",danger:true,fn:()=>this.clearMenu(c,pt)});
+    items.push({icon:"chat",label:"Abrir conversa",fn:()=>this.openThread(c.id,c.title,c.uid,c.group,c.members,c.avatar)});
+    if(ph) items.push({icon:"image",label:"Ver foto",fn:()=>this.viewer(ph)});
+    if(c.unread) items.push({icon:"check",label:"Marcar como lida",fn:async()=>{await this.markRead(c.id); this.refreshList();}});
+    items.push({icon:pinned?"unpin":"pin",label:pinned?"Desafixar":"Fixar no topo",fn:()=>this.togglePin(c.id)});
+    items.push({icon:"hide",label:"Ocultar conversa",danger:true,fn:()=>this.clearMenu(c,pt)});
     this.showSheet(c.title,items,pt);
   },
   togglePin(cid){
@@ -5600,7 +5626,7 @@ const Chat={
   },
   clearMenu(c,pt){
     this.showSheet("Ocultar só neste aparelho?",[
-      {icon:"🙈",label:"Ocultar conversa",danger:true,fn:()=>this.clearConv(c.id)}],pt);
+      {icon:"hide",label:"Ocultar conversa",danger:true,fn:()=>this.clearConv(c.id)}],pt);
   },
   clearConv(cid){
     const c=this.convs.find(x=>String(x.id)===String(cid));
@@ -5628,7 +5654,7 @@ const Chat={
     this.editWas=c.type==="edit";
     const who=c.type==="edit"?"Editando mensagem":("Respondendo a "+(m.sender_id===this.me?"você":this.nameOf(m.sender_id)));
     el.hidden=false;
-    el.innerHTML=`<div class="chat-ctx-body"><b>${esc(who)}</b><span>${esc(this.preview(m))}</span></div><button type="button" aria-label="Cancelar">✕</button>`;
+    el.innerHTML=`<div class="chat-ctx-body"><b>${esc(who)}</b><span>${esc(this.preview(m))}</span></div><button type="button" aria-label="Cancelar">${Chat.ico("x")}</button>`;
     el.querySelector("button").onclick=()=>this.clearCtx();
   },
   focus(){const i=document.getElementById("chatIn"); if(i) i.focus();},
@@ -5696,12 +5722,12 @@ const Chat={
     const el=document.getElementById("chatPrev"); if(!el) return;
     if(!this.pending){el.hidden=true;el.innerHTML="";return;}
     el.hidden=false;
-    el.innerHTML=`<img src="${this.pending.url}" alt=""><div class="chat-ctx-body"><b>Foto</b><span>Adicione uma legenda se quiser</span></div><button type="button" aria-label="Remover foto">✕</button>`;
+    el.innerHTML=`<img src="${this.pending.url}" alt=""><div class="chat-ctx-body"><b>Foto</b><span>Adicione uma legenda se quiser</span></div><button type="button" aria-label="Remover foto">${Chat.ico("x")}</button>`;
     el.querySelector("button").onclick=()=>this.clearPending();
   },
   viewer(src){
     const v=document.createElement("div"); v.className="cview";
-    v.innerHTML=`<img src="${esc(src)}" alt="Foto"><button type="button" aria-label="Fechar">✕</button>`;
+    v.innerHTML=`<img src="${esc(src)}" alt="Foto"><button type="button" aria-label="Fechar">${Chat.ico("x")}</button>`;
     v.onclick=()=>v.remove(); document.body.appendChild(v);
   },
 
@@ -5780,7 +5806,7 @@ const Chat={
     const sub=group?[...(members||[]).map(u=>this.who(u)),"Você"].join(", "):"";
     this.openId=id; this.msgs={}; this.ctx=null; this.pending=null; this.sending=false;
     const o=document.createElement("div"); o.className="chat-thread"; o.id="chatThread";
-    o.innerHTML=`<div class="chat-head"><button id="chatBack" aria-label="Voltar">‹</button>${this.av(uid,title,group,avatar)}<div class="chat-hd-t"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div></div>
+    o.innerHTML=`<div class="chat-head"><button id="chatBack" aria-label="Voltar">${this.ico("back")}</button>${this.av(uid,title,group,avatar)}<div class="chat-hd-t"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div></div>
       <div class="chat-msgs" id="chatMsgs"></div>
       <div class="chat-foot">
         <div class="chat-ctx" id="chatCtx" hidden></div>
@@ -5788,7 +5814,7 @@ const Chat={
         <div class="chat-send">
           <button type="button" class="chat-attach" id="chatAttach" aria-label="Enviar foto"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/></svg></button>
           <textarea id="chatIn" rows="1" placeholder="Mensagem" enterkeyhint="send"></textarea>
-          <button type="button" id="chatGo" aria-label="Enviar">➤</button>
+          <button type="button" id="chatGo" aria-label="Enviar">${this.ico("send")}</button>
         </div>
         <input type="file" id="chatFile" accept="image/*" hidden>
       </div>`;
@@ -5863,9 +5889,9 @@ function renderChat(content){
   const list=Chat.convs.map(c=>`<button class="chat-item" data-cid="${esc(String(c.id))}">
     ${Chat.av(c.uid,c.title,c.group,c.avatar)}
     <div class="chat-mid"><b>${esc(c.title)}</b><span>${c.last?esc((c.group&&c.last.sender_id!==Chat.me?Chat.who(c.last.sender_id).split(" ")[0]+": ":"")+Chat.preview(c.last)):"Sem mensagens"}</span></div>
-    <div class="chat-meta">${c.last?Chat.hm(c.last.created_at):""}${Chat.pins.has(String(c.id))?'<span class="chat-pin">📌</span>':""}${c.unread?`<em>${c.unread}</em>`:""}</div></button>`).join("");
+    <div class="chat-meta">${c.last?Chat.hm(c.last.created_at):""}${Chat.pins.has(String(c.id))?'<span class="chat-pin">${Chat.ico("pin")}</span>':""}${c.unread?`<em>${c.unread}</em>`:""}</div></button>`).join("");
   content.innerHTML=`<div class="chat-wrap">
-    <div class="chat-top"><button class="btn btn-primary" id="chatNew" style="flex:1">+ Nova conversa</button><button class="btn" id="chatNewGroup" style="flex:1">👥 Novo grupo</button></div>
+    <div class="chat-top"><button class="btn btn-primary" id="chatNew" style="flex:1">${Chat.ico("plus","btn-ico")} Nova conversa</button><button class="btn" id="chatNewGroup" style="flex:1">${Chat.ico("users","btn-ico")} Novo grupo</button></div>
     ${list||'<div class="chat-empty">Nenhuma conversa ainda.<br>Toque em “Nova conversa” ou “Novo grupo” para começar.</div>'}</div>`;
   /* segurar (toque) ou botão direito (mouse) numa conversa → menu, sem entrar nela */
   let lt=null,lsx=0,lsy=0,lfired=false;
@@ -5893,14 +5919,14 @@ function renderChat(content){
   const sorted=()=>Chat.contacts.slice().sort((a,b)=>Chat.nameOf(a.user_id).localeCompare(Chat.nameOf(b.user_id),"pt-BR"));
   content.querySelector("#chatNew").onclick=()=>{
     const people=sorted();
-    content.innerHTML=`<div class="chat-wrap"><div class="chat-top"><button class="btn" id="chatCancel">‹ Voltar</button></div>
+    content.innerHTML=`<div class="chat-wrap"><div class="chat-top"><button class="btn" id="chatCancel">${Chat.ico("back","btn-ico")} Voltar</button></div>
       ${people.map(p=>`<button class="chat-item" data-u="${esc(p.user_id)}">${Chat.av(p.user_id)}<div class="chat-mid"><b>${esc(Chat.nameOf(p.user_id))}</b></div></button>`).join("")||'<div class="chat-empty">Ninguém disponível.</div>'}</div>`;
     content.querySelector("#chatCancel").onclick=()=>renderChat(content);
     content.querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>Chat.startWith(b.dataset.u));
   };
   content.querySelector("#chatNewGroup").onclick=()=>{
     const people=sorted(), sel=new Set(), MIN=2;
-    content.innerHTML=`<div class="chat-wrap"><div class="chat-top"><button class="btn" id="chatCancel">‹ Voltar</button></div>
+    content.innerHTML=`<div class="chat-wrap"><div class="chat-top"><button class="btn" id="chatCancel">${Chat.ico("back","btn-ico")} Voltar</button></div>
       <div class="grp-head">
         <button type="button" class="grp-photo-btn" id="grpPhoto" aria-label="Escolher foto do grupo"><svg viewBox="0 0 24 24"><path d="M14.5 4.5h-5L7.3 7.2H4.3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h15.4a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3l-2.2-2.7Z"/><circle cx="12" cy="13.2" r="3.4"/></svg><span class="grp-photo-plus">+</span></button>
         <input class="grp-name" id="grpName" maxlength="40" placeholder="Nome do grupo" autocomplete="off">
