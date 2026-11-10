@@ -1135,33 +1135,29 @@ html[data-theme="light"] .cal-cell.today{background:var(--user-secondary)!import
 @media(prefers-reduced-motion:reduce){
   .member-filter-track .pick-item{transition:none}
 }
-\n
-/* Transição de tema com efeito de gota d'água */
+
+/* Transição de tema com efeito de gota d'água:
+   o tema novo nasce no ponto do toque e se espalha; um anel na cor de destaque acompanha a borda */
 .theme-drop-ripple{
-  position:fixed;
-  z-index:99999;
-  width:24px;
-  height:24px;
-  left:0;
-  top:0;
-  border-radius:50%;
-  pointer-events:none;
-  transform:translate(-50%,-50%) scale(.08);
-  opacity:.72;
+  position:fixed; z-index:99999; left:0; top:0; width:0; height:0; box-sizing:border-box;
+  border-radius:50%; pointer-events:none; opacity:0;
+  transform:translate(-50%,-50%);
   border:3px solid var(--drop-color,#fff);
-  box-shadow:0 0 0 7px color-mix(in srgb,var(--drop-color,#fff) 13%,transparent),
-             0 0 28px color-mix(in srgb,var(--drop-color,#fff) 45%,transparent);
-  animation:themeDropExpand .72s cubic-bezier(.16,.72,.24,1) forwards;
+  box-shadow:0 0 22px rgba(255,255,255,.4), inset 0 0 26px rgba(255,255,255,.18);
+  box-shadow:0 0 22px color-mix(in srgb,var(--drop-color,#fff) 55%,transparent),
+             inset 0 0 26px color-mix(in srgb,var(--drop-color,#fff) 22%,transparent);
+  view-transition-name:theme-drop;
 }
-@keyframes themeDropExpand{
-  0%{transform:translate(-50%,-50%) scale(.08);opacity:.78;border-width:4px}
-  45%{opacity:.55}
-  100%{transform:translate(-50%,-50%) scale(115);opacity:0;border-width:1px}
-}
+::view-transition-old(root),::view-transition-new(root){ animation:none; mix-blend-mode:normal; }
+::view-transition-old(root){ z-index:1; }
+::view-transition-new(root){ z-index:2; }
+::view-transition-group(theme-drop){ animation:none; z-index:3; }
+::view-transition-old(theme-drop){ display:none; }
+::view-transition-new(theme-drop){ animation:none; }
 .theme-opt{position:relative;overflow:hidden;isolation:isolate}
 .theme-opt:active{transform:scale(.975)}
 @media(prefers-reduced-motion:reduce){
-  .theme-drop-ripple{animation-duration:.01ms}
+  .theme-drop-ripple{display:none}
 }
 
 
@@ -1180,6 +1176,9 @@ html[data-theme="light"]{ --fb-on:#fff; }
 @keyframes fbDraw{ to{ stroke-dashoffset:0 } }
 
 /* ---------- Toast ---------- */
+/* display:flex do .toast anulava o [hidden]: o toast invisível ficava por cima do botão de salvar */
+.toast{ pointer-events:none; }
+.toast[hidden]{ display:none; }
 .toast{ transition:opacity .2s ease, transform .38s cubic-bezier(.2,.9,.3,1.16); }
 html[data-theme="light"] .toast.good{ background:var(--good); color:#fff; }
 html[data-theme="light"] .toast.warn{ background:var(--warn); color:#fff; }
@@ -1290,7 +1289,7 @@ html[data-theme="light"] .toast.warn{ background:var(--warn); color:#fff; }
   .toast.warn.show,.toast.warn .toast-icon,.toast.info .toast-icon{ animation:none!important; }
   .toast.good .toast-icon path,.fb-core path,.btn-check path{ animation:none!important; stroke-dashoffset:0; }
 }
-\n</style>
+</style>
 </head>
 <body>
   <div class="bg-ribbons" aria-hidden="true"></div>
@@ -3142,6 +3141,52 @@ function renderConfig(c){
   if(imp) imp.addEventListener("change", handleImportFile);
 }
 
+/* Gota d'água do tema: só os dois botões Claro/Escuro chamam isto */
+function themeDrop(t, x, y){
+  const root = document.documentElement;
+  const apply = ()=>{
+    root.setAttribute("data-theme", t);
+    try{ localStorage.setItem("escala-midia-theme", t); }catch(_){}
+    const m=document.getElementById("metaTheme"); if(m) m.setAttribute("content", t==="light"?"#F4F2EE":"#0D0D0F");
+    go("config");
+  };
+  if(fbReduced()){ apply(); return; }
+
+  const R = Math.hypot(Math.max(x, innerWidth-x), Math.max(y, innerHeight-y));
+  const D = 680, EASE = "cubic-bezier(.16,.72,.24,1)";
+  const ring = document.createElement("span");
+  ring.className = "theme-drop-ripple";
+  ring.style.left = x+"px"; ring.style.top = y+"px";
+  ring.style.setProperty("--drop-color", t==="light" ? "#2F6FD6" : "#FFD23F");
+  document.body.appendChild(ring);
+  const clean = ()=>ring.remove();
+  const startRing = ()=>{
+    const an = ring.animate([
+      {width:"0px", height:"0px", opacity:.95},
+      {opacity:.75, offset:.6},
+      {width:(2*R)+"px", height:(2*R)+"px", opacity:0}
+    ], {duration:D, easing:EASE, fill:"forwards"});
+    an.onfinish = clean;
+    setTimeout(clean, D+500);
+  };
+
+  if(typeof document.startViewTransition === "function"){
+    let vt=null;
+    try{ vt = document.startViewTransition(apply); }catch(_){ vt=null; }
+    if(vt){
+      vt.ready.then(()=>{
+        root.animate(
+          { clipPath:["circle(0px at "+x+"px "+y+"px)", "circle("+R+"px at "+x+"px "+y+"px)"] },
+          { duration:D, easing:EASE, pseudoElement:"::view-transition-new(root)" }
+        );
+        startRing();
+      }).catch(startRing);
+      return;
+    }
+  }
+  apply(); startRing();   // navegadores sem View Transitions: só o anel da gota
+}
+
 /* =====================================================================
    AÇÕES (event delegation)
    ===================================================================== */
@@ -3167,22 +3212,10 @@ document.addEventListener("click", e=>{
       const t = el.dataset.theme==="light" ? "light" : "dark";
       const current = document.documentElement.getAttribute("data-theme")==="light" ? "light" : "dark";
       if(t === current) break;
-
-      // A gota nasce no botão selecionado e se expande pela tela.
+      // A gota nasce onde o dedo tocou (ou no centro do botão, se foi por teclado).
       const rect = el.getBoundingClientRect();
-      const ripple = document.createElement("span");
-      ripple.className = "theme-drop-ripple";
-      ripple.style.left = (rect.left + rect.width/2) + "px";
-      ripple.style.top = (rect.top + rect.height/2) + "px";
-      ripple.style.setProperty("--drop-color", t==="light" ? "#F4F2EE" : "#0D0D0F");
-      document.body.appendChild(ripple);
-
-      document.documentElement.setAttribute("data-theme", t);
-      try{ localStorage.setItem("escala-midia-theme", t); }catch(_){}
-      const m=document.getElementById("metaTheme"); if(m) m.setAttribute("content", t==="light"?"#F4F2EE":"#0D0D0F");
-      ripple.addEventListener("animationend", ()=>ripple.remove(), {once:true});
-      setTimeout(()=>{ if(ripple.isConnected) ripple.remove(); }, 900);
-      go("config");
+      const hasPt = e.clientX || e.clientY;
+      themeDrop(t, hasPt ? e.clientX : rect.left + rect.width/2, hasPt ? e.clientY : rect.top + rect.height/2);
       break;
     }
     case "goto": go(el.dataset.view); break;
