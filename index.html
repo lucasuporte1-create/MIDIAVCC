@@ -1656,6 +1656,18 @@ html[data-theme="light"] .sk::after{
 .grp-name{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:inherit;font-size:16px;background:var(--card);color:var(--ink)}
 .grp-hint{font-size:13px;color:var(--ink-soft);padding:0 2px}
 .grp-pick input{width:22px;height:22px;flex:none;accent-color:var(--sky-600)}
+/* foto do grupo */
+.chat-av.has-photo{background-color:var(--line)}
+.grp-head{display:flex;align-items:center;gap:12px}
+.grp-head .grp-name{flex:1;min-width:0;width:auto}
+.grp-photo-btn{position:relative;flex:none;width:68px;height:68px;border-radius:50%;border:2px dashed var(--line);background:var(--card) center/cover no-repeat;color:var(--ink-soft);display:grid;place-items:center;cursor:pointer;padding:0;overflow:visible}
+.grp-photo-btn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.grp-photo-btn.has{border-style:solid;border-color:var(--sky-600)}
+.grp-photo-btn.has svg{display:none}
+.grp-photo-btn .grp-photo-plus{position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;border-radius:50%;background:var(--sky-600);color:#fff;font:700 16px/24px var(--font-display);text-align:center;border:2px solid var(--paper)}
+.grp-photo-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-soft);padding:0 2px;min-height:20px}
+.grp-photo-row button{border:0;background:none;color:var(--danger);font:600 13px var(--font-display);cursor:pointer;padding:2px 4px}
+.grp-photo-row button[hidden]{display:none}
 
 
 /* ===== topo novo: foto à esquerda, engrenagem ao lado da logo ===== */
@@ -5386,9 +5398,9 @@ const Chat={
   },
   async load(){
     const me=this.me;
-    const [a,c]=await Promise.all([
-      sb.from("conversation_members").select("conversation_id,last_read_at,conversations(id,type,name)").eq("user_id",me),
-      sb.rpc("chat_contacts")]);
+    const q=cols=>sb.from("conversation_members").select("conversation_id,last_read_at,conversations("+cols+")").eq("user_id",me);
+    let [a,c]=await Promise.all([q("id,type,name,avatar_url"),sb.rpc("chat_contacts")]);
+    if(a.error) a=await q("id,type,name");   // coluna avatar_url ainda não criada no banco
     this.contacts=c.data||[]; this.people={}; this.contacts.forEach(x=>this.people[x.user_id]=x);
     const mine=a.data||[], ids=mine.map(x=>x.conversation_id);
     if(!ids.length){this.convs=[];this.badge();return;}
@@ -5401,7 +5413,7 @@ const Chat={
       const unread=msgs.filter(y=>y.sender_id!==me&&y.created_at>x.last_read_at).length;
       const group=cv.type!=="direct";
       const others=(m.data||[]).filter(y=>y.conversation_id===cv.id&&y.user_id!==me).map(y=>y.user_id);
-      return {id:cv.id,group,members:others,uid:group?null:(other&&other.user_id),title:group?(cv.name||"Grupo"):this.nameOf(other&&other.user_id),last:msgs[0],unread};
+      return {id:cv.id,group,members:others,uid:group?null:(other&&other.user_id),title:group?(cv.name||"Grupo"):this.nameOf(other&&other.user_id),avatar:group?(cv.avatar_url||""):"",last:msgs[0],unread};
     }).sort((p,q)=>((q.last&&q.last.created_at)||"").localeCompare((p.last&&p.last.created_at)||""));
     this.badge();
   },
@@ -5437,9 +5449,9 @@ const Chat={
     const m=p.member_id&&typeof getMember==="function"?getMember(p.member_id):null;
     return (m&&m.photo)||p.avatar||"";
   },
-  av(uid,title,group){
-    const ph=group?"":this.pic(uid), n=(group||this.nameOf(uid)==="Conversa"?title:this.nameOf(uid))||"?";
-    return ph?`<div class="chat-av" style="background-image:url('${esc(ph)}');background-size:cover;background-position:center"></div>`
+  av(uid,title,group,avatar){
+    const ph=group?(avatar||""):this.pic(uid), n=(group||this.nameOf(uid)==="Conversa"?title:this.nameOf(uid))||"?";
+    return ph?`<div class="chat-av has-photo" style="background-image:url('${esc(ph)}');background-size:cover;background-position:center"></div>`
              :`<div class="chat-av${group?" grp":""}">${esc(n.trim().charAt(0).toUpperCase())}</div>`;
   },
   who(uid){const n=this.nameOf(uid);return n==="Conversa"?"Participante":n;},
@@ -5681,18 +5693,42 @@ const Chat={
   },
 
   /* ---------- tela da conversa ---------- */
-  async createGroup(name,ids){
+  /* recorta o centro em quadrado e reduz (foto de grupo não precisa ser grande) */
+  squareThumb(file,size=512){
+    return new Promise((res,rej)=>{
+      const url=URL.createObjectURL(file), img=new Image();
+      img.onload=()=>{
+        const s=Math.min(img.width,img.height), sx=(img.width-s)/2, sy=(img.height-s)/2, out=Math.min(size,s);
+        const c=document.createElement("canvas"); c.width=out; c.height=out;
+        c.getContext("2d").drawImage(img,sx,sy,s,s,0,0,out,out);
+        c.toBlob(b=>{URL.revokeObjectURL(url); b?res(b):rej(new Error("thumb"));},"image/jpeg",.85);
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("img"));};
+      img.src=url;
+    });
+  },
+  async setGroupAvatar(cid,blob){
+    const url=await this.upload(blob,cid);
+    const {error}=await sb.rpc("set_group_avatar",{conv_id:cid,url});
+    if(error) throw error;
+    return url;
+  },
+  async createGroup(name,ids,photoBlob){
     const {data,error}=await sb.rpc("create_group_chat",{group_name:name,member_ids:ids});
     if(error){console.error(error);toast("Não foi possível criar o grupo","error");return null;}
+    if(photoBlob){
+      try{await this.setGroupAvatar(data,photoBlob);}
+      catch(e){console.error(e);toast("Grupo criado, mas não foi possível salvar a foto","warn");}
+    }
     await this.load();
-    return this.convs.find(c=>String(c.id)===String(data))||{id:data,title:name,uid:null,group:true,members:ids};
+    return this.convs.find(c=>String(c.id)===String(data))||{id:data,title:name,uid:null,group:true,members:ids,avatar:""};
   },
-  async openThread(id,title,uid,group,members){
+  async openThread(id,title,uid,group,members,avatar){
     this.isGroup=!!group;
     const sub=group?[...(members||[]).map(u=>this.who(u)),"Você"].join(", "):"";
     this.openId=id; this.msgs={}; this.ctx=null; this.pending=null; this.sending=false;
     const o=document.createElement("div"); o.className="chat-thread"; o.id="chatThread";
-    o.innerHTML=`<div class="chat-head"><button id="chatBack" aria-label="Voltar">‹</button>${this.av(uid,title,group)}<div class="chat-hd-t"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div></div>
+    o.innerHTML=`<div class="chat-head"><button id="chatBack" aria-label="Voltar">‹</button>${this.av(uid,title,group,avatar)}<div class="chat-hd-t"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div></div>
       <div class="chat-msgs" id="chatMsgs"></div>
       <div class="chat-foot">
         <div class="chat-ctx" id="chatCtx" hidden></div>
@@ -5773,14 +5809,14 @@ function renderChat(content){
   if(!USE_SUPABASE){content.innerHTML='<div class="chat-empty">O chat precisa do Supabase configurado.</div>';return;}
   Chat.start();
   const list=Chat.convs.map(c=>`<button class="chat-item" data-cid="${esc(String(c.id))}">
-    ${Chat.av(c.uid,c.title,c.group)}
+    ${Chat.av(c.uid,c.title,c.group,c.avatar)}
     <div class="chat-mid"><b>${esc(c.title)}</b><span>${c.last?esc((c.group&&c.last.sender_id!==Chat.me?Chat.who(c.last.sender_id).split(" ")[0]+": ":"")+Chat.preview(c.last)):"Sem mensagens"}</span></div>
     <div class="chat-meta">${c.last?Chat.hm(c.last.created_at):""}${c.unread?`<em>${c.unread}</em>`:""}</div></button>`).join("");
   content.innerHTML=`<div class="chat-wrap">
     <div class="chat-top"><button class="btn btn-primary" id="chatNew" style="flex:1">+ Nova conversa</button><button class="btn" id="chatNewGroup" style="flex:1">👥 Novo grupo</button></div>
     ${list||'<div class="chat-empty">Nenhuma conversa ainda.<br>Toque em “Nova conversa” ou “Novo grupo” para começar.</div>'}</div>`;
   content.querySelectorAll(".chat-item").forEach(b=>b.onclick=()=>{
-    const c=Chat.convs.find(x=>String(x.id)===b.dataset.cid); if(c) Chat.openThread(c.id,c.title,c.uid,c.group,c.members);
+    const c=Chat.convs.find(x=>String(x.id)===b.dataset.cid); if(c) Chat.openThread(c.id,c.title,c.uid,c.group,c.members,c.avatar);
   });
   const sorted=()=>Chat.contacts.slice().sort((a,b)=>Chat.nameOf(a.user_id).localeCompare(Chat.nameOf(b.user_id),"pt-BR"));
   content.querySelector("#chatNew").onclick=()=>{
@@ -5793,11 +5829,38 @@ function renderChat(content){
   content.querySelector("#chatNewGroup").onclick=()=>{
     const people=sorted(), sel=new Set(), MIN=2;
     content.innerHTML=`<div class="chat-wrap"><div class="chat-top"><button class="btn" id="chatCancel">‹ Voltar</button></div>
-      <input class="grp-name" id="grpName" maxlength="40" placeholder="Nome do grupo" autocomplete="off">
+      <div class="grp-head">
+        <button type="button" class="grp-photo-btn" id="grpPhoto" aria-label="Escolher foto do grupo"><svg viewBox="0 0 24 24"><path d="M14.5 4.5h-5L7.3 7.2H4.3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h15.4a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3l-2.2-2.7Z"/><circle cx="12" cy="13.2" r="3.4"/></svg><span class="grp-photo-plus">+</span></button>
+        <input class="grp-name" id="grpName" maxlength="40" placeholder="Nome do grupo" autocomplete="off">
+      </div>
+      <input type="file" id="grpFile" accept="image/*" hidden>
+      <div class="grp-photo-row"><span id="grpPhotoTxt">Foto do grupo (opcional)</span><button type="button" id="grpPhotoRm" hidden>Remover foto</button></div>
       <div class="grp-hint" id="grpHint"></div>
       <button class="btn btn-primary" id="grpCreate" disabled>Criar grupo</button>
       ${people.map(p=>`<label class="chat-item grp-pick"><input type="checkbox" value="${esc(p.user_id)}">${Chat.av(p.user_id)}<div class="chat-mid"><b>${esc(Chat.nameOf(p.user_id))}</b></div></label>`).join("")||'<div class="chat-empty">Ninguém disponível.</div>'}</div>`;
     const nameEl=content.querySelector("#grpName"), hint=content.querySelector("#grpHint"), go=content.querySelector("#grpCreate");
+    /* foto do grupo: escolher, pré-visualizar, remover */
+    const phBtn=content.querySelector("#grpPhoto"), phFile=content.querySelector("#grpFile"),
+          phTxt=content.querySelector("#grpPhotoTxt"), phRm=content.querySelector("#grpPhotoRm");
+    let photoBlob=null, photoUrl=null;
+    const paintPhoto=()=>{
+      phBtn.style.backgroundImage=photoUrl?`url('${photoUrl}')`:"none";
+      phBtn.classList.toggle("has",!!photoUrl);
+      phRm.hidden=!photoUrl;
+      phTxt.textContent=photoUrl?"Foto selecionada":"Foto do grupo (opcional)";
+    };
+    const clearPhoto=()=>{ if(photoUrl) URL.revokeObjectURL(photoUrl); photoBlob=null; photoUrl=null; paintPhoto(); };
+    phBtn.onclick=()=>phFile.click();
+    phRm.onclick=clearPhoto;
+    phFile.onchange=async()=>{
+      const f=phFile.files&&phFile.files[0]; phFile.value=""; if(!f) return;
+      if(!f.type.startsWith("image/")){toast("Escolha uma imagem","error");return;}
+      try{
+        const b=await Chat.squareThumb(f);
+        if(photoUrl) URL.revokeObjectURL(photoUrl);
+        photoBlob=b; photoUrl=URL.createObjectURL(b); paintPhoto();
+      }catch(e){toast("Não foi possível abrir a imagem","error");}
+    };
     const upd=()=>{
       const n=sel.size;
       hint.textContent=n<MIN?`Selecione pelo menos ${MIN} pessoas (${n} selecionada${n===1?"":"s"})`:`${n} pessoas selecionadas`;
@@ -5806,12 +5869,13 @@ function renderChat(content){
     upd();
     nameEl.addEventListener("input",upd);
     content.querySelectorAll(".grp-pick input").forEach(c=>c.addEventListener("change",()=>{c.checked?sel.add(c.value):sel.delete(c.value);upd();}));
-    content.querySelector("#chatCancel").onclick=()=>renderChat(content);
+    content.querySelector("#chatCancel").onclick=()=>{clearPhoto();renderChat(content);};
     go.onclick=async()=>{
       go.disabled=true; go.textContent="Criando…";
-      const c=await Chat.createGroup(nameEl.value.trim(),[...sel]);
+      const c=await Chat.createGroup(nameEl.value.trim(),[...sel],photoBlob);
       if(!c){go.textContent="Criar grupo";upd();return;}
-      Chat.openThread(c.id,c.title,null,true,c.members);
+      clearPhoto();
+      Chat.openThread(c.id,c.title,null,true,c.members,c.avatar);
     };
   };
 }
