@@ -1615,6 +1615,41 @@ html[data-theme="light"] .sk::after{
 #topGear.is-on{background:rgba(255,255,255,.36)}
 html[data-theme="light"] #topGear.is-on{background:var(--sky-500);color:#fff}
 .chat-head .chat-av{width:36px;height:36px;font-size:14px}
+
+/* ============================================================
+   CORREÇÃO — FUNDO PRISMA
+   Remove completamente as camadas do fundo antigo quando
+   o usuário seleciona Prisma, evitando sobreposição visual.
+   ============================================================ */
+html[data-background-style="prism"] body::before,
+html[data-background-style="prism"] body::after{
+  display:none !important;
+  content:none !important;
+  background:none !important;
+  box-shadow:none !important;
+  filter:none !important;
+}
+
+html[data-background-style="prism"] .bg-ribbons{
+  /* O fundo antigo não participa mais da composição Prisma. */
+  background:transparent !important;
+  box-shadow:none !important;
+  opacity:1 !important;
+}
+
+/* O Prisma passa a ser a única camada gráfica do plano de fundo. */
+html[data-background-style="prism"] .bg-ribbons::before,
+html[data-background-style="prism"] .bg-ribbons::after{
+  display:block !important;
+}
+
+/* Evita que qualquer regra antiga do tema volte a aparecer por
+   baixo/por cima do Prisma durante a troca de estilo. */
+html[data-background-style="prism"] body{
+  background:
+    linear-gradient(145deg,#090713 0%,#10091b 48%,#080914 100%) !important;
+}
+
 </style>
 </head>
 <body>
