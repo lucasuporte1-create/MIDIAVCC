@@ -192,6 +192,11 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;color:var(--in
   font-family:var(--font-display);font-weight:700;font-size:13px;color:#fff;flex:none;
   border:2px solid #fff}
 .ava-row{display:flex}
+.plane-fx{position:fixed;inset:0;z-index:10000;pointer-events:none;overflow:hidden}
+.plane-fx .pl{position:absolute;left:0;top:0;width:48px;height:48px;margin:-24px 0 0 -24px;will-change:transform;filter:drop-shadow(0 8px 10px rgba(0,0,0,.4))}
+.plane-fx .pl svg{width:100%;height:100%;display:block;fill:var(--sun);stroke:#fff;stroke-width:1.1;stroke-linejoin:round}
+.plane-fx .tr{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--sun);opacity:.85;animation:planeTrail .85s ease-out forwards}
+@keyframes planeTrail{to{opacity:0;transform:scale(.2)}}
 .dnd-ava{display:inline-flex;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;border-radius:50%;transition:transform .15s}
 .dnd-ava *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .ava-row .dnd-ava:not(:first-child){margin-left:-10px}
@@ -2914,6 +2919,44 @@ function renderTrocas(c){
   });
   c.innerHTML = html;
 }
+/* Aviãozinho de papel cruzando a tela quando uma troca é solicitada */
+function planeFx(){
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const W = innerWidth, H = innerHeight;
+  const root = document.createElement("div"); root.className = "plane-fx";
+  const pl = document.createElement("div"); pl.className = "pl";
+  pl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>';
+  root.appendChild(pl); document.body.appendChild(root);
+  try{ navigator.vibrate && navigator.vibrate([12,40,12]); }catch(_){}
+  if(reduce){
+    pl.style.transform = `translate3d(${W/2}px,${H/2}px,0)`;
+    pl.animate([{opacity:0},{opacity:1},{opacity:0}], {duration:900});
+    setTimeout(() => root.remove(), 950); return;
+  }
+  const P = [{x:-60,y:H*.78},{x:W*.3,y:H*1.0},{x:W*.55,y:H*.02},{x:W+80,y:H*.2}];
+  const pt = t => { const u=1-t; return {
+    x:u*u*u*P[0].x+3*u*u*t*P[1].x+3*u*t*t*P[2].x+t*t*t*P[3].x,
+    y:u*u*u*P[0].y+3*u*u*t*P[1].y+3*u*t*t*P[2].y+t*t*t*P[3].y }; };
+  const dv = t => { const u=1-t; return {
+    x:3*u*u*(P[1].x-P[0].x)+6*u*t*(P[2].x-P[1].x)+3*t*t*(P[3].x-P[2].x),
+    y:3*u*u*(P[1].y-P[0].y)+6*u*t*(P[2].y-P[1].y)+3*t*t*(P[3].y-P[2].y) }; };
+  const dur = 1700, t0 = performance.now(); let last = 0;
+  (function frame(now){
+    const t = (now - t0) / dur;
+    if(t >= 1){ setTimeout(() => root.remove(), 900); return; }   // deixa o rastro sumir
+    const e = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;      // começa e termina suave
+    const p = pt(e), d = dv(e), ang = Math.atan2(d.y, d.x);
+    const sc = .75 + .45 * Math.sin(Math.PI * t);
+    pl.style.transform = `translate3d(${p.x}px,${p.y}px,0) rotate(${ang}rad) scale(${sc})`;
+    if(now - last > 32){
+      last = now;
+      const dot = document.createElement("div"); dot.className = "tr";
+      dot.style.left = p.x + "px"; dot.style.top = p.y + "px"; root.appendChild(dot);
+      setTimeout(() => dot.remove(), 900);
+    }
+    requestAnimationFrame(frame);
+  })(t0);
+}
 function openSwapRequest(occKey, roomId, role){
   const me=getMember(DB.settings.meId);
   if(!me){ toast("Defina quem é você nas configurações (engrenagem)","warn"); return; }
@@ -2941,9 +2984,12 @@ function openSwapRequest(occKey, roomId, role){
         sourceType: occKey.startsWith("e:")?"event":"service", sourceId:sid,
         roomId, role, requestedBy:me.id, targetId:sel.value,
         note:(document.getElementById("swapNote").value||"").trim() });
-      closeModal(); toast("Pedido enviado!","good","stamp");
-      swapWhatsApp(s.id);   // já abre o WhatsApp pro colega
+      closeModal(); planeFx(); toast("Pedido de troca enviado!","good");
       go(currentView);
+      // abre/cria o chat com o colega e deixa o aviso lá; sem conta no chat, cai no WhatsApp como antes
+      const r = await Chat.swapNotice(s, "request");
+      if(r) setTimeout(() => Chat.openFromPush(r.cid), 1800);
+      else swapWhatsApp(s.id);
     }catch(e){ sendBtn.disabled=false; toast("Não enviou — "+e.message,"warn"); }
   });
 }
@@ -4081,9 +4127,9 @@ document.addEventListener("click", e=>{
     case "edit-member": editMember(id); break;
     case "wa-member": waMember(id); break;
     case "swap-request": openSwapRequest(el.dataset.key, el.dataset.room, el.dataset.role); break;
-    case "swap-accept": (async()=>{ try{ await Data.acceptSwap(id); toast("Troca confirmada! Você assumiu a escala.","good","stamp"); go(currentView); }catch(e){ toast("Não deu — "+e.message,"warn"); } })(); break;
-    case "swap-decline": (async()=>{ try{ await Data.setSwapStatus(id,"declined"); await fxOut(el.closest(".swap-card")); toast("Pedido recusado.","del"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
-    case "swap-cancel": (async()=>{ try{ await Data.setSwapStatus(id,"cancelled"); await fxOut(el.closest(".swap-card")); toast("Pedido cancelado.","del"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
+    case "swap-accept": (async()=>{ try{ await Data.acceptSwap(id); toast("Troca confirmada! Você assumiu a escala.","good","stamp"); const sw=DB.swaps.find(x=>x.id===id); if(sw) Chat.swapNotice(sw,"accept"); go(currentView); }catch(e){ toast("Não deu — "+e.message,"warn"); } })(); break;
+    case "swap-decline": (async()=>{ try{ await Data.setSwapStatus(id,"declined"); const sw=DB.swaps.find(x=>x.id===id); if(sw) Chat.swapNotice(sw,"decline"); await fxOut(el.closest(".swap-card")); toast("Pedido recusado.","del"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
+    case "swap-cancel": (async()=>{ try{ await Data.setSwapStatus(id,"cancelled"); const sw=DB.swaps.find(x=>x.id===id); if(sw) Chat.swapNotice(sw,"cancel"); await fxOut(el.closest(".swap-card")); toast("Pedido cancelado.","del"); go(currentView); }catch(e){ toast("Erro — "+e.message,"warn"); } })(); break;
     case "swap-wa": swapWhatsApp(id); break;
     case "swap-dismiss": {
       if(!Array.isArray(DB.settings.dismissedSwaps)) DB.settings.dismissedSwaps=[];
@@ -6207,6 +6253,36 @@ const Chat={
       if(currentView==="chat") renderChat(document.getElementById("content"));
     };
     if(!matchMedia("(pointer:coarse)").matches) inp.focus();
+  },
+  /* aviso automático no chat entre as duas pessoas da troca (pedido, aceite, recusa, cancelamento) */
+  async swapNotice(s, kind){
+    try{
+      if(!USE_SUPABASE||!sb||!Auth.user) return null;
+      await this.start(); if(!this.me) return null;
+      const myMid=myMemberId();
+      const otherMid = s.requestedBy===myMid ? s.targetId : s.requestedBy;
+      const ct=(this.contacts||[]).find(x=>x.member_id===otherMid);
+      if(!otherMid||!ct) return null;                       // a outra pessoa não tem conta no chat
+      const occ=resolveOcc(s.occKey), room=getRoom(s.roomId);
+      const papel=s.role==="leader"?"Responsável":"Auxiliar";
+      const quando=[occ?occ.title:"Culto", room?room.name:"", papel, occ?fmtShort(occ.date):""].filter(Boolean).join(" • ");
+      const first=id=>{ const m=getMember(id); return m?m.name.split(" ")[0]:"Alguém"; };
+      const req=first(s.requestedBy), tgt=first(s.targetId);
+      const head={
+        request:`🔄 Pedido de troca\n${req} pediu para ${tgt} assumir a escala:`,
+        accept :`✅ Troca aceita\n${tgt} assumiu a escala de ${req}:`,
+        decline:`❌ Troca recusada\n${tgt} não poderá assumir a escala de ${req}:`,
+        cancel :`🚫 Pedido cancelado\n${req} cancelou o pedido de troca:`}[kind];
+      if(!head) return null;
+      let text=head+"\n"+quando;
+      if(kind==="request"&&s.note) text+=`\nRecado: ${s.note}`;
+      if(kind==="request") text+="\n\nResponda por aqui ou abra o app para aceitar ou recusar.";
+      const {data:cid,error:e1}=await sb.rpc("start_direct_chat",{other:ct.user_id}); if(e1) throw e1;
+      const {data:m,error:e2}=await sb.from("messages").insert({conversation_id:cid,sender_id:this.me,body:text}).select().single(); if(e2) throw e2;
+      if(this.seen) this.seen.add(m.id);
+      this.load().then(()=>this.refreshList()).catch(()=>{});
+      return {cid,uid:ct.user_id};
+    }catch(e){ console.error("swapNotice",e); return null; }
   },
   async startWith(uid){
     const {data,error}=await sb.rpc("start_direct_chat",{other:uid});
