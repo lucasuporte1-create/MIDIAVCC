@@ -2171,6 +2171,18 @@ html.is-maria .maria-messages{padding:46px 2px 12px;gap:16px}
 .maria-messages .maria-msg.assistant .maria-bubble.maria-thinking{padding:14px 16px!important}
 .maria-messages .maria-msg.assistant .maria-thinking i{background:#8b8b96}
 
+/* MARIA — coluna da resposta e botão Copiar */
+.maria-messages .maria-msg.assistant .maria-col{max-width:88%;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.maria-messages .maria-msg.assistant .maria-col .maria-bubble{max-width:100%}
+.maria-copy{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 8px 4px 4px;border:0;border-radius:8px;
+  background:transparent;color:var(--ink-faint);font-size:11px;font-weight:600;
+  transition:color .2s,background .2s;
+}
+.maria-copy:hover{color:var(--ink);background:#ffffff0d}
+.maria-copy svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.maria-copy.is-done{color:var(--green,#27966b)}
+
 </style>
 </head>
 <body>
@@ -7283,6 +7295,7 @@ const Maria = {
     c.querySelector("#mariaForm").onsubmit=e=>{e.preventDefault();this.send();};
     c.querySelector("#mariaInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();this.send();}});
     c.querySelector("#mariaInput").addEventListener("input",()=>this.fit());
+    c.querySelector("#mariaMessages").addEventListener("click",e=>{const b=e.target.closest("[data-maria-copy]");if(b)this.copy(Number(b.dataset.mariaCopy),b);});
     this.fit();
   },
   /* caixa de texto cresce conforme o conteúdo; só mostra scroll ao passar do limite */
@@ -7309,9 +7322,11 @@ const Maria = {
       this.syncFootnote();
       return;
     }
-    el.innerHTML=this.history.map(m=>`<article class="maria-msg ${m.role==='user'?'user':'assistant'}">
-      <div class="maria-bubble">${this.escape(m.text)}</div>
-    </article>`).join("");
+    const copyIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>';
+    el.innerHTML=this.history.map((m,i)=>m.role==='user'
+      ?`<article class="maria-msg user"><div class="maria-bubble">${this.escape(m.text)}</div></article>`
+      :`<article class="maria-msg assistant"><div class="maria-col"><div class="maria-bubble">${this.escape(m.text)}</div><button type="button" class="maria-copy" data-maria-copy="${i}" aria-label="Copiar resposta">${copyIcon}<span>Copiar</span></button></div></article>`
+    ).join("");
     if(this.busy)el.insertAdjacentHTML("beforeend",`<div class="maria-msg assistant" id="mariaTyping"><div class="maria-bubble maria-thinking"><i></i><i></i><i></i></div></div>`);
     el.scrollTop=el.scrollHeight;
     this.syncFootnote();
@@ -7347,21 +7362,82 @@ const Maria = {
       if(!token)throw new Error("Sua sessão expirou. Entre novamente para continuar.");
       const controller=new AbortController();
       const timeout=setTimeout(()=>{timedOut=true;controller.abort();},70000);
-      let response;
+      let reply="", convId=this.conversationId;
       try{
-        response=await fetch(this.endpoint,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json","Authorization":"Bearer "+token,"apikey":SUPABASE_ANON_KEY},body:JSON.stringify({message,conversationId:this.conversationId})});
-      }finally{clearTimeout(timeout);}
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data.error|| (response.status===429?"Muitas mensagens em pouco tempo. Aguarde um instante.":"O servidor respondeu com erro ("+response.status+"). Tente novamente."));
-      if(!data.reply)throw new Error("O servidor respondeu, mas não enviou o texto da MARIA. Verifique os registros da função no Supabase.");
-      this.conversationId=data.conversationId||this.conversationId;
-      this.history.push({role:"assistant",text:data.reply,time:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})});
+        const response=await fetch(this.endpoint,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json","Authorization":"Bearer "+token,"apikey":SUPABASE_ANON_KEY},body:JSON.stringify({message,conversationId:this.conversationId,stream:true})});
+        const ctype=response.headers.get("content-type")||"";
+        if(response.ok&&ctype.includes("text/event-stream")&&response.body){
+          const r=await this.readStream(response);
+          reply=r.reply; convId=r.conversationId||convId;
+        }else{
+          const data=await response.json().catch(()=>({}));
+          if(!response.ok)throw new Error(data.error|| (response.status===429?"Muitas mensagens em pouco tempo. Aguarde um instante.":"O servidor respondeu com erro ("+response.status+"). Tente novamente."));
+          reply=data.reply||""; convId=data.conversationId||convId;
+        }
+      }finally{clearTimeout(timeout);this.dropStreaming();}
+      if(!reply)throw new Error("O servidor respondeu, mas não enviou o texto da MARIA. Verifique os registros da função no Supabase.");
+      this.conversationId=convId;
+      this.history.push({role:"assistant",text:reply,time:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})});
       this.save();
     }catch(e){
       this.history.pop();this.save();
       const msg=timedOut?"A MARIA demorou mais de 70 segundos para responder. Verifique os registros da função maria-chat no Supabase e tente novamente.":(e.name==="AbortError"?"A conexão com a MARIA expirou. Tente novamente.":(e.message||"Falha de conexão. Verifique sua internet e tente novamente."));
       this.error(msg);
     }finally{this.setBusy(false);}
+  },
+  /* copia a resposta (para colar no WhatsApp etc.) */
+  async copy(i,btn){
+    const text=this.history[i]&&this.history[i].text; if(!text)return;
+    let ok=false;
+    try{ await navigator.clipboard.writeText(text); ok=true; }
+    catch(e){
+      try{ const ta=document.createElement("textarea"); ta.value=text; ta.setAttribute("readonly",""); ta.style.cssText="position:fixed;top:0;left:0;opacity:0"; document.body.appendChild(ta); ta.select(); ok=document.execCommand("copy"); ta.remove(); }catch(_){}
+    }
+    const lab=btn.querySelector("span"); if(!lab)return;
+    lab.textContent=ok?"Copiado":"Não foi possível copiar";
+    btn.classList.toggle("is-done",ok);
+    clearTimeout(btn._t); btn._t=setTimeout(()=>{lab.textContent="Copiar";btn.classList.remove("is-done");},1800);
+  },
+  /* ---- streaming: a resposta aparece aos poucos ---- */
+  startStreamBubble(){
+    const el=document.getElementById("mariaMessages"); if(!el)return null;
+    const t=el.querySelector("#mariaTyping"); if(t)t.remove();
+    const art=document.createElement("article"); art.className="maria-msg assistant"; art.id="mariaStreaming";
+    art.innerHTML='<div class="maria-col"><div class="maria-bubble"></div></div>';
+    el.appendChild(art);
+    return art.querySelector(".maria-bubble");
+  },
+  scrollEnd(){ const el=document.getElementById("mariaMessages"); if(el)el.scrollTo({top:el.scrollHeight,behavior:"auto"}); },
+  dropStreaming(){ const a=document.getElementById("mariaStreaming"); if(a)a.remove(); },
+  parseSSE(block,cb){
+    for(const line of block.split("\n")){
+      if(!line.startsWith("data:"))continue;
+      const raw=line.slice(5).trim(); if(!raw)continue;
+      let ev; try{ ev=JSON.parse(raw); }catch(e){ continue; }
+      cb(ev);
+    }
+  },
+  async readStream(response){
+    const reader=response.body.getReader(), dec=new TextDecoder();
+    let buf="", full="", convId=null, streamErr=null, bubble=null;
+    const onEvent=ev=>{
+      if(ev.error){ streamErr=ev.error; return; }
+      if(ev.done){ convId=ev.conversationId||null; return; }
+      if(typeof ev.delta==="string"&&ev.delta){
+        full+=ev.delta;
+        if(!bubble)bubble=this.startStreamBubble();
+        if(bubble)bubble.textContent=full.replace(/^\s+/,"");
+        this.scrollEnd();
+      }
+    };
+    while(true){
+      const {done,value}=await reader.read(); if(done)break;
+      buf+=dec.decode(value,{stream:true}); buf=buf.replace(/\r\n/g,"\n");
+      let i; while((i=buf.indexOf("\n\n"))!==-1){ this.parseSSE(buf.slice(0,i),onEvent); buf=buf.slice(i+2); }
+    }
+    buf+=dec.decode(); if(buf.trim())this.parseSSE(buf.replace(/\r\n/g,"\n"),onEvent);
+    if(streamErr)throw new Error(streamErr);
+    return {reply:full.trim(),conversationId:convId};
   },
   error(msg){const el=document.getElementById("mariaError");if(el)el.innerHTML=msg?`<div class="maria-error">${this.escape(msg)}</div>`:"";}
 };
