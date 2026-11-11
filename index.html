@@ -192,6 +192,37 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;color:var(--in
   font-family:var(--font-display);font-weight:700;font-size:13px;color:#fff;flex:none;
   border:2px solid #fff}
 .ava-row{display:flex}
+.chat-head{cursor:pointer}
+.cinfo{position:fixed;inset:0;z-index:85;background:var(--paper);color:var(--ink);overflow-y:auto;padding:calc(10px + env(safe-area-inset-top,0px)) 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.ci-top{display:flex;align-items:center;gap:6px;padding:0 10px 4px}
+.ci-top b{font:700 17px var(--font-display)}
+.ci-top button{border:0;background:none;color:var(--ink);cursor:pointer;padding:6px;display:grid;place-items:center}
+.ci-top button svg{width:22px;height:22px}
+.ci-hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 16px 16px}
+.ci-av{position:relative;width:104px;height:104px;border-radius:50%;border:0;background:var(--card) center/cover no-repeat;display:grid;place-items:center;font:700 40px var(--font-display);color:var(--ink);cursor:pointer;padding:0}
+.ci-cam{position:absolute;right:-2px;bottom:-2px;width:34px;height:34px;border-radius:50%;background:var(--sun);color:#1a1a1a;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.ci-cam svg{width:18px;height:18px}
+.ci-name{display:flex;align-items:center;gap:8px;max-width:100%}
+.ci-name b{font:700 21px var(--font-display);text-align:center;overflow-wrap:anywhere}
+.ci-name button{border:0;background:none;color:var(--ink-soft);cursor:pointer;padding:6px;display:grid;place-items:center}
+.ci-name button svg{width:19px;height:19px}
+.ci-name input{font:700 18px var(--font-display);text-align:center;min-width:0;width:min(250px,56vw);padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.ci-sub{color:var(--ink-soft);font-size:13px}
+.ci-sec{padding:12px 16px 4px;font:700 12px var(--font-display);color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em}
+.ci-row{display:flex;align-items:center;gap:12px;padding:9px 16px;cursor:pointer}
+.ci-row:active{background:var(--card)}
+.ci-row .chat-av{width:40px;height:40px;flex:none}
+.ci-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.ci-t b{font-size:15px;font-weight:600}
+.ci-t small{color:var(--ink-soft);font-size:12px}
+.ci-chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(255,178,61,.16);color:var(--sun);margin-left:6px}
+.ci-x{border:0;background:none;color:var(--ink-soft);cursor:pointer;padding:8px;display:grid;place-items:center}
+.ci-x svg{width:18px;height:18px}
+.ci-act{display:flex;align-items:center;gap:12px;width:100%;padding:13px 16px;border:0;background:none;font-weight:600;font-size:15px;font-family:inherit;color:var(--ink);cursor:pointer;text-align:left}
+.ci-act svg{width:20px;height:20px;flex:none}
+.ci-act:active{background:var(--card)}
+.ci-act.danger{color:#E5484D}
+.ci-go{margin:10px 16px 0;width:calc(100% - 32px)}
 .plane-fx{position:fixed;inset:0;z-index:10000;pointer-events:none;overflow:hidden}
 .plane-fx .pl{position:absolute;left:0;top:0;width:48px;height:48px;margin:-24px 0 0 -24px;will-change:transform;filter:drop-shadow(0 8px 10px rgba(0,0,0,.4))}
 .plane-fx .pl svg{width:100%;height:100%;display:block;fill:var(--sun);stroke:#fff;stroke-width:1.1;stroke-linejoin:round}
@@ -4178,7 +4209,7 @@ function openModal(title, bodyHtml, footHtml){
   const bd = document.getElementById("modalBackdrop");
   bd.hidden = false;
 }
-function closeModal(){ document.getElementById("modalBackdrop").hidden = true; }
+function closeModal(){ const b=document.getElementById("modalBackdrop"); b.hidden = true; b.style.zIndex = ""; }
 document.getElementById("modalClose").addEventListener("click", closeModal);
 document.getElementById("modalBackdrop").addEventListener("click", e=>{ if(e.target.id==="modalBackdrop") closeModal(); });
 
@@ -5998,13 +6029,13 @@ const Chat={
   },
   async leaveGroup(c){
     const {error}=await sb.rpc("leave_group_chat",{conv_id:c.id});
-    if(error){console.error(error);toast("Não foi possível sair do grupo","error");return;}
-    this.dropLocal(c.id); toast("Você saiu do grupo");
+    if(error){console.error(error);toast("Não foi possível sair do grupo","error");return false;}
+    this.dropLocal(c.id); toast("Você saiu do grupo"); return true;
   },
   async deleteConv(c,group){
     const {error}=await sb.rpc(group?"delete_group_chat":"delete_direct_chat",{conv_id:c.id});
-    if(error){console.error(error);toast(group?"Não foi possível apagar o grupo":"Não foi possível apagar a conversa","error");return;}
-    this.dropLocal(c.id); toast(group?"Grupo apagado":"Conversa apagada");
+    if(error){console.error(error);toast(group?"Não foi possível apagar o grupo":"Não foi possível apagar a conversa","error");return false;}
+    this.dropLocal(c.id); toast(group?"Grupo apagado":"Conversa apagada"); return true;
   },
   clearConv(cid){
     const c=this.convs.find(x=>String(x.id)===String(cid));
@@ -6197,6 +6228,8 @@ const Chat={
         <input type="file" id="chatFile" accept="image/*" hidden>
       </div>`;
     document.body.appendChild(o);
+    /* tocar no cabeçalho: grupo → dados do grupo · conversa privada → perfil da pessoa */
+    o.querySelector(".chat-head").addEventListener("click",e=>{ if(e.target.closest("#chatBack")) return; this.openInfo(); });
     const box=o.querySelector("#chatMsgs"), inp=o.querySelector("#chatIn"), file=o.querySelector("#chatFile");
 
     const {data}=await sb.from("messages").select("*").eq("conversation_id",id).order("created_at",{ascending:false}).limit(200);
@@ -6248,11 +6281,162 @@ const Chat={
     });
 
     o.querySelector("#chatBack").onclick=async()=>{
-      this.closeSheet(); this.clearPending();
+      this.closeInfo(); this.closeSheet(); this.clearPending();
       this.openId=null;this.ctx=null;this.isGroup=false;o.remove();await this.load();
       if(currentView==="chat") renderChat(document.getElementById("content"));
     };
     if(!matchMedia("(pointer:coarse)").matches) inp.focus();
+  },
+  /* ---------- dados da conversa (toque no cabeçalho) ---------- */
+  convNow(){ return this.convs.find(x=>String(x.id)===String(this.openId)); },
+  openInfo(){
+    const c=this.convNow(); if(!c) return;
+    if(!c.group) this.openProfile(c.uid); else this.groupInfo();
+  },
+  /* perfil da pessoa (áreas e histórico de escalas) por cima do chat */
+  openProfile(uid){
+    const p=this.people[uid], mid=p&&p.member_id;
+    const bd=document.getElementById("modalBackdrop"); if(bd) bd.style.zIndex="95";
+    if(mid&&getMember(mid)){ openMember(mid); return; }
+    openModal("Perfil",`<div style="display:flex;align-items:center;gap:14px">${this.av(uid)}<div style="font:700 18px var(--font-display)">${esc(this.who(uid))}</div></div>
+      <p class="hint" style="margin-top:14px">Esta pessoa ainda não tem cadastro de escala vinculado.</p>`,"");
+  },
+  closeInfo(){ const e=document.getElementById("chatInfo"); if(e) e.remove(); },
+  meName(){ const m=getMember(myMemberId()); return m?m.name.split(" ")[0]:"Alguém"; },
+  avMe(){
+    const m=getMember(myMemberId());
+    return m&&m.photo
+      ? `<div class="chat-av has-photo" style="background-image:url('${esc(m.photo)}');background-size:cover;background-position:center"></div>`
+      : `<div class="chat-av">${esc(this.meName().charAt(0).toUpperCase())}</div>`;
+  },
+  paintHead(){
+    const o=document.getElementById("chatThread"), c=this.convNow(); if(!o||!c) return;
+    const head=o.querySelector(".chat-head"); if(!head) return;
+    const sub=c.group?[...(c.members||[]).map(u=>this.who(u)),"Você"].join(", "):"";
+    head.querySelectorAll(".chat-av,.chat-hd-t").forEach(e=>e.remove());
+    head.insertAdjacentHTML("beforeend",this.av(c.uid,c.title,c.group,c.avatar)+`<div class="chat-hd-t"><b>${esc(c.title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div>`);
+  },
+  /* registra no próprio chat o que mudou (aparece para todos do grupo) */
+  async note(text){
+    const id=this.openId; if(!id) return;
+    const {data,error}=await sb.from("messages").insert({conversation_id:id,sender_id:this.me,body:text}).select().single();
+    if(error||!data) return;
+    this.msgs[data.id]=data; this.seen.add(data.id); this.addBubble(data);
+  },
+  groupInfo(){
+    this.closeInfo();
+    const o=document.createElement("div"); o.className="cinfo"; o.id="chatInfo"; document.body.appendChild(o);
+    const me=this.me, mid=()=>({x:innerWidth/2,y:innerHeight/2});
+    let mode="info", editing=false, busy=false; const sel=new Set();
+
+    const refresh=async()=>{ await this.load(); this.paintHead(); draw(); };
+
+    const draw=()=>{
+      const c=this.convNow(); if(!c){ this.closeInfo(); return; }
+      const manage=isAdmin()||(c.owner&&c.owner===me);
+      const topBar=(t,back)=>`<div class="ci-top"><button id="${back}" aria-label="Voltar">${this.ico("back")}</button><b>${t}</b></div>`;
+
+      /* --- escolher quem adicionar --- */
+      if(mode==="add"){
+        const inside=new Set([me,...c.members]);
+        const people=(this.contacts||[]).filter(p=>!inside.has(p.user_id)).sort((a,b)=>this.nameOf(a.user_id).localeCompare(this.nameOf(b.user_id),"pt"));
+        o.innerHTML=topBar("Adicionar pessoas","ciBack2")+
+          (people.map(p=>`<label class="ci-row"><input type="checkbox" value="${esc(p.user_id)}"${sel.has(p.user_id)?" checked":""}>${this.av(p.user_id)}<div class="ci-t"><b>${esc(this.nameOf(p.user_id))}</b></div></label>`).join("")
+            ||'<div class="chat-empty">Todos já estão no grupo.</div>')+
+          `<button class="btn btn-primary ci-go" id="ciAddGo" ${sel.size?"":"disabled"}>Adicionar${sel.size?" ("+sel.size+")":""}</button>`;
+        return;
+      }
+
+      /* --- dados do grupo --- */
+      const rows=[...c.members,me].map(u=>{
+        const mine=u===me, p=this.people[u], m=p&&p.member_id?getMember(p.member_id):null;
+        const isOwner=!!c.owner&&c.owner===u;
+        return `<div class="ci-row" data-u="${esc(u)}">${mine?this.avMe():this.av(u)}
+          <div class="ci-t"><b>${esc(mine?"Você":this.who(u))}${isOwner?'<span class="ci-chip">Criador</span>':""}</b>${m&&m.role?`<small>${esc(m.role)}</small>`:""}</div>
+          ${manage&&!mine?`<button class="ci-x" data-rm="${esc(u)}" aria-label="Remover do grupo">${this.ico("x")}</button>`:""}</div>`;
+      }).join("");
+      const n=c.members.length+1;
+      const avStyle=c.avatar?`style="background-image:url('${esc(c.avatar)}')"`:"";
+      o.innerHTML=topBar("Dados do grupo","ciBack")+`
+        <div class="ci-hero">
+          <button class="ci-av" id="ciPhoto" ${avStyle} aria-label="Trocar foto do grupo">${c.avatar?"":esc((c.title||"G").trim().charAt(0).toUpperCase())}<span class="ci-cam">${this.ico("image")}</span></button>
+          <input type="file" id="ciFile" accept="image/*" hidden>
+          ${editing
+            ?`<div class="ci-name"><input id="ciName" maxlength="40" value="${esc(c.title)}" autocomplete="off"><button id="ciSave" aria-label="Salvar nome">${this.ico("check")}</button><button id="ciCancel" aria-label="Cancelar">${this.ico("x")}</button></div>`
+            :`<div class="ci-name"><b>${esc(c.title)}</b><button id="ciEdit" aria-label="Renomear grupo">${this.ico("edit")}</button></div>`}
+          <div class="ci-sub">Grupo • ${n} participante${n===1?"":"s"}</div>
+        </div>
+        <div class="ci-sec">Participantes</div>
+        <button class="ci-act" id="ciAdd">${this.ico("plus")} Adicionar pessoas</button>
+        ${rows}
+        <div class="ci-sec">Mais</div>
+        <button class="ci-act danger" id="ciLeave">${this.ico("leave")} Sair do grupo</button>
+        ${manage?`<button class="ci-act danger" id="ciDel">${this.ico("trash")} Apagar grupo</button>`:""}`;
+    };
+
+    const exitThread=()=>{ this.closeInfo(); const b=document.getElementById("chatBack"); if(b) b.click(); };
+
+    o.addEventListener("change",async e=>{
+      const t=e.target;
+      if(t.matches('input[type="checkbox"]')){ t.checked?sel.add(t.value):sel.delete(t.value); draw(); return; }
+      if(t.id==="ciFile"){
+        const f=t.files&&t.files[0]; t.value=""; if(!f) return;
+        if(!f.type.startsWith("image/")){ toast("Escolha uma imagem","error"); return; }
+        const c=this.convNow(); if(!c||busy) return; busy=true; toast("Enviando foto…");
+        try{
+          const b=await this.squareThumb(f); await this.setGroupAvatar(c.id,b);
+          await this.note(`🖼️ ${this.meName()} alterou a foto do grupo`); await refresh(); toast("Foto do grupo atualizada","good");
+        }catch(err){ console.error(err); toast("Não foi possível trocar a foto","error"); }
+        busy=false;
+      }
+    });
+
+    o.addEventListener("click",async e=>{
+      const t=e.target, c=this.convNow(); if(!c) return;
+      if(t.closest("#ciBack")){ this.closeInfo(); return; }
+      if(t.closest("#ciBack2")){ mode="info"; sel.clear(); draw(); return; }
+      if(t.closest("#ciEdit")){ editing=true; draw(); const i=o.querySelector("#ciName"); if(i){ i.focus(); i.select(); } return; }
+      if(t.closest("#ciCancel")){ editing=false; draw(); return; }
+      if(t.closest("#ciPhoto")){ o.querySelector("#ciFile").click(); return; }
+      if(t.closest("#ciAdd")){ mode="add"; sel.clear(); draw(); return; }
+
+      if(t.closest("#ciSave")){
+        const v=(o.querySelector("#ciName").value||"").trim();
+        if(!v||v===c.title){ editing=false; draw(); return; }
+        if(busy) return; busy=true;
+        const {error}=await sb.rpc("rename_group_chat",{conv_id:c.id,new_name:v});
+        if(error){ console.error(error); toast("Não foi possível renomear","error"); busy=false; return; }
+        await this.note(`✏️ ${this.meName()} renomeou o grupo para “${v}”`);
+        editing=false; await refresh(); busy=false; toast("Grupo renomeado","good"); return;
+      }
+      if(t.closest("#ciAddGo")){
+        if(busy||!sel.size) return; busy=true;
+        const ids=[...sel], names=ids.map(u=>this.who(u).split(" ")[0]).join(", ");
+        const {error}=await sb.rpc("add_group_members",{conv_id:c.id,member_ids:ids});
+        if(error){ console.error(error); toast("Não foi possível adicionar","error"); busy=false; return; }
+        await this.note(`➕ ${this.meName()} adicionou ${names}`);
+        mode="info"; sel.clear(); await refresh(); busy=false; toast("Pessoas adicionadas","good"); return;
+      }
+      const rm=t.closest("[data-rm]");
+      if(rm){
+        const u=rm.dataset.rm, nm=this.who(u);
+        this.confirmSheet(`Remover ${nm} do grupo?`,"Remover do grupo",async()=>{
+          const {error}=await sb.rpc("remove_group_member",{conv_id:c.id,target:u});
+          if(error){ console.error(error); toast("Não foi possível remover","error"); return; }
+          await this.note(`🚫 ${this.meName()} removeu ${nm.split(" ")[0]}`); await refresh(); toast("Pessoa removida");
+        },mid());
+        return;
+      }
+      if(t.closest("#ciLeave")){
+        this.confirmSheet(`Sair do grupo “${c.title}”?`,"Sair do grupo",async()=>{ if(await this.leaveGroup(c)) exitThread(); },mid()); return;
+      }
+      if(t.closest("#ciDel")){
+        this.confirmSheet(`Apagar o grupo “${c.title}” para todos? As mensagens serão perdidas.`,"Apagar grupo",async()=>{ if(await this.deleteConv(c,true)) exitThread(); },mid()); return;
+      }
+      const row=t.closest(".ci-row[data-u]");
+      if(row&&row.dataset.u!==me) this.openProfile(row.dataset.u);   // toque na pessoa: perfil dela
+    });
+    draw();
   },
   /* aviso automático no chat entre as duas pessoas da troca (pedido, aceite, recusa, cancelamento) */
   async swapNotice(s, kind){
