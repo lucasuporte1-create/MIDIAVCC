@@ -193,6 +193,28 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;color:var(--in
   border:2px solid #fff}
 .ava-row{display:flex}
 .chat-head{cursor:pointer}
+.chat-head #chatThemeBtn{margin-left:auto}
+.chat-thread.themed .chat-msgs{background:var(--ct-bg)}
+.chat-thread.themed .cm.me .cb{background:var(--ct-me);border-color:var(--ct-me);color:var(--ct-me-ink)}
+.chat-thread.themed .cm:not(.me) .cb{background:var(--ct-in);border-color:var(--ct-in-line,transparent);color:var(--ct-in-ink)}
+.chat-thread.themed .cm.me .cb-quote{border-left-color:var(--ct-me-ink);background:rgba(0,0,0,.16)}
+.cthm{position:fixed;left:0;right:0;bottom:0;z-index:87;background:var(--card);color:var(--ink);border-radius:20px 20px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.4);max-height:64vh;overflow-y:auto;padding:12px 14px calc(16px + env(safe-area-inset-bottom,0px));animation:cthmIn .22s ease-out}
+@keyframes cthmIn{from{transform:translateY(34px);opacity:0}}
+.cthm-top{display:flex;align-items:center;justify-content:space-between}
+.cthm-top b{font:700 16px var(--font-display)}
+.cthm-top button{border:0;background:none;color:var(--sun);font-weight:700;font-size:14px;cursor:pointer;padding:6px 4px}
+.cthm-note{font-size:12px;color:var(--ink-soft);margin:2px 2px 0}
+.cthm-sec{font:700 12px var(--font-display);color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:14px 2px 8px}
+.cthm-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cthm-sw{position:relative;height:62px;border-radius:14px;border:2px solid transparent;display:flex;align-items:flex-end;justify-content:center;padding:0 2px 5px;cursor:pointer;font-size:10px;font-weight:700;overflow:hidden;background-size:cover;background-position:center}
+.cthm-sw i{position:absolute;top:8px;right:8px;width:20px;height:12px;border-radius:7px}
+.cthm-sw.on{border-color:var(--sun);box-shadow:0 0 0 2px var(--sun)}
+.cthm-sw.wide{grid-column:1/-1;height:50px;align-items:center;color:#fff;font-size:13px;padding:0;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+.cthm-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cthm-row .btn{flex:1;min-width:140px}
+.cthm-dim{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-soft);margin-top:10px}
+.cthm-dim input{flex:1;accent-color:var(--sun)}
+.cthm-reset{display:block;width:100%;margin-top:14px;border:0;background:none;color:var(--ink-soft);font-weight:600;font-size:14px;cursor:pointer;padding:8px}
 .cinfo{position:fixed;inset:0;z-index:85;background:var(--paper);color:var(--ink);overflow-y:auto;padding:calc(10px + env(safe-area-inset-top,0px)) 0 calc(24px + env(safe-area-inset-bottom,0px))}
 .ci-top{display:flex;align-items:center;gap:6px;padding:0 10px 4px}
 .ci-top b{font:700 17px var(--font-display)}
@@ -5730,6 +5752,7 @@ const Chat={
     check:'<polyline points="20 6 9 17 4 12"/>',
     pin:'<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3v2H7v-2l3-3Z"/>',
     unpin:'<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3v2H7v-2l3-3Z"/><path d="M3 3l18 18"/>',
+    palette:'<circle cx="13.5" cy="6.5" r="1.2"/><circle cx="17.5" cy="10.5" r="1.2"/><circle cx="8.5" cy="7.5" r="1.2"/><circle cx="6.5" cy="12.5" r="1.2"/><path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4a5 5 0 0 0 5-5C22 6 17.5 2 12 2Z"/>',
     leave:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
     x:'<path d="M18 6L6 18M6 6l12 12"/>',
     send:'<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4Z"/>',
@@ -6215,7 +6238,7 @@ const Chat={
     const sub=group?[...(members||[]).map(u=>this.who(u)),"Você"].join(", "):"";
     this.openId=id; this.msgs={}; this.ctx=null; this.pending=null; this.sending=false;
     const o=document.createElement("div"); o.className="chat-thread"; o.id="chatThread";
-    o.innerHTML=`<div class="chat-head"><button id="chatBack" aria-label="Voltar">${this.ico("back")}</button>${this.av(uid,title,group,avatar)}<div class="chat-hd-t"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div></div>
+    o.innerHTML=`<div class="chat-head"><button id="chatBack" aria-label="Voltar">${this.ico("back")}</button>${this.av(uid,title,group,avatar)}<div class="chat-hd-t"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div><button id="chatThemeBtn" aria-label="Tema da conversa">${this.ico("palette")}</button></div>
       <div class="chat-msgs" id="chatMsgs"></div>
       <div class="chat-foot">
         <div class="chat-ctx" id="chatCtx" hidden></div>
@@ -6229,7 +6252,12 @@ const Chat={
       </div>`;
     document.body.appendChild(o);
     /* tocar no cabeçalho: grupo → dados do grupo · conversa privada → perfil da pessoa */
-    o.querySelector(".chat-head").addEventListener("click",e=>{ if(e.target.closest("#chatBack")) return; this.openInfo(); });
+    o.querySelector(".chat-head").addEventListener("click",e=>{
+      if(e.target.closest("#chatBack")) return;
+      if(e.target.closest("#chatThemeBtn")){ this.openTheme(); return; }
+      this.openInfo();
+    });
+    this.applyTheme(o);
     const box=o.querySelector("#chatMsgs"), inp=o.querySelector("#chatIn"), file=o.querySelector("#chatFile");
 
     const {data}=await sb.from("messages").select("*").eq("conversation_id",id).order("created_at",{ascending:false}).limit(200);
@@ -6281,7 +6309,7 @@ const Chat={
     });
 
     o.querySelector("#chatBack").onclick=async()=>{
-      this.closeInfo(); this.closeSheet(); this.clearPending();
+      this.closeInfo(); this.closeTheme(); this.closeSheet(); this.clearPending();
       this.openId=null;this.ctx=null;this.isGroup=false;o.remove();await this.load();
       if(currentView==="chat") renderChat(document.getElementById("content"));
     };
@@ -6314,7 +6342,9 @@ const Chat={
     const head=o.querySelector(".chat-head"); if(!head) return;
     const sub=c.group?[...(c.members||[]).map(u=>this.who(u)),"Você"].join(", "):"";
     head.querySelectorAll(".chat-av,.chat-hd-t").forEach(e=>e.remove());
-    head.insertAdjacentHTML("beforeend",this.av(c.uid,c.title,c.group,c.avatar)+`<div class="chat-hd-t"><b>${esc(c.title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div>`);
+    const tb=head.querySelector("#chatThemeBtn");
+    const html=this.av(c.uid,c.title,c.group,c.avatar)+`<div class="chat-hd-t"><b>${esc(c.title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div>`;
+    if(tb) tb.insertAdjacentHTML("beforebegin",html); else head.insertAdjacentHTML("beforeend",html);
   },
   /* registra no próprio chat o que mudou (aparece para todos do grupo) */
   async note(text){
@@ -6322,6 +6352,121 @@ const Chat={
     const {data,error}=await sb.from("messages").insert({conversation_id:id,sender_id:this.me,body:text}).select().single();
     if(error||!data) return;
     this.msgs[data.id]=data; this.seen.add(data.id); this.addBubble(data);
+  },
+  /* ---------- tema da conversa (só para você, neste aparelho) ---------- */
+  THEMES:[
+    {id:"oceano",name:"Oceano",bg:"linear-gradient(160deg,#0b2a4a,#143f6b)",me:"#2f8cff",meInk:"#ffffff",in:"#1b3a5c",inInk:"#eaf3ff"},
+    {id:"floresta",name:"Floresta",bg:"linear-gradient(160deg,#0f2a1f,#17452f)",me:"#2fa36b",meInk:"#ffffff",in:"#1c3b2e",inInk:"#e8f7ef"},
+    {id:"sol",name:"Pôr do sol",bg:"linear-gradient(160deg,#3a1a2e,#6b2f2a)",me:"#ff7a45",meInk:"#1a0d08",in:"#4a2338",inInk:"#ffeee6"},
+    {id:"uva",name:"Uva",bg:"linear-gradient(160deg,#241638,#3d2466)",me:"#8b5cf6",meInk:"#ffffff",in:"#33254f",inInk:"#f1eaff"},
+    {id:"rosa",name:"Rosa",bg:"linear-gradient(160deg,#3b1830,#612346)",me:"#ec4899",meInk:"#ffffff",in:"#4d2340",inInk:"#ffe8f4"},
+    {id:"grafite",name:"Grafite",bg:"linear-gradient(160deg,#121214,#202026)",me:"#ffd23f",meInk:"#1a1a1a",in:"#2a2a31",inInk:"#f3f3f5"},
+    {id:"areia",name:"Areia",bg:"#efe9dc",me:"#2f6fd6",meInk:"#ffffff",in:"#ffffff",inInk:"#1b1b1f",line:"#e0d9c8"},
+    {id:"menta",name:"Menta",bg:"#e3f3ec",me:"#1f9d73",meInk:"#ffffff",in:"#ffffff",inInk:"#17332a",line:"#cfe6dc"},
+    {id:"ceu",name:"Céu",bg:"linear-gradient(160deg,#e4effc,#cfe3fb)",me:"#2f6fd6",meInk:"#ffffff",in:"#ffffff",inInk:"#14283f",line:"#c6d9f2"},
+    {id:"lavanda",name:"Lavanda",bg:"#ece8f8",me:"#7c5cd6",meInk:"#ffffff",in:"#ffffff",inInk:"#251a45",line:"#dad3f0"}
+  ],
+  themeKey(cid){ return "chat_theme_"+this.me+"_"+cid; },
+  themeImgKey(cid){ return "chat_themeimg_"+this.me+"_"+cid; },
+  getTheme(cid){ try{ return JSON.parse(localStorage.getItem(this.themeKey(cid))||"null"); }catch(e){ return null; } },
+  setTheme(cid,t){
+    try{
+      if(t) localStorage.setItem(this.themeKey(cid),JSON.stringify(t));
+      else { localStorage.removeItem(this.themeKey(cid)); localStorage.removeItem(this.themeImgKey(cid)); }
+    }catch(e){}
+  },
+  inkOn(hex){
+    let h=String(hex||"#2f6fd6").replace("#",""); if(h.length===3) h=h.split("").map(x=>x+x).join("");
+    const n=parseInt(h,16)||0, r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+    return (0.299*r+0.587*g+0.114*b)>150?"#101116":"#ffffff";
+  },
+  themeVars(t,cid){
+    if(!t||!t.k) return null;
+    const uc=(typeof getUserColors==="function")?getUserColors():{primary:"#2F6FD6",secondary:"#55A0F2"};
+    if(t.k==="preset"){
+      const p=this.THEMES.find(x=>x.id===t.id); if(!p) return null;
+      return {"--ct-bg":p.bg,"--ct-me":p.me,"--ct-me-ink":p.meInk,"--ct-in":p.in,"--ct-in-ink":p.inInk,"--ct-in-line":p.line||"transparent"};
+    }
+    if(t.k==="mine"){
+      const light=document.documentElement.getAttribute("data-theme")==="light", P=uc.primary, S=uc.secondary;
+      return light
+        ?{"--ct-bg":`linear-gradient(160deg,color-mix(in srgb,${P} 14%,#ffffff),color-mix(in srgb,${S} 18%,#ffffff))`,"--ct-me":P,"--ct-me-ink":this.inkOn(P),"--ct-in":"#ffffff","--ct-in-ink":"#1b1b1f","--ct-in-line":`color-mix(in srgb,${S} 30%,#ffffff)`}
+        :{"--ct-bg":`linear-gradient(160deg,color-mix(in srgb,${P} 30%,#0d0d0f),color-mix(in srgb,${S} 22%,#0d0d0f))`,"--ct-me":P,"--ct-me-ink":this.inkOn(P),"--ct-in":`color-mix(in srgb,${S} 22%,#1b1b20)`,"--ct-in-ink":"#f3f3f5","--ct-in-line":"transparent"};
+    }
+    if(t.k==="photo"){
+      let img=""; try{ img=localStorage.getItem(this.themeImgKey(cid))||""; }catch(e){}
+      if(!img) return null;
+      const d=((t.dim==null?35:t.dim)/100).toFixed(2);
+      return {"--ct-bg":`linear-gradient(rgba(0,0,0,${d}),rgba(0,0,0,${d})),url("${img}") center/cover no-repeat`,"--ct-me":uc.primary,"--ct-me-ink":this.inkOn(uc.primary),"--ct-in":"rgba(18,18,22,.82)","--ct-in-ink":"#ffffff","--ct-in-line":"transparent"};
+    }
+    return null;
+  },
+  applyTheme(el){
+    el=el||document.getElementById("chatThread"); if(!el||!this.openId) return;
+    const KEYS=["--ct-bg","--ct-me","--ct-me-ink","--ct-in","--ct-in-ink","--ct-in-line"];
+    KEYS.forEach(k=>el.style.removeProperty(k));
+    const v=this.themeVars(this.getTheme(this.openId),this.openId);
+    if(v) Object.keys(v).forEach(k=>el.style.setProperty(k,v[k]));
+    el.classList.toggle("themed",!!v);
+  },
+  closeTheme(){ const e=document.getElementById("chatTheme"); if(e) e.remove(); },
+  /* foto do celular → reduz para caber no armazenamento do aparelho */
+  themeThumb(file,max=1000,q=.68){
+    return new Promise((res,rej)=>{
+      const url=URL.createObjectURL(file), img=new Image();
+      img.onload=()=>{
+        const k=Math.min(1,max/Math.max(img.width,img.height)), w=Math.round(img.width*k), h=Math.round(img.height*k);
+        const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(img,0,0,w,h);
+        URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg",q));
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("img"));};
+      img.src=url;
+    });
+  },
+  openTheme(){
+    const cid=this.openId; if(!cid) return;
+    this.closeTheme();
+    const sh=document.createElement("div"); sh.className="cthm"; sh.id="chatTheme"; document.body.appendChild(sh);
+    const draw=()=>{
+      const cur=this.getTheme(cid)||{};
+      const isPre=id=>cur.k==="preset"&&cur.id===id;
+      let hasImg=false; try{ hasImg=!!localStorage.getItem(this.themeImgKey(cid)); }catch(e){}
+      sh.innerHTML=`<div class="cthm-top"><b>Tema da conversa</b><button id="cthDone">Concluir</button></div>
+        <div class="cthm-note">Só você vê este tema, neste aparelho.</div>
+        <div class="cthm-sec">Cores fixas</div>
+        <div class="cthm-grid">${this.THEMES.map(p=>`<button class="cthm-sw${isPre(p.id)?" on":""}" data-pre="${p.id}" style="background:${p.bg};color:${p.inInk}" aria-label="${esc(p.name)}"><i style="background:${p.me}"></i>${esc(p.name)}</button>`).join("")}</div>
+        <div class="cthm-sec">Minhas cores</div>
+        <div class="cthm-grid"><button class="cthm-sw wide${cur.k==="mine"?" on":""}" data-mine style="background:linear-gradient(135deg,var(--user-primary),var(--user-secondary))">Cores primária e secundária do meu app</button></div>
+        <div class="cthm-sec">Foto de fundo</div>
+        <div class="cthm-row"><button class="btn btn-ghost" id="cthPhoto">${hasImg?"Trocar foto":"Escolher foto"}</button><input type="file" id="cthFile" accept="image/*" hidden></div>
+        ${cur.k==="photo"?`<div class="cthm-dim"><span>Claro</span><input type="range" id="cthDim" min="0" max="70" step="5" value="${cur.dim==null?35:cur.dim}"><span>Escuro</span></div>`:""}
+        <button class="cthm-reset" id="cthReset">Voltar ao padrão</button>`;
+    };
+    const save=t=>{ this.setTheme(cid,t); this.applyTheme(); draw(); };
+    sh.addEventListener("click",e=>{
+      const t=e.target;
+      if(t.closest("#cthDone")){ this.closeTheme(); return; }
+      if(t.closest("#cthReset")){ save(null); return; }
+      if(t.closest("#cthPhoto")){ sh.querySelector("#cthFile").click(); return; }
+      const pre=t.closest("[data-pre]"); if(pre){ save({k:"preset",id:pre.dataset.pre}); return; }
+      if(t.closest("[data-mine]")){ save({k:"mine"}); return; }
+    });
+    sh.addEventListener("input",e=>{
+      if(e.target.id==="cthDim"){ const cur=this.getTheme(cid)||{k:"photo"}; cur.dim=+e.target.value; this.setTheme(cid,cur); this.applyTheme(); }
+    });
+    sh.addEventListener("change",async e=>{
+      if(e.target.id!=="cthFile") return;
+      const f=e.target.files&&e.target.files[0]; e.target.value=""; if(!f) return;
+      if(!f.type.startsWith("image/")){ toast("Escolha uma imagem","error"); return; }
+      try{
+        const data=await this.themeThumb(f);
+        try{ localStorage.setItem(this.themeImgKey(cid),data); }
+        catch(err){ toast("Sem espaço no aparelho para guardar a foto","error"); return; }
+        const old=this.getTheme(cid)||{};
+        save({k:"photo",dim:old.k==="photo"&&old.dim!=null?old.dim:35});
+      }catch(err){ toast("Não foi possível abrir a imagem","error"); }
+    });
+    draw();
   },
   groupInfo(){
     this.closeInfo();
@@ -6367,6 +6512,7 @@ const Chat={
           <div class="ci-sub">Grupo • ${n} participante${n===1?"":"s"}</div>
         </div>
         <div class="ci-sec">Participantes</div>
+        <button class="ci-act" id="ciTheme">${this.ico("palette")} Tema da conversa</button>
         <button class="ci-act" id="ciAdd">${this.ico("plus")} Adicionar pessoas</button>
         ${rows}
         <div class="ci-sec">Mais</div>
@@ -6398,6 +6544,7 @@ const Chat={
       if(t.closest("#ciEdit")){ editing=true; draw(); const i=o.querySelector("#ciName"); if(i){ i.focus(); i.select(); } return; }
       if(t.closest("#ciCancel")){ editing=false; draw(); return; }
       if(t.closest("#ciPhoto")){ o.querySelector("#ciFile").click(); return; }
+      if(t.closest("#ciTheme")){ this.closeInfo(); this.openTheme(); return; }   // fecha os dados para ver o chat mudando atrás
       if(t.closest("#ciAdd")){ mode="add"; sel.clear(); draw(); return; }
 
       if(t.closest("#ciSave")){
