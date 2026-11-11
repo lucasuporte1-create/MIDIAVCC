@@ -198,9 +198,14 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;color:var(--in
 .ava-row .dnd-ava .ava{margin-left:0}
 .dnd-ava.dnd-arming{transform:scale(1.18)}
 .dnd-ava.dnd-src{opacity:.35}
-.dnd-ghost{position:fixed;z-index:9999;pointer-events:none;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;box-shadow:0 10px 28px rgba(0,0,0,.45);transform:scale(1.15);opacity:.95}
+.dnd-ghost{position:fixed;left:0;top:0;z-index:9999;pointer-events:none;width:46px;height:46px;border-radius:50%;opacity:0;will-change:transform;box-shadow:0 16px 32px rgba(0,0,0,.5),0 0 0 3px var(--sun),0 0 22px rgba(255,178,61,.55)}
+.dnd-ghost.in{opacity:.97;transition:opacity .12s}
 .dnd-ghost .ava{width:46px;height:46px;margin:0}
-.dnd-over{outline:2px dashed var(--sun);outline-offset:-2px;border-radius:12px;background:rgba(255,178,61,.10)}
+.dnd-over{outline:2px dashed var(--sun);outline-offset:-2px;border-radius:12px;animation:dndPulse .9s ease-in-out infinite}
+@keyframes dndPulse{0%,100%{background:rgba(255,178,61,.08)}50%{background:rgba(255,178,61,.22)}}
+.dnd-ava.dnd-pop{animation:dndPop .45s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes dndPop{0%{transform:scale(.3)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.dnd-over,.dnd-ava.dnd-pop{animation:none}}
 body.dnd-on{-webkit-user-select:none;user-select:none}
 .ava-row .ava:not(:first-child){margin-left:-10px}
 .ava-more{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
@@ -3481,10 +3486,12 @@ const EscDnd = (() => {
   }
   const clearOver = () => document.querySelectorAll(".dnd-over").forEach(e=>e.classList.remove("dnd-over"));
 
-  function cleanup(){
+  const REDUCE = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function cleanup(keepGhost){
     if(!st) return;
     clearTimeout(st.timer); cancelAnimationFrame(st.raf);
-    if(st.ghost) st.ghost.remove();
+    if(st.ghost && !keepGhost) st.ghost.remove();
     if(st.src) st.src.classList.remove("dnd-arming","dnd-src");
     document.body.classList.remove("dnd-on"); clearOver();
     st = null;
@@ -3495,19 +3502,34 @@ const EscDnd = (() => {
     st.src.classList.remove("dnd-arming"); st.src.classList.add("dnd-src");
     const g = document.createElement("div"); g.className = "dnd-ghost";
     g.innerHTML = st.src.innerHTML; document.body.appendChild(g); st.ghost = g;
+    st.tx = st.gx = st.x; st.ty = st.gy = st.y; st.tilt = 0; st.sc = REDUCE ? 1.2 : .7;
+    paintGhost(); requestAnimationFrame(() => g.classList.add("in"));
     document.body.classList.add("dnd-on");
     try{ navigator.vibrate && navigator.vibrate(18); }catch(_){}
     clearSel(); move(st.x, st.y); loop();
   }
-  function move(x, y){
-    st.x = x; st.y = y;
-    st.ghost.style.left = x + "px"; st.ghost.style.top = y + "px";
-    const t = targetAt(x, y); clearOver();
-    if(t) t.el.classList.add("dnd-over");
+  function paintGhost(){
+    st.ghost.style.transform = `translate3d(${st.gx-23}px,${st.gy-23}px,0) rotate(${st.tilt}deg) scale(${st.sc})`;
   }
-  // rola a tela quando o dedo chega perto da borda
+  function move(x, y){
+    st.x = x; st.y = y; st.tx = x; st.ty = y;
+    const t = targetAt(x, y);
+    if((t && t.el) !== st.over){            // entrou em outro destino: destaca e dá um toquinho
+      clearOver(); st.over = t ? t.el : null;
+      if(t){ t.el.classList.add("dnd-over"); try{ navigator.vibrate && navigator.vibrate(8); }catch(_){} }
+    }
+  }
+  // um quadro por vez: segue o dedo com suavidade, inclina conforme a velocidade e rola a tela perto da borda
   function loop(){
     if(!st || !st.active) return;
+    const k = REDUCE ? 1 : .38;
+    const dx = st.tx - st.gx;
+    st.gx += dx * k; st.gy += (st.ty - st.gy) * k;
+    const wantTilt = REDUCE ? 0 : Math.max(-18, Math.min(18, dx * 1.1));
+    st.tilt += (wantTilt - st.tilt) * .3;
+    st.sc += (1.2 - st.sc) * .25;
+    paintGhost();
+
     const h = window.innerHeight, edge = 90;
     let dy = 0;
     if(st.y < edge + 50) dy = -Math.ceil((edge + 50 - st.y) / 6);
@@ -3520,6 +3542,17 @@ const EscDnd = (() => {
     }
     st.raf = requestAnimationFrame(loop);
   }
+  // ao soltar: a foto desliza até o destino (ou volta para o lugar de origem) e some
+  function land(g, cx, cy, ok){
+    if(!g) return;
+    if(REDUCE){ g.remove(); return; }
+    g.style.transition = "transform .26s cubic-bezier(.2,.9,.3,1.15), opacity .26s";
+    void g.offsetWidth;
+    g.style.transform = `translate3d(${cx-23}px,${cy-23}px,0) rotate(0deg) scale(${ok?.4:.9})`;
+    g.style.opacity = "0";
+    setTimeout(() => g.remove(), 300);
+  }
+  const center = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + Math.min(60, r.width/2), y: r.top + r.height/2 }; };
 
   const slotOf = (key, rid) => {
     const sl = roomSlot(key, rid);
@@ -3596,6 +3629,10 @@ const EscDnd = (() => {
     }
     go("escala", {keepScroll:true});
     toast(`${name} movido(a) para ${dstRoom.name}`, "good");
+    if(!REDUCE){
+      const nu = document.querySelector(`.dnd-ava[data-mid="${mid}"][data-key="${dstKey}"][data-rid="${dstRid}"]`);
+      if(nu){ nu.classList.add("dnd-pop"); setTimeout(() => nu.classList.remove("dnd-pop"), 600); }
+    }
 
     // 5) avisos de conflito (não bloqueiam)
     const dcur = DB.schedules[dstKey] || {};
@@ -3628,7 +3665,9 @@ const EscDnd = (() => {
     if(!st || e.pointerId !== st.id) return;
     if(!st.active){ cleanup(); return; }
     const s = st, t = cancel ? null : targetAt(e.clientX, e.clientY);
-    cleanup();
+    const ghost = s.ghost, to = t ? center(t.el) : center(s.src);
+    cleanup(true);
+    land(ghost, to.x, to.y, !!t);
     if(t) drop(s.key, s.rid, s.mid, t);
   };
   document.addEventListener("pointerup",     e => finish(e, false));
