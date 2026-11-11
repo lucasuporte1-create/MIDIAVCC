@@ -2749,6 +2749,7 @@ function renderHome(c){
     }
   }
 
+  html += Checkin.btnHtml(occs);
   if(vol){ html += renderVolunteerHome(me, t, todayStr, occs); }
   else {
 
@@ -2807,10 +2808,12 @@ function renderHome(c){
 
   } // fecha o else
 
+  html += Checkin.leaderHtml();
   html += videosSectionHtml();
 
   c.innerHTML = html;
   ensureVerseOfDay();
+  Checkin.paintLeader();
 }
 
 /* ---------------- Vídeos recentes do canal (incorporado, sem API) ---------------- */
@@ -5299,10 +5302,139 @@ function hideLogin(){
   const lg=document.getElementById("login"), ap=document.getElementById("app"), pub=document.getElementById("publicInfo");
   if(lg) lg.hidden=true; if(ap) ap.hidden=false; if(pub) pub.hidden=true;
 }
+/* ===================== CHECK-IN DE CHEGADA (QR code) ===================== */
+const Checkin = {
+  list: [],
+  want(){ try{ return sessionStorage.getItem("ck-want")==="1"; }catch(e){ return false; } },
+  clearWant(){ try{ sessionStorage.removeItem("ck-want"); }catch(e){} try{ if(/checkin/i.test(location.hash)) history.replaceState(null,"",location.pathname+location.search); }catch(e){} },
+  async load(date){
+    if(CLOUD){
+      const { data, error } = await sb.from("checkins").select("occ_key,member_id,checked_at").eq("occ_date", date);
+      if(error) throw new Error(error.message);
+      this.list = data || [];
+    } else {
+      this.list = (DB.checkins||[]).filter(x=>x.occ_date===date);
+    }
+    return this.list;
+  },
+  find(key, mid){ return this.list.find(x=>x.occ_key===key && x.member_id===mid); },
+  hhmm(ts){ try{ return new Date(ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); }catch(e){ return ""; } },
+  async save(mid, key, date){
+    const row = { occ_key:key, occ_date:date, member_id:mid, checked_at:new Date().toISOString() };
+    if(CLOUD){
+      const { error } = await sb.from("checkins").insert({ occ_key:key, occ_date:date, member_id:mid });
+      if(error && error.code!=="23505") throw new Error(error.message);
+    } else {
+      DB.checkins = DB.checkins || [];
+      if(!DB.checkins.some(x=>x.occ_key===key && x.member_id===mid)) DB.checkins.push(row);
+      save();
+    }
+    await this.load(date);
+  },
+  async remove(mid, key, date){
+    if(CLOUD){
+      const { error } = await sb.from("checkins").delete().eq("occ_key",key).eq("member_id",mid);
+      if(error) throw new Error(error.message);
+    } else { DB.checkins = (DB.checkins||[]).filter(x=>!(x.occ_key===key && x.member_id===mid)); save(); }
+    await this.load(date);
+  },
+  /* tela de confirmação (aberta pelo QR ou pelo botão da Início) */
+  async open(){
+    const date = ymd(today());
+    const occs = occsOnDate(date);
+    openModal("Check-in de chegada", `<p class="muted-txt" style="text-align:center;padding:14px">Carregando…</p>`, "");
+    try{ await this.load(date); }catch(e){ toast("Não consegui ver os check-ins ("+e.message+")","warn"); }
+    if(!occs.length){
+      openModal("Check-in de chegada", `<p class="muted-txt" style="text-align:center;padding:14px">Hoje não há culto nem evento na agenda.</p>`,
+        `<button class="btn btn-soft btn-block" id="ckClose">Fechar</button>`);
+      document.getElementById("ckClose").onclick = closeModal; return;
+    }
+    const st = { mid: DB.settings.meId || "", key: "" };
+    const pickKey = ()=>{
+      const mine = st.mid ? occs.find(o=>occHasMember(o.key, st.mid)) : null;
+      st.key = (mine || occs[0]).key;
+    };
+    pickKey();
+    const paint = ()=>{
+      const members = DB.members.filter(m=>m.active!==false).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
+      const rec = st.mid ? this.find(st.key, st.mid) : null;
+      let body = "";
+      if(!st.mid || !getMember(st.mid)){
+        body += `<div class="field"><label>Quem é você?</label><select id="ckMem"><option value="">Escolha seu nome…</option>${members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select></div>`;
+      } else {
+        body += `<div style="text-align:center;padding:6px 0 10px"><div style="font-family:var(--font-display);font-weight:700;font-size:22px">Olá, ${esc(getMember(st.mid).name.split(" ")[0])}!</div>
+          <button class="btn btn-soft sm" id="ckOther" style="margin-top:6px">Não sou eu</button></div>`;
+      }
+      if(occs.length>1){
+        body += `<div class="field"><label>Culto / evento</label><select id="ckOcc">${occs.map(o=>`<option value="${o.key}" ${o.key===st.key?"selected":""}>${esc(o.title)}${o.time?" • "+hm(o.time):""}</option>`).join("")}</select></div>`;
+      } else {
+        const o=occs[0]; body += `<div class="card" style="padding:12px;text-align:center;margin-bottom:8px"><b>${esc(o.title)}</b>${o.time?` <span class="muted-txt">• ${hm(o.time)}</span>`:""}</div>`;
+      }
+      if(rec) body += `<div class="banner" style="justify-content:center;text-align:center"><b>Chegada já registrada às ${this.hhmm(rec.checked_at)} ✔</b></div>`;
+      const foot = rec ? `<button class="btn btn-soft btn-block" id="ckClose">Fechar</button>`
+                       : `<button class="btn btn-primary btn-block" id="ckGo" ${st.mid&&getMember(st.mid)?"":"disabled"}>Confirmar chegada</button>`;
+      openModal("Check-in de chegada", body, foot);
+      const $=id=>document.getElementById(id);
+      if($("ckMem")) $("ckMem").onchange = e=>{ st.mid=e.target.value; if(st.mid){ DB.settings.meId = DB.settings.meId || st.mid; save(); } pickKey(); paint(); };
+      if($("ckOther")) $("ckOther").onclick = ()=>{ st.mid=""; paint(); };
+      if($("ckOcc")) $("ckOcc").onchange = e=>{ st.key=e.target.value; paint(); };
+      if($("ckClose")) $("ckClose").onclick = closeModal;
+      if($("ckGo")) $("ckGo").onclick = async ()=>{
+        const b=$("ckGo"); b.disabled=true; b.textContent="Registrando…";
+        try{
+          await this.save(st.mid, st.key, date);
+          toast("Chegada confirmada!","good","stamp");
+          paint();
+          if(currentView==="home") go("home",{keepScroll:true});
+        }catch(e){ b.disabled=false; b.textContent="Confirmar chegada"; toast("Não registrou — "+e.message,"warn"); }
+      };
+    };
+    paint();
+  },
+  maybeOpen(){
+    if(!this.want()) return;
+    this.clearWant();
+    setTimeout(()=>this.open(), 350);
+  },
+  /* botão na Início (todos) */
+  btnHtml(occs){
+    if(!occs.length) return "";
+    return `<button class="btn btn-primary btn-block" data-ck="open" style="margin-bottom:14px">Check-in de chegada</button>`;
+  },
+  /* painel de presença (líderes/admin) */
+  leaderHtml(){
+    if(!canEditAnyRoom()) return "";
+    if(!occsOnDate(ymd(today())).length) return "";
+    return `<div class="section-label">Presença de hoje</div><div id="ckLeader"><p class="muted-txt" style="text-align:center;padding:10px">Carregando…</p></div>`;
+  },
+  async paintLeader(){
+    const box = document.getElementById("ckLeader"); if(!box) return;
+    const date = ymd(today());
+    try{ await this.load(date); }catch(e){ box.innerHTML = `<p class="muted-txt" style="text-align:center;padding:10px">Não consegui carregar (${esc(e.message)}). Confira se a tabela checkins foi criada.</p>`; return; }
+    const box2 = document.getElementById("ckLeader"); if(!box2) return;
+    box2.innerHTML = occsOnDate(date).map(o=>{
+      const sched = [...new Set(Object.keys(schedFor(o.key)).flatMap(rid=>roomPeopleIds(o.key,rid)))].filter(Boolean);
+      const here = this.list.filter(x=>x.occ_key===o.key).sort((a,b)=>String(a.checked_at).localeCompare(String(b.checked_at)));
+      const hereIds = here.map(x=>x.member_id);
+      const missing = sched.filter(id=>!hereIds.includes(id));
+      const nm = id=>{ const m=getMember(id); return m?esc(m.name):"—"; };
+      return `<div class="card" style="padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(o.title)}${o.time?" • "+hm(o.time):""}</b>
+          <span class="muted-txt">${here.length} presente${here.length===1?"":"s"}${sched.length?" / "+sched.length+" escalados":""}</span></div>
+        ${here.length?`<div style="margin-top:8px;font-size:14px;line-height:1.7">${here.map(x=>`<div>✔ ${nm(x.member_id)} <span class="muted-txt">${this.hhmm(x.checked_at)}</span></div>`).join("")}</div>`:`<p class="muted-txt" style="margin:8px 0 0">Ninguém fez check-in ainda.</p>`}
+        ${missing.length?`<div style="margin-top:10px;font-size:13.5px"><b>Ainda não chegaram:</b> ${missing.map(nm).join(", ")}</div>`:""}
+      </div>`;
+    }).join("");
+  }
+};
+document.addEventListener("click", e=>{ const b=e.target.closest('[data-ck="open"]'); if(b) Checkin.open(); });
+(function(){ try{ if(/(^|[#&?\/])checkin/i.test(location.hash) || /[?&]checkin/i.test(location.search)) sessionStorage.setItem("ck-want","1"); }catch(e){} })();
+
 function startApp(){
   const ap=document.getElementById("app"); if(ap) ap.classList.remove("is-loading");
   NAV_DIR=0;                      // entrada da home: cards sobem em sequência
   go("home"); checkTodayReminder(false);
+  Checkin.maybeOpen();
 }
 /* Skeleton do início: aparece só quando a internet está lenta e os dados demoram */
 function skeletonHome(){
