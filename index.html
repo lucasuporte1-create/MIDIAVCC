@@ -7166,19 +7166,33 @@ const Maria = {
     const input=document.getElementById("mariaInput"); if(!input||this.busy)return;
     const message=input.value.trim(); if(!message)return;
     if(!USE_SUPABASE||!Auth.user?.id){this.error("Entre na sua conta para usar a MARIA. O serviço precisa validar seu acesso com segurança.");return;}
-    const {data:sessionData}=await sb.auth.getSession(); const token=sessionData?.session?.access_token;
-    if(!token){this.error("Sua sessão expirou. Entre novamente para continuar.");return;}
     this.history.push({role:"user",text:message,time:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})});
     this.history=this.history.slice(-40);this.save();input.value="";this.error("");this.setBusy(true);
+    let timedOut=false;
     try{
-      const response=await fetch(this.endpoint,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token,"apikey":SUPABASE_ANON_KEY},body:JSON.stringify({message,conversationId:this.conversationId})});
+      const sessionResult=await Promise.race([
+        sb.auth.getSession(),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("A validação da sessão demorou demais. Atualize o aplicativo e entre novamente.")),12000))
+      ]);
+      const token=sessionResult?.data?.session?.access_token;
+      if(!token)throw new Error("Sua sessão expirou. Entre novamente para continuar.");
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>{timedOut=true;controller.abort();},70000);
+      let response;
+      try{
+        response=await fetch(this.endpoint,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json","Authorization":"Bearer "+token,"apikey":SUPABASE_ANON_KEY},body:JSON.stringify({message,conversationId:this.conversationId})});
+      }finally{clearTimeout(timeout);}
       const data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data.error|| (response.status===429?"Muitas mensagens em pouco tempo. Aguarde um instante.":"Não consegui responder agora. Tente novamente."));
+      if(!response.ok)throw new Error(data.error|| (response.status===429?"Muitas mensagens em pouco tempo. Aguarde um instante.":"O servidor respondeu com erro ("+response.status+"). Tente novamente."));
+      if(!data.reply)throw new Error("O servidor respondeu, mas não enviou o texto da MARIA. Verifique os registros da função no Supabase.");
       this.conversationId=data.conversationId||this.conversationId;
-      this.history.push({role:"assistant",text:data.reply||"Não recebi uma resposta válida.",time:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})});
+      this.history.push({role:"assistant",text:data.reply,time:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})});
       this.save();
-    }catch(e){this.history.pop();this.save();this.error(e.message||"Falha de conexão. Verifique sua internet e tente novamente.");}
-    finally{this.setBusy(false);}
+    }catch(e){
+      this.history.pop();this.save();
+      const msg=timedOut?"A MARIA demorou mais de 70 segundos para responder. Verifique os registros da função maria-chat no Supabase e tente novamente.":(e.name==="AbortError"?"A conexão com a MARIA expirou. Tente novamente.":(e.message||"Falha de conexão. Verifique sua internet e tente novamente."));
+      this.error(msg);
+    }finally{this.setBusy(false);}
   },
   error(msg){const el=document.getElementById("mariaError");if(el)el.innerHTML=msg?`<div class="maria-error">${this.escape(msg)}</div>`:"";}
 };
