@@ -192,6 +192,16 @@ h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;color:var(--in
   font-family:var(--font-display);font-weight:700;font-size:13px;color:#fff;flex:none;
   border:2px solid #fff}
 .ava-row{display:flex}
+.dnd-ava{display:inline-flex;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;border-radius:50%;transition:transform .15s}
+.dnd-ava *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.ava-row .dnd-ava:not(:first-child){margin-left:-10px}
+.ava-row .dnd-ava .ava{margin-left:0}
+.dnd-ava.dnd-arming{transform:scale(1.18)}
+.dnd-ava.dnd-src{opacity:.35}
+.dnd-ghost{position:fixed;z-index:9999;pointer-events:none;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;box-shadow:0 10px 28px rgba(0,0,0,.45);transform:scale(1.15);opacity:.95}
+.dnd-ghost .ava{width:46px;height:46px;margin:0}
+.dnd-over{outline:2px dashed var(--sun);outline-offset:-2px;border-radius:12px;background:rgba(255,178,61,.10)}
+body.dnd-on{-webkit-user-select:none;user-select:none}
 .ava-row .ava:not(:first-child){margin-left:-10px}
 .ava-more{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
   background:var(--sky-100);color:var(--sky-600);font-weight:700;font-size:12px;
@@ -3391,6 +3401,7 @@ function renderEscala(c){
   </div>`;
 
   if(leader){
+    html += `<div class="muted-txt" style="font-size:12px;margin:-4px 0 10px">${vi("pessoas")} Dica: segure a foto de alguém e arraste para outra área ou outro dia.</div>`;
     html += `<button class="btn btn-primary btn-block" data-action="new-schedule" style="margin-bottom:10px">
       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Montar nova escala</button>`;
     const _sr=shareScopeRooms();
@@ -3416,7 +3427,7 @@ function renderEscala(c){
       byDate[date].forEach(o=>{
         const sched=schedFor(o.key); const n=assignedCount(o.key);
         const mineHere = me && occHasMember(o.key, me.id);
-        html += `<div class="sched-room" style="border-left:4px solid ${o.color}${mineHere?";background:var(--good-soft)":""}">
+        html += `<div class="sched-room" data-key="${o.key}" style="border-left:4px solid ${o.color}${mineHere?";background:var(--good-soft)":""}">
           <div class="room-ico" style="background:${o.color}22;color:${o.color};overflow:hidden;padding:0">
   ${o.photo
     ? `<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`
@@ -3433,9 +3444,13 @@ function renderEscala(c){
           const r=getRoom(rid); if(!r) return;
           const slot=roomSlot(o.key,rid);
           const ordered=[slot.lider,...slot.monitores].filter(Boolean).map(id=>getMember(id)).filter(Boolean);
-          html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 13px 6px 50px">
+          const canDrag = leader && canEditRoom(rid);
+          html += `<div class="esc-row" data-key="${o.key}" data-rid="${rid}" style="display:flex;align-items:center;gap:10px;padding:6px 13px 6px 50px">
             <span class="chip" style="background:${r.bg};color:${r.fg}">${roomIcon(r.emoji)} ${esc(r.name)}</span>
-            <div class="ava-row">${ordered.map((p,i)=>ava(p.name,p.id,i===0&&slot.lider?"box-shadow:0 0 0 2px var(--sun)":"")).join("")}</div>
+            <div class="ava-row">${ordered.map((p,i)=>{
+              const a=ava(p.name,p.id,i===0&&slot.lider?"box-shadow:0 0 0 2px var(--sun)":"");
+              return canDrag ? `<span class="dnd-ava" data-mid="${p.id}" data-key="${o.key}" data-rid="${rid}">${a}</span>` : a;
+            }).join("")}</div>
           </div>`;
         });
       });
@@ -3445,6 +3460,183 @@ function renderEscala(c){
 
   c.innerHTML = html;
 }
+
+/* =====================================================================
+   ESCALA: segurar a foto e arrastar para outra área ou outro dia
+   (admin e líder da área; valida aptidão, permissão e limite da área)
+   ===================================================================== */
+const EscDnd = (() => {
+  let st = null;                       // estado do arraste em andamento
+  const HOLD = 380, SLOP = 9;
+
+  const find = (el) => el && el.closest ? el.closest(".dnd-ava") : null;
+
+  function targetAt(x, y){
+    const el = document.elementFromPoint(x, y); if(!el) return null;
+    const row = el.closest(".esc-row[data-key]");
+    if(row) return { el: row, key: row.dataset.key, rid: row.dataset.rid };
+    const card = el.closest(".sched-room[data-key]");
+    if(card) return { el: card, key: card.dataset.key, rid: null };
+    return null;
+  }
+  const clearOver = () => document.querySelectorAll(".dnd-over").forEach(e=>e.classList.remove("dnd-over"));
+
+  function cleanup(){
+    if(!st) return;
+    clearTimeout(st.timer); cancelAnimationFrame(st.raf);
+    if(st.ghost) st.ghost.remove();
+    if(st.src) st.src.classList.remove("dnd-arming","dnd-src");
+    document.body.classList.remove("dnd-on"); clearOver();
+    st = null;
+  }
+
+  function start(){
+    st.active = true;
+    st.src.classList.remove("dnd-arming"); st.src.classList.add("dnd-src");
+    const g = document.createElement("div"); g.className = "dnd-ghost";
+    g.innerHTML = st.src.innerHTML; document.body.appendChild(g); st.ghost = g;
+    document.body.classList.add("dnd-on");
+    try{ navigator.vibrate && navigator.vibrate(18); }catch(_){}
+    clearSel(); move(st.x, st.y); loop();
+  }
+  function move(x, y){
+    st.x = x; st.y = y;
+    st.ghost.style.left = x + "px"; st.ghost.style.top = y + "px";
+    const t = targetAt(x, y); clearOver();
+    if(t) t.el.classList.add("dnd-over");
+  }
+  // rola a tela quando o dedo chega perto da borda
+  function loop(){
+    if(!st || !st.active) return;
+    const h = window.innerHeight, edge = 90;
+    let dy = 0;
+    if(st.y < edge + 50) dy = -Math.ceil((edge + 50 - st.y) / 6);
+    else if(st.y > h - edge) dy = Math.ceil((st.y - (h - edge)) / 6);
+    if(dy){
+      window.scrollBy(0, dy);
+      const c = document.getElementById("content");
+      if(c && c.scrollHeight > c.clientHeight) c.scrollTop += dy;
+      move(st.x, st.y);
+    }
+    st.raf = requestAnimationFrame(loop);
+  }
+
+  const slotOf = (key, rid) => {
+    const sl = roomSlot(key, rid);
+    return { lider: sl.lider, monitores: [...sl.monitores], times: Object.assign({}, sl.times) };
+  };
+  const pruneTimes = (slot) => {
+    const ok = new Set([slot.lider, ...slot.monitores].filter(Boolean));
+    Object.keys(slot.times || {}).forEach(id => { if(!ok.has(id)) delete slot.times[id]; });
+  };
+
+  async function drop(srcKey, srcRid, mid, t){
+    const m = getMember(mid); if(!m) return;
+    const name = m.name.split(" ")[0];
+    const dstKey = t.key, dstRid = t.rid || srcRid;
+    const dstRoom = getRoom(dstRid), srcRoom = getRoom(srcRid);
+    if(!dstRoom || !srcRoom) return;
+    if(dstKey === srcKey && dstRid === srcRid) return;             // soltou no mesmo lugar
+
+    // 1) permissão: líder só mexe nas áreas que lidera
+    if(!canEditRoom(dstRid) || !canEditRoom(srcRid)){
+      centerAlert("Sem permissão", `Você só pode mover pessoas entre as áreas que você lidera. <b>${esc(dstRoom.name)}</b> é de outro líder.`);
+      return;
+    }
+    // 2) aptidão: a pessoa precisa estar liberada para a área de destino
+    if(m.roomIds.length && !m.roomIds.includes(dstRid)){
+      const aptas = m.roomIds.map(id => getRoom(id)).filter(Boolean).map(r => esc(r.name)).join(", ");
+      centerAlert("Não está apta para esta área",
+        `<b>${esc(name)}</b> não está apta para <b>${esc(dstRoom.name)}</b>.` + (aptas ? ` As áreas dela: <b>${aptas}</b>.` : "") +
+        `<br><br>Para liberar, edite o cadastro da pessoa na aba Equipe.`);
+      return;
+    }
+    if(!m.active){ centerAlert("Pessoa inativa", `<b>${esc(name)}</b> está inativa e não pode ser escalada.`); return; }
+
+    const dstOcc = resolveOcc(dstKey), srcOcc = resolveOcc(srcKey);
+    if(!dstOcc || !srcOcc) return;
+    const isEv = String(dstKey).startsWith("e:");
+
+    // 3) monta os novos espaços (sem salvar ainda)
+    const sameKey = dstKey === srcKey;
+    const srcSlot = slotOf(srcKey, srcRid);
+    const dstSlot = sameKey ? (srcRid === dstRid ? srcSlot : slotOf(dstKey, dstRid)) : slotOf(dstKey, dstRid);
+
+    if([dstSlot.lider, ...dstSlot.monitores].includes(mid)){
+      toast(`${name} já está escalado(a) em ${dstRoom.name} nesse dia`, "warn"); return;
+    }
+    const wasLeader = srcSlot.lider === mid;
+    if(wasLeader) srcSlot.lider = null; else srcSlot.monitores = srcSlot.monitores.filter(x => x !== mid);
+    pruneTimes(srcSlot);
+
+    if(wasLeader && !dstSlot.lider) dstSlot.lider = mid;
+    else {
+      if(!isEv && dstSlot.monitores.length >= 2){
+        centerAlert("Área cheia", `<b>${esc(dstRoom.name)}</b> já tem responsável e 2 auxiliares nesse dia. Tire alguém de lá antes de mover <b>${esc(name)}</b>.`);
+        return;
+      }
+      dstSlot.monitores.push(mid);
+    }
+
+    // 4) grava (origem e destino), com desfazer se falhar
+    const bak = JSON.parse(JSON.stringify(DB.schedules));
+    try{
+      if(sameKey){
+        const sched = {}; sched[srcRid] = srcSlot; sched[dstRid] = dstSlot;
+        await Data.saveSchedule(srcKey, srcOcc, sched, [...new Set([srcRid, dstRid])]);
+      } else {
+        // grava o destino primeiro: se algo falhar no meio, a pessoa fica duplicada em vez de sumir
+        const b = {}; b[dstRid] = dstSlot; await Data.saveSchedule(dstKey, dstOcc, b, [dstRid]);
+        const a = {}; a[srcRid] = srcSlot; await Data.saveSchedule(srcKey, srcOcc, a, [srcRid]);
+      }
+    }catch(e){
+      DB.schedules = bak; try{ save(); }catch(_){}
+      go("escala", {keepScroll:true});
+      toast("Não consegui mover — " + e.message, "warn"); return;
+    }
+    go("escala", {keepScroll:true});
+    toast(`${name} movido(a) para ${dstRoom.name}`, "good");
+
+    // 5) avisos de conflito (não bloqueiam)
+    const dcur = DB.schedules[dstKey] || {};
+    const conflito = sameDateOtherArea(mid, dstOcc.date, dstKey, dstRid, dcur);
+    if(conflito) centerAlert("Já escalado nesta data", `<b>${esc(name)}</b> já está em <b>${esc(conflito)}</b> nesta mesma data. Pode dar conflito.`);
+    else {
+      const cnt = monthCountForMember(mid, dstOcc.date, dstKey, dcur);
+      if(cnt > 4) centerAlert("Muitas escalas no mês", `<b>${esc(name)}</b> já está escalado(a) <b>${cnt}×</b> neste mês. Vale distribuir com outra pessoa.`);
+    }
+  }
+
+  document.addEventListener("pointerdown", e => {
+    if(st || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const a = find(e.target); if(!a) return;
+    st = { src:a, mid:a.dataset.mid, key:a.dataset.key, rid:a.dataset.rid,
+           x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, id:e.pointerId, active:false };
+    a.classList.add("dnd-arming");
+    st.timer = setTimeout(() => { if(st && !st.active) start(); }, HOLD);
+  });
+  document.addEventListener("pointermove", e => {
+    if(!st || e.pointerId !== st.id) return;
+    if(!st.active){
+      // moveu antes de segurar: é rolagem, não arraste
+      if(Math.hypot(e.clientX - st.x0, e.clientY - st.y0) > SLOP) cleanup();
+      return;
+    }
+    move(e.clientX, e.clientY);
+  });
+  const finish = (e, cancel) => {
+    if(!st || e.pointerId !== st.id) return;
+    if(!st.active){ cleanup(); return; }
+    const s = st, t = cancel ? null : targetAt(e.clientX, e.clientY);
+    cleanup();
+    if(t) drop(s.key, s.rid, s.mid, t);
+  };
+  document.addEventListener("pointerup",     e => finish(e, false));
+  document.addEventListener("pointercancel", e => finish(e, true));
+  // enquanto arrasta, a tela não pode rolar com o dedo (iOS/Android)
+  document.addEventListener("touchmove", e => { if(st && st.active) e.preventDefault(); }, { passive:false });
+  document.addEventListener("contextmenu", e => { if(find(e.target)) e.preventDefault(); });
+})();
 
 /* =====================================================================
    VIEW: CALENDÁRIO / AGENDA
