@@ -1972,6 +1972,22 @@ html[data-theme="light"] body{
   78%,100%{transform:translateX(120%);}
 }
 
+/* Estado concluído: azul elétrico para diferenciar do botão pendente */
+.btn-checkin-arrival.is-done{
+  background:linear-gradient(135deg,#258BFF 0%,#0866E8 55%,#064FC4 100%) !important;
+  color:#fff !important;
+  box-shadow:0 10px 25px rgba(8,102,232,.38),0 3px 8px rgba(0,0,0,.18) !important;
+}
+.btn-checkin-arrival.is-done::before{
+  background:linear-gradient(105deg,transparent 20%,rgba(255,255,255,.30) 48%,transparent 70%);
+}
+.btn-checkin-arrival.is-done:hover{
+  box-shadow:0 14px 30px rgba(8,102,232,.46),0 4px 10px rgba(0,0,0,.2) !important;
+}
+.btn-checkin-arrival .ck-status-icon{
+  width:23px;height:23px;flex:0 0 23px;
+  display:block;position:relative;z-index:1;
+}
 @media (prefers-reduced-motion:reduce){
   .btn-checkin-arrival::before{animation:none;}
   .btn-checkin-arrival{transition:none !important;}
@@ -5552,9 +5568,36 @@ const Checkin = {
     this.clearWant();
     setTimeout(()=>this.open(), 350);
   },
+  /* Atualiza o destaque conforme o check-in do usuário atual */
+  async refreshArrivalButton(occs){
+    const btn = document.querySelector(".btn-checkin-arrival");
+    if(!btn) return;
+    const mid = DB.settings.meId || "";
+    if(!mid || !getMember(mid)) return;
+    try{
+      await this.load(ymd(today()));
+      const done = occs.some(o=>!!this.find(o.key, mid));
+      const current = document.querySelector(".btn-checkin-arrival");
+      if(!current) return;
+      current.classList.toggle("is-done", done);
+      current.setAttribute("aria-label", done ? "Check-in realizado" : "Abrir leitor para check-in de chegada");
+      current.innerHTML = done
+        ? `<svg class="ck-status-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Check-in realizado</span>`
+        : `<svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/>
+            <path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8"/>
+            <path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16"/>
+            <path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/>
+            <path d="M9 9h6v6H9z"/>
+          </svg><span>Check-in de chegada</span>`;
+    }catch(e){
+      // Mantém o botão de check-in disponível se a consulta falhar.
+    }
+  },
   /* botão na Início (todos) */
   btnHtml(occs){
     if(!occs.length) return "";
+    setTimeout(()=>this.refreshArrivalButton(occs), 0);
     return `<button class="btn btn-checkin-arrival" data-ck="scan" style="margin-bottom:16px" aria-label="Abrir leitor para check-in de chegada">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/>
