@@ -5391,6 +5391,85 @@ const Checkin = {
     };
     paint();
   },
+  /* leitor de QR code pela câmera */
+  _jsqr: null,
+  loadJsQR(){
+    if(window.jsQR) return Promise.resolve();
+    if(this._jsqr) return this._jsqr;
+    this._jsqr = new Promise((res,rej)=>{
+      const sc=document.createElement("script");
+      sc.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+      sc.onload=()=>res(); sc.onerror=()=>{ this._jsqr=null; rej(new Error("leitor indisponível")); };
+      document.head.appendChild(sc);
+    });
+    return this._jsqr;
+  },
+  isCheckinQR(txt){
+    txt = String(txt||"");
+    try{ const u=new URL(txt); return /^#?checkin$/i.test(u.hash.replace(/^#\/?/,"")) || /checkin/i.test(u.hash); }catch(e){}
+    return /#checkin/i.test(txt);
+  },
+  async scan(){
+    const $=id=>document.getElementById(id);
+    openModal("Escanear QR code",
+      `<div style="position:relative;border-radius:18px;overflow:hidden;background:#000">
+         <video id="ckVid" playsinline muted autoplay style="width:100%;display:block;aspect-ratio:1/1;object-fit:cover"></video>
+         <div style="position:absolute;inset:18%;border:3px solid rgba(255,255,255,.9);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.35);pointer-events:none"></div>
+       </div>
+       <p id="ckMsg" class="muted-txt" style="text-align:center;margin:12px 0 0">Aponte a câmera para o QR code do culto</p>`,
+      `<button class="btn btn-soft btn-block" id="ckCancel">Cancelar</button>`);
+    $("ckCancel").onclick = closeModal;
+    const msg = t=>{ const m=$("ckMsg"); if(m) m.textContent=t; };
+    let stream=null, stopped=false;
+    const stop=()=>{ stopped=true; if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } };
+    try{
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("sem-camera");
+      const [,s2] = await Promise.all([ this.loadJsQR().catch(()=>null), navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}) ]);
+      stream = s2;
+    }catch(e){
+      stop();
+      const denied = e && (e.name==="NotAllowedError" || e.name==="SecurityError");
+      msg(denied ? "Permita o uso da câmera nas configurações do navegador e tente de novo."
+                 : "Não consegui abrir a câmera. Se estiver dentro de outro app (Instagram, WhatsApp), abra o link no Chrome ou Safari.");
+      return;
+    }
+    const v=$("ckVid");
+    if(!v){ stop(); return; }
+    v.srcObject = stream;
+    try{ await v.play(); }catch(e){}
+    const cv=document.createElement("canvas"), cx=cv.getContext("2d",{willReadFrequently:true});
+    let det=null;
+    try{ if("BarcodeDetector" in window) det=new BarcodeDetector({formats:["qr_code"]}); }catch(e){}
+    let last=0, warnAt=0;
+    const tick = async ()=>{
+      if(stopped) return;
+      const bd=$("modalBackdrop");
+      if(!$("ckVid") || (bd && bd.hidden)){ stop(); return; }
+      const now=performance.now();
+      if(now-last>130 && v.videoWidth){
+        last=now;
+        let text="";
+        try{
+          if(det){ const r=await det.detect(v); if(r&&r[0]) text=r[0].rawValue; }
+          else if(window.jsQR){
+            const sc=Math.min(1,520/v.videoWidth); cv.width=Math.round(v.videoWidth*sc); cv.height=Math.round(v.videoHeight*sc);
+            cx.drawImage(v,0,0,cv.width,cv.height);
+            const id=cx.getImageData(0,0,cv.width,cv.height);
+            const r=jsQR(id.data,id.width,id.height,{inversionAttempts:"dontInvert"}); if(r) text=r.data;
+          }
+        }catch(e){}
+        if(text){
+          if(this.isCheckinQR(text)){
+            stop(); closeModal();
+            try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
+            this.open(); return;
+          } else if(now-warnAt>1500){ warnAt=now; msg("Esse não é o QR code de check-in. Tente o QR do culto."); }
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  },
   maybeOpen(){
     if(!this.want()) return;
     this.clearWant();
@@ -5399,7 +5478,7 @@ const Checkin = {
   /* botão na Início (todos) */
   btnHtml(occs){
     if(!occs.length) return "";
-    return `<button class="btn btn-primary btn-block" data-ck="open" style="margin-bottom:14px">Check-in de chegada</button>`;
+    return `<button class="btn btn-primary btn-block" data-ck="scan" style="margin-bottom:14px">Check-in de chegada</button>`;
   },
   /* painel de presença (líderes/admin) */
   leaderHtml(){
@@ -5427,7 +5506,7 @@ const Checkin = {
     }).join("");
   }
 };
-document.addEventListener("click", e=>{ const b=e.target.closest('[data-ck="open"]'); if(b) Checkin.open(); });
+document.addEventListener("click", e=>{ const b=e.target.closest('[data-ck]'); if(!b) return; if(b.dataset.ck==="scan") Checkin.scan(); else if(b.dataset.ck==="open") Checkin.open(); });
 (function(){ try{ if(/(^|[#&?\/])checkin/i.test(location.hash) || /[?&]checkin/i.test(location.search)) sessionStorage.setItem("ck-want","1"); }catch(e){} })();
 
 function startApp(){
