@@ -2062,13 +2062,6 @@ html[data-theme="light"] body{
   margin:auto;display:flex;flex-direction:column;align-items:center;
   justify-content:center;text-align:center;width:100%;padding:32px 16px;
 }
-.maria-orb{
-  width:104px;height:104px;border-radius:32px;display:grid;place-items:center;
-  color:#fff;background:linear-gradient(145deg,#4389e8 0%,#7155c7 100%);
-  box-shadow:0 0 0 1px #ffffff18,0 14px 42px #526fc64a;
-  animation:mariaAlive 3.2s ease-in-out infinite;transform-origin:center;
-}
-.maria-mark-svg{width:58px;height:58px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .maria-welcome h1{font-size:clamp(24px,3vw,32px);font-weight:700;letter-spacing:-.04em;color:var(--ink);margin:28px 0 9px}
 .maria-welcome p{font-size:14px;line-height:1.65;color:var(--ink-soft);max-width:430px;margin:0}
 .maria-msg{width:100%;max-width:760px;margin:0 auto;display:flex;animation:mariaIn .2s ease both}
@@ -2116,21 +2109,46 @@ html[data-theme="light"] body{
 .maria-footnote-out{flex:none;width:100%;max-width:820px;margin:8px auto 0;padding:0 8px;line-height:1.4;animation:mariaIn .25s ease both}
 .maria-footnote-out[hidden]{display:none}
 .maria-error{font-size:12px;color:#c34d4d;padding:9px 12px;background:#c34d4d12;border-radius:10px;margin:0 auto 10px;width:100%;max-width:820px}
-@keyframes mariaAlive{
-  0%,100%{transform:translateY(0) scale(1);box-shadow:0 0 0 1px #ffffff18,0 14px 42px #526fc64a}
-  50%{transform:translateY(-5px) scale(1.055);box-shadow:0 0 0 9px #6689e512,0 18px 52px #526fc66b}
-}
-@media(prefers-reduced-motion:reduce){.maria-orb,.maria-thinking i{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.maria-thinking i{animation:none!important}}
 @media(max-width:640px){
   .maria-shell{height:calc(100dvh - 142px);min-height:calc(100dvh - 142px);padding:0 10px 10px}
   .maria-toolbar{min-height:52px}
   .maria-messages{padding:18px 2px 22px}
-  .maria-orb{width:88px;height:88px;border-radius:27px}
-  .maria-mark-svg{width:50px;height:50px}
+  .maria-mark{width:112px;height:112px}
+  .maria-mark-svg{width:80px;height:80px}
   .maria-welcome h1{margin-top:23px}
   .maria-bubble{max-width:92%;font-size:13px;padding:11px 13px}
   .maria-compose{border-radius:18px;padding:8px 9px 7px}
   .maria-tool{padding:7px 9px;font-size:11px}
+}
+
+/* MARIA — "M" flutuante (sem card): segue tema claro/escuro e as cores do usuário */
+.maria-mark{
+  --m-a:color-mix(in srgb,var(--user-primary,#2F6FD6) 72%,white);
+  --m-b:color-mix(in srgb,var(--user-secondary,#55A0F2) 82%,white);
+  --m-glow:color-mix(in srgb,var(--user-secondary,#55A0F2) 55%,transparent);
+  position:relative;width:132px;height:132px;display:grid;place-items:center;
+}
+html[data-theme="light"] .maria-mark{
+  --m-a:color-mix(in srgb,var(--user-primary,#2F6FD6) 92%,black);
+  --m-b:color-mix(in srgb,var(--user-secondary,#55A0F2) 88%,black);
+  --m-glow:color-mix(in srgb,var(--user-secondary,#55A0F2) 30%,transparent);
+}
+.maria-mark-glow{position:absolute;inset:14%;border-radius:50%;background:radial-gradient(circle,var(--m-glow) 0%,transparent 70%);filter:blur(14px);animation:mariaGlow 4.8s ease-in-out infinite}
+.maria-mark-shadow{position:absolute;bottom:2px;left:50%;width:54px;height:8px;margin-left:-27px;border-radius:50%;background:var(--m-glow);filter:blur(5px);animation:mariaShadow 4.8s ease-in-out infinite}
+.maria-mark-svg{position:relative;width:96px;height:96px;overflow:visible;fill:none;animation:mariaFloat 4.8s ease-in-out infinite;filter:drop-shadow(0 6px 14px var(--m-glow))}
+.maria-mark-m{fill:none;stroke:url(#mariaMarkGrad);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:100;stroke-dashoffset:100;animation:mariaDraw 1.3s cubic-bezier(.6,.05,.2,1) .15s forwards}
+.maria-mark-dot{fill:var(--m-b);opacity:0;animation:mariaDot .5s ease 1.25s forwards,mariaTwinkle 3.2s ease-in-out 1.8s infinite}
+@keyframes mariaDraw{to{stroke-dashoffset:0}}
+@keyframes mariaFloat{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-9px) rotate(1.5deg)}}
+@keyframes mariaGlow{0%,100%{opacity:.55;transform:scale(.9)}50%{opacity:1;transform:scale(1.1)}}
+@keyframes mariaShadow{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(.72);opacity:.4}}
+@keyframes mariaDot{to{opacity:1}}
+@keyframes mariaTwinkle{0%,100%{opacity:1}50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){
+  .maria-mark-glow,.maria-mark-shadow,.maria-mark-svg,.maria-mark-dot{animation:none!important}
+  .maria-mark-m{animation:none!important;stroke-dashoffset:0}
+  .maria-mark-dot{opacity:1}
 }
 
 /* MARIA — tela fixa, sem scroll da página; só a lista de mensagens rola por dentro */
@@ -7315,7 +7333,7 @@ const Maria = {
     const el=document.getElementById("mariaMessages"); if(!el)return;
     if(!this.history.length){
       el.innerHTML=`<div class="maria-welcome">
-        <div class="maria-orb" aria-label="MARIA"><svg class="maria-mark-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V6l8 8 8-8v12"/><path d="M4 6h.01M20 6h.01"/></svg></div>
+        <div class="maria-mark" role="img" aria-label="MARIA"><span class="maria-mark-glow"></span><span class="maria-mark-shadow"></span><svg class="maria-mark-svg" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="mariaMarkGrad" gradientUnits="userSpaceOnUse" x1="4" y1="4" x2="20" y2="18"><stop offset="0" style="stop-color:var(--m-a)"/><stop offset="1" style="stop-color:var(--m-b)"/></linearGradient></defs><path class="maria-mark-m" pathLength="100" d="M4 18V6l8 8 8-8v12"/><circle class="maria-mark-dot" cx="4" cy="6" r="1.1"/><circle class="maria-mark-dot" cx="20" cy="6" r="1.1" style="animation-delay:1.35s,2s"/></svg></div>
         <h1>Como posso ajudar?</h1>
         <p>Converse comigo sobre qualquer assunto ou peça apoio para as atividades de mídia.</p>
       </div>`;
