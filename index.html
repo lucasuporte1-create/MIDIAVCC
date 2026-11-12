@@ -2669,7 +2669,7 @@ function migrate(db){
   if(db && (!db.occPhotos || typeof db.occPhotos!=="object")) db.occPhotos = {};
   if(db && db.settings){
     if(db.settings.msgArrival===undefined) db.settings.msgArrival="Chegar uma hora antes do culto";
-    if(db.settings.msgDress===undefined)   db.settings.msgDress="Devidamente padronizado, ou all black";
+    if(db.settings.msgDress===undefined)   db.settings.msgDress="Devidamente padronizado ou all black";
     if(!Array.isArray(db.settings.dismissedSwaps)) db.settings.dismissedSwaps=[];
   }
   if(db && db.schedules){
@@ -2739,7 +2739,7 @@ function seed(){
     settings:{ church:"Verbo Casa Caiada", dept:"Departamento de Mídia",
                notify:false, reminderTime:"08:00", meId:"", role:"lider",
                msgArrival:"Chegar uma hora antes do culto",
-               msgDress:"Devidamente padronizado, ou all black" },
+               msgDress:"Devidamente padronizado ou all black" },
     rooms, services, members,
     events:[],          // eventos pontuais {id,date,title,time,note}
     schedules:{},       // { occKey: { roomId: [memberId,...] } }
@@ -4330,7 +4330,7 @@ function renderConfig(c){
         <div class="field"><label>${vi("relogio")} Horário de chegada</label>
           <input id="cfgArrival" value="${esc(DB.settings.msgArrival||"")}" placeholder="Ex.: Chegar uma hora antes do culto"></div>
         <div class="field" style="margin-bottom:0"><label>${vi("camisa")} Vestimenta</label>
-          <input id="cfgDress" value="${esc(DB.settings.msgDress||"")}" placeholder="Ex.: Devidamente padronizado, ou all black"></div>
+          <input id="cfgDress" value="${esc(DB.settings.msgDress||"")}" placeholder="Ex.: Devidamente padronizado ou all black"></div>
         <div class="hint" style="margin-top:8px">Essas linhas entram na mensagem enviada aos escalados pelo WhatsApp. Deixe em branco para não incluir.</div>
       </div>`;
   }
@@ -5281,12 +5281,14 @@ function waSchedule(key, occ){
     btn.addEventListener("click",()=>{
       const m=getMember(btn.dataset.waOne); const r=getRoom(btn.dataset.room);
       const role=(m.role||"").trim() || memberRoleInRoom(key, btn.dataset.room, btn.dataset.waOne) || "Voluntário";
-      const arrival=(DB.settings.msgArrival||"").trim(), dress=(DB.settings.msgDress||"").trim();
-      const extras=[]; if(arrival) extras.push(arrival); if(dress) extras.push("Vestimenta: "+dress);
+      const arrival=(DB.settings.msgArrival||"").trim();
+      const dress=(DB.settings.msgDress||"").trim().replace(/^Devidamente padronizado, ou all black$/i,"Devidamente padronizado ou all black");
+      const extras=[]; if(arrival) extras.push("⏰ "+arrival); if(dress) extras.push("👕 "+dress);
       const extra = extras.length ? "\n\n"+extras.join("\n") : "";
       const tt = isVigil(occ) ? timeTxt((roomSlot(key,btn.dataset.room).times||{})[m.id]) : "";
-      const myT = tt ? "\nSeu horário: "+tt : "", obsT = occ.obs ? "\nObs.: "+occ.obs : "";
-      const msg = `Oi ${m.name.split(" ")[0]}! Lembrete da escala do ${DB.settings.dept}:\n\n${fmtLong(occ.date)}\n${occ.title}${occ.time?" às "+occRange(occ).replace(/^(\d\d:\d\d) às /,"$1 até "):""}\nÁrea: ${r.name}\nFunção: ${role}${myT}${obsT}${extra}\n\nConto com você! Deus abençoe.`;
+      const myT = tt ? "\n🕒 Seu horário: "+tt : "", obsT = occ.obs ? "\n📝 Obs.: "+occ.obs : "";
+      const quando = occ.time ? " às "+occRange(occ).replace(/^(\d\d:\d\d) às /,"$1 até ") : "";
+      const msg = `Oi ${m.name.split(" ")[0]}! 💙 Lembrete da escala do ${DB.settings.dept}:\n\n📅 ${fmtLong(occ.date)}\n⛪ ${occ.title}${quando}\n📍 Área: ${r.name}\n🙋 Função: ${role}${myT}${obsT}${extra}\n\nConto com você! Deus abençoe.`;
       window.open(`https://wa.me/${cleanPhone(m.phone)}?text=${encodeURIComponent(msg)}`,"_blank");
     });
   });
