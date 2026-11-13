@@ -2217,6 +2217,41 @@ html.is-maria .maria-messages{padding:46px 2px 12px;gap:16px}
 .maria-copy svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .maria-copy.is-done{color:var(--green,#27966b)}
 
+
+/* ============================================================
+   MARIA — visual limpo: fundo todo preto (tema escuro) ou todo branco (tema claro),
+   respostas da Maria sem card, balão do usuário na cor primária dele
+   ============================================================ */
+html.is-maria{--maria-bg:#000}
+html.is-maria[data-theme="light"]{--maria-bg:#fff}
+html.is-maria,
+html.is-maria body,
+html.is-maria[data-theme] body,
+html.is-maria[data-background-style] body{
+  background:var(--maria-bg)!important;background-image:none!important;
+}
+html.is-maria .bg-ribbons{display:none!important}
+html.is-maria .topbar{background:var(--maria-bg)!important;box-shadow:none!important;border-radius:0!important;border-bottom:1px solid var(--line)}
+html.is-maria .tabbar{background:var(--maria-bg)!important;box-shadow:none!important;border-top:1px solid var(--line)}
+
+/* Respostas da Maria: só o texto, sem card */
+.maria-messages .maria-msg.assistant .maria-bubble,
+.maria-messages .maria-msg.assistant .maria-col .maria-bubble{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  border-radius:0!important;padding:2px 2px!important;color:var(--ink)!important;
+  max-width:100%;font-size:14.5px;line-height:1.75;
+}
+.maria-messages .maria-msg.assistant .maria-bubble.maria-thinking{padding:6px 2px!important}
+
+/* Balão do usuário: cor primária escolhida por ele */
+.maria-messages .maria-msg.user .maria-bubble{
+  background:var(--user-primary,#2F6FD6)!important;color:#fff!important;border:0!important;
+  box-shadow:0 6px 18px color-mix(in srgb,var(--user-primary,#2F6FD6) 35%,transparent);
+  border-radius:20px 20px 6px 20px;
+}
+.maria-send{background:var(--user-primary,#2F6FD6)!important;color:#fff}
+.maria-compose{box-shadow:none;border-color:var(--line)}
+.maria-copy:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
 </style>
 </head>
 <body>
