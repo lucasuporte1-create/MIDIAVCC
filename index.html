@@ -20,7 +20,7 @@
   <title>Escala Mídia — Verbo Casa Caiada</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet" />
   <!-- Supabase JS (só age quando você preencher URL/chave no app.js) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="icon" type="image/png" href="favicon.png" />
@@ -58,6 +58,7 @@
   --font-display:"Quicksand",system-ui,sans-serif;
   --font-body:"Inter",system-ui,sans-serif;
   --font-maria:"Plus Jakarta Sans","Inter",system-ui,sans-serif;
+  --font-maria-text:"Newsreader","Source Serif 4",Georgia,"Times New Roman",serif;
   --tab-h:68px;
   --safe-b:env(safe-area-inset-bottom,0px);
   --safe-t:env(safe-area-inset-top,0px);
@@ -2252,6 +2253,30 @@ html.is-maria .tabbar{background:var(--maria-bg)!important;box-shadow:none!impor
 .maria-send{background:var(--user-primary,#2F6FD6)!important;color:#fff}
 .maria-compose{box-shadow:none;border-color:var(--line)}
 .maria-copy:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+
+/* ---- MARIA: tela inicial sem card, só o M flutuando; sem manchas verdes ao fundo ---- */
+html.is-maria body::before,
+html.is-maria body::after,
+html.is-maria[data-theme] body::before,
+html.is-maria[data-theme] body::after,
+html.is-maria[data-background-style] body::before,
+html.is-maria[data-background-style] body::after{
+  content:none!important;display:none!important;background:none!important;
+}
+.maria-messages .maria-welcome{
+  background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;
+}
+
+/* ---- MARIA: fonte de leitura (serifada, estilo Claude) nas respostas e no título ---- */
+.maria-messages .maria-msg.assistant .maria-bubble,
+.maria-messages .maria-msg.assistant .maria-col .maria-bubble{
+  font-family:var(--font-maria-text)!important;font-size:16.5px!important;line-height:1.7!important;letter-spacing:0!important;
+}
+.maria-welcome h1,.maria-welcome h2{
+  font-family:var(--font-maria-text);font-weight:500;letter-spacing:-.01em;
+}
+.maria-welcome h1{font-size:clamp(26px,6vw,34px)}
+.maria-welcome p{font-family:var(--font-maria)}
 </style>
 </head>
 <body>
